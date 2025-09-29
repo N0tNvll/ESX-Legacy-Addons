@@ -3,16 +3,21 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ESX Garage</title>
-    <link rel="stylesheet" href="css/app.css" type="text/css" />
+  <title>ESX Garage</title>
+  <link rel="stylesheet" href="css/app.css" type="text/css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css"/>
   </head>
   <body>
   <div id="container" role="dialog" style="display:none;">
       <div id="header">
         <div class="title" id="garage-title">Garage</div>
         <ul role="tablist">
-          <li data-page="garage" class="selected" role="tab">Garage</li>
-          <li data-page="impounded" role="tab">Impounded</li>
+          <li data-page="garage" class="selected" role="tab">
+            <i class="fas fa-car"></i> Garage
+          </li>
+          <li data-page="impounded" role="tab">
+            <i class="fa-solid fa-shield"></i>Impounded
+          </li>
         </ul>
         <img class="logo-left" src="./img/logo.png" alt="ESX logo"/>
         <button class="close" title="Close">×</button>
