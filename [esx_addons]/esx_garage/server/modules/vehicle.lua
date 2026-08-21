@@ -680,6 +680,12 @@ ESX.RegisterServerCallback("esx_garage:giveKeys", function(source, cb, data)
     cb({ success = true })
 end)
 
+---@return string?
+local function defaultImpoundLot()
+    local fallback = Config.Impounds and Config.Impounds[1]
+    return fallback and fallback.id or nil
+end
+
 ---@param plate string
 ---@param lot string? defaults to the first configured impound
 ---@return boolean
@@ -695,8 +701,7 @@ local function impoundVehicle(plate, lot)
             print(("[esx_garage] impoundVehicle: unknown impound \"%s\", falling back to the default lot"):format(tostring(lot)))
         end
 
-        local fallback = Config.Impounds and Config.Impounds[1]
-        lotId = fallback and fallback.id or nil
+        lotId = defaultImpoundLot()
     end
 
     if not lotId then
@@ -724,5 +729,61 @@ local function impoundVehicle(plate, lot)
 
     return true
 end
+
+local function impoundOutVehiclesOnStop()
+    local lotId = defaultImpoundLot()
+    if not lotId then
+        print("[esx_garage] impoundOutVehiclesOnStop: no impound configured, aborting")
+        return
+    end
+
+    local liveImpounded = 0
+    local rowsOk, rows = pcall(MySQL.query.await,
+        "SELECT `plate` FROM `owned_vehicles` WHERE `stored` = 0")
+
+    if rowsOk then
+        rows = rows or {}
+        for i = 1, #rows do
+            local plate = rows[i].plate
+            if type(plate) == "string" then
+                local xVehicle = ESX.GetExtendedVehicleFromPlate(plate)
+                if xVehicle then
+                    local deleted, deleteErr = pcall(function()
+                        xVehicle:delete(lotId, true)
+                    end)
+
+                    if deleted then
+                        liveImpounded = liveImpounded + 1
+                    else
+                        print(("[esx_garage] impoundOutVehiclesOnStop: failed to impound live vehicle %s: %s")
+                            :format(normPlate(plate), tostring(deleteErr)))
+                    end
+                end
+            end
+        end
+    else
+        print(("[esx_garage] impoundOutVehiclesOnStop: failed to inspect live out vehicles: %s"):format(tostring(rows)))
+    end
+
+    local ok, affected = pcall(MySQL.update.await,
+        "UPDATE `owned_vehicles` SET `stored` = 1, `pound` = ?, `parking` = NULL WHERE `stored` = 0",
+        { lotId })
+
+    if not ok then
+        print(("[esx_garage] impoundOutVehiclesOnStop: failed to impound out vehicles: %s"):format(tostring(affected)))
+        return
+    end
+
+    if liveImpounded > 0 or (affected or 0) > 0 then
+        print(("[esx_garage] impoundOutVehiclesOnStop: impounded %d live vehicle(s) and %d database row(s) at %s")
+            :format(liveImpounded, affected or 0, lotId))
+    end
+end
+
+AddEventHandler("onResourceStop", function(resource)
+    if resource == GetCurrentResourceName() then
+        impoundOutVehiclesOnStop()
+    end
+end)
 
 exports("impoundVehicle", impoundVehicle)
