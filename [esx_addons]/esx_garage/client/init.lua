@@ -70,6 +70,12 @@ local function nuiVehicleType(raw)
     return NUI_TYPE_MAP[raw] or "car"
 end
 
+---@param pound any
+---@return string?
+local function activePound(pound)
+    return type(pound) == "string" and pound ~= "" and pound or nil
+end
+
 local function sweepGaragePeds()
     for _, ped in ipairs(GetGamePool("CPed")) do
         if not IsPedAPlayer(ped) and DecorExistOn(ped, PED_DECOR) then
@@ -231,12 +237,13 @@ local function wrap(row, currentLot)
     local props = json.decode(row.vehicle) or {}
     local model = props.model
     local displayName = model and GetDisplayNameFromVehicleModel(model) or "VEHICLE"
-    local impounded = row.stored == 1 and row.pound ~= nil
-    local outOfSync = row.stored ~= 1
+    local pound = activePound(row.pound)
+    local impounded = pound ~= nil
+    local outOfSync = row.stored ~= 1 and not impounded
 
     local fee
     if impounded or outOfSync then
-        local lot = (row.pound and impoundsById[row.pound]) or currentLot
+        local lot = (pound and impoundsById[pound]) or currentLot
         fee = (lot and lot.cost) or Config.Settings.defaultImpoundFee
     end
 
@@ -246,7 +253,7 @@ local function wrap(row, currentLot)
         model = displayName:lower(),
         name = displayName,
         type = nuiVehicleType(row.type or (model and ESX.GetVehicleTypeClient(model))),
-        stored = row.stored == 1 and row.pound == nil,
+        stored = row.stored == 1 and not impounded,
         impounded = impounded,
         garage = row.parking,
         impoundFee = fee,

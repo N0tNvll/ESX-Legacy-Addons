@@ -8,13 +8,13 @@ const GridContainer = styled.div`
   width: 100%;
   height: calc(100% - 3.875rem - 1.25rem); /* header + bottom spacing */
   display: flex;
-  padding-top: 1.25rem;
 `;
 
 const VehiclesWrapper = styled.div`
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  padding-top: 1.25rem;
   padding-left: 1.25rem;
   padding-right: 0.625rem;
   margin-right: 1.25rem;
