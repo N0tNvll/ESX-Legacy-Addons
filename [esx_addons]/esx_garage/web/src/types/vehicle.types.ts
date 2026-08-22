@@ -79,5 +79,5 @@ export interface VehiclePagination {
 export interface VehiclePageResponse {
   vehicles: Vehicle[];
   pagination: VehiclePagination;
-  stats: VehicleStats;
+  stats?: VehicleStats;
 }

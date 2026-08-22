@@ -368,30 +368,6 @@ local function appendSearchCondition(scopeSql, params, search)
     return scopeSql .. " AND (`plate` LIKE ? ESCAPE '\\\\' OR `custom_name` LIKE ? ESCAPE '\\\\')"
 end
 
----@param scopeSql string
----@param params table
----@return table
-local function vehicleStats(scopeSql, params)
-    local row = MySQL.single.await(
-        ([[
-            SELECT
-                COUNT(*) AS `total`,
-                COALESCE(SUM(CASE WHEN `stored` = 1 AND `pound` IS NULL THEN 1 ELSE 0 END), 0) AS `stored`,
-                COALESCE(SUM(CASE WHEN `stored` <> 1 AND `pound` IS NULL THEN 1 ELSE 0 END), 0) AS `out`,
-                COALESCE(SUM(CASE WHEN `pound` IS NOT NULL THEN 1 ELSE 0 END), 0) AS `impounded`
-            FROM `owned_vehicles`
-            WHERE `owner` = ?%s
-        ]]):format(scopeSql),
-        params) or {}
-
-    return {
-        total = tonumber(row.total) or 0,
-        stored = tonumber(row.stored) or 0,
-        out = tonumber(row.out) or 0,
-        impounded = tonumber(row.impounded) or 0,
-    }
-end
-
 ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, data)
     local waited = 0
     while not GarageReady and waited < 10000 do
@@ -412,6 +388,7 @@ ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, data)
     local garageId = request.garageId
 
     local garage = garageId and Garages[garageId]
+    local impound = garageId and Impounds[garageId]
     if garage and not CanAccessGarage(source, garage) then
         return cb(false)
     end
@@ -430,11 +407,15 @@ ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, data)
         baseParams[#baseParams + 1] = scopeParams[i]
     end
 
+    if impound then
+        scopeSql = scopeSql .. " AND `pound` = ?"
+        baseParams[#baseParams + 1] = garageId
+    end
+
     local filter = type(request.filter) == "table" and request.filter or {}
     local search = type(filter.search) == "string" and filter.search:gsub("^%s+", ""):gsub("%s+$", "") or ""
     scopeSql = appendSearchCondition(scopeSql, baseParams, search)
 
-    local stats = vehicleStats(scopeSql, baseParams)
     local pageSql = scopeSql
     local params = copyParams(baseParams)
 
@@ -456,12 +437,17 @@ ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, data)
         pageSql = pageSql .. " AND `is_favorite` = 0"
     end
 
+    local orderSql = "`plate` ASC"
+    if impound or filter.impounded == true then
+        orderSql = "`pound` ASC, `plate` ASC"
+    end
+
     params[#params + 1] = pageSize + 1
     params[#params + 1] = offset
 
     local rows = MySQL.query.await(
-        ("SELECT %s FROM `owned_vehicles` WHERE `owner` = ?%s ORDER BY `plate` ASC LIMIT ? OFFSET ?")
-            :format(VEHICLE_SELECT_COLUMNS, pageSql),
+        ("SELECT %s FROM `owned_vehicles` WHERE `owner` = ?%s ORDER BY %s LIMIT ? OFFSET ?")
+            :format(VEHICLE_SELECT_COLUMNS, pageSql, orderSql),
         params) or {}
 
     local hasNext = #rows > pageSize
@@ -474,7 +460,6 @@ ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, data)
         page = page,
         pageSize = pageSize,
         hasNext = hasNext,
-        stats = stats,
     })
 end)
 

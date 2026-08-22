@@ -10,6 +10,7 @@
 ---@field model string | integer
 ---@field z? number
 ---@field heading? number
+---@field snapToGround? boolean
 
 ---@class GarageAccess
 ---@field jobs? table<string, integer> Job name mapped to the minimum grade allowed.

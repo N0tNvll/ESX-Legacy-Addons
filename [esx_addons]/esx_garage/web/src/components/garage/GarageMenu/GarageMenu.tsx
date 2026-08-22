@@ -76,7 +76,7 @@ interface OpenGarageData {
   garage: Garage;
   vehicles: Vehicle[];
   pagination: VehiclePagination;
-  stats: VehicleStats;
+  stats?: VehicleStats;
 }
 
 export const GarageMenu: React.FC = () => {

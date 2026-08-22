@@ -113,7 +113,7 @@ export const OpenGarageDataSchema = z.object({
   garage: GarageSchema,
   vehicles: z.array(VehicleSchema),
   pagination: VehiclePaginationSchema,
-  stats: VehicleStatsSchema
+  stats: VehicleStatsSchema.optional()
 });
 
 export const NuiCallbackResponseSchema = z.object({

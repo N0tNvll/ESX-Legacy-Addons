@@ -133,7 +133,9 @@ export const useGarageStore = create<GarageState>()(
         set((state) => {
           state.vehicles = page.vehicles;
           state.pagination = page.pagination;
-          state.stats = page.stats;
+          if (page.stats) {
+            state.stats = page.stats;
+          }
         });
       },
 

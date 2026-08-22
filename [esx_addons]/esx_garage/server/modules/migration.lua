@@ -3,14 +3,17 @@ GarageReady = false
 local TABLE <const> = "owned_vehicles"
 local MIGRATION_TABLE <const> = "esx_garage_migrations"
 local MIGRATION_NAME <const> = "schema"
+local INDEX_MIGRATION_NAME <const> = "performance_indexes"
+local FILTER_INDEX_MIGRATION_NAME <const> = "filter_indexes"
 local LEGACY_MIGRATION_VERSION <const> = "1"
 local MIGRATION_VERSION <const> = "1.14.2"
 
+---@param name string
 ---@return string?
-local function appliedMigrationVersion()
+local function appliedMigrationVersion(name)
     local ok, version = pcall(MySQL.scalar.await,
         ("SELECT `version` FROM `%s` WHERE `name` = ?"):format(MIGRATION_TABLE),
-        { MIGRATION_NAME })
+        { name })
 
     if not ok or version == nil then
         return nil
@@ -44,13 +47,14 @@ local function ensureMigrationTable()
     end
 end
 
-local function markMigrationApplied()
+---@param name string
+local function markMigrationApplied(name)
     local now = os.time()
 
     MySQL.query.await(
         ("INSERT INTO `%s` (`name`, `version`, `applied_at`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `version` = ?, `applied_at` = ?")
             :format(MIGRATION_TABLE),
-        { MIGRATION_NAME, MIGRATION_VERSION, now, MIGRATION_VERSION, now })
+        { name, MIGRATION_VERSION, now, MIGRATION_VERSION, now })
 end
 
 ---@param column string
@@ -113,6 +117,15 @@ local SCHEMA <const> = {
 local INDEXES <const> = {
     { "idx_owned_vehicles_owner_plate", "(`owner`, `plate`)" },
     { "idx_owned_vehicles_owner_custom_name", "(`owner`, `custom_name`)" },
+    { "idx_owned_vehicles_owner_stored_pound_plate", "(`owner`, `stored`, `pound`, `plate`)" },
+    { "idx_owned_vehicles_owner_pound_plate_stored", "(`owner`, `pound`, `plate`, `stored`)" },
+    { "idx_owned_vehicles_owner_favorite_plate", "(`owner`, `is_favorite`, `plate`)" },
+}
+
+---@type string[][]
+local FILTER_INDEXES <const> = {
+    { "idx_owned_vehicles_owner_stored_pound_plate", "(`owner`, `stored`, `pound`, `plate`)" },
+    { "idx_owned_vehicles_owner_favorite_plate", "(`owner`, `is_favorite`, `plate`)" },
 }
 
 CreateThread(function()
@@ -120,43 +133,77 @@ CreateThread(function()
     local added, indexed, legacy = 0, 0, 0
 
     local ok, err = pcall(function()
-        local version = appliedMigrationVersion()
+        local version = appliedMigrationVersion(MIGRATION_NAME)
         if migrationApplied(version) then
             if version ~= MIGRATION_VERSION then
                 ensureMigrationTable()
-                markMigrationApplied()
+                markMigrationApplied(MIGRATION_NAME)
+            end
+        else
+            ensureMigrationTable()
+
+            for i = 1, #SCHEMA do
+                if ensureColumn(SCHEMA[i][1], SCHEMA[i][2]) then
+                    added = added + 1
+                end
             end
 
-            return
-        end
-
-        ensureMigrationTable()
-
-        for i = 1, #SCHEMA do
-            if ensureColumn(SCHEMA[i][1], SCHEMA[i][2]) then
-                added = added + 1
+            for i = 1, #INDEXES do
+                if ensureIndex(INDEXES[i][1], INDEXES[i][2]) then
+                    indexed = indexed + 1
+                end
             end
-        end
 
-        for i = 1, #INDEXES do
-            if ensureIndex(INDEXES[i][1], INDEXES[i][2]) then
-                indexed = indexed + 1
+            legacy = MySQL.scalar.await(("SELECT COUNT(*) FROM `%s` WHERE `stored` = 2"):format(TABLE)) or 0
+
+            if legacy > 0 then
+                local defaultLot = Config.Impounds and Config.Impounds[1] and Config.Impounds[1].id
+                if defaultLot then
+                    MySQL.update.await(("UPDATE `%s` SET `stored` = 1, `parking` = NULL, `pound` = ? WHERE `stored` = 2"):format(TABLE),
+                        { defaultLot })
+                else
+                    MySQL.update.await(("UPDATE `%s` SET `stored` = 1, `parking` = NULL WHERE `stored` = 2"):format(TABLE))
+                end
             end
+
+            markMigrationApplied(MIGRATION_NAME)
         end
 
-        legacy = MySQL.scalar.await(("SELECT COUNT(*) FROM `%s` WHERE `stored` = 2"):format(TABLE)) or 0
+        if not migrationApplied(appliedMigrationVersion(INDEX_MIGRATION_NAME)) then
+            ensureMigrationTable()
 
-        if legacy > 0 then
-            local defaultLot = Config.Impounds and Config.Impounds[1] and Config.Impounds[1].id
-            if defaultLot then
-                MySQL.update.await(("UPDATE `%s` SET `stored` = 1, `parking` = NULL, `pound` = ? WHERE `stored` = 2"):format(TABLE),
-                    { defaultLot })
-            else
-                MySQL.update.await(("UPDATE `%s` SET `stored` = 1, `parking` = NULL WHERE `stored` = 2"):format(TABLE))
+            for i = 1, #SCHEMA do
+                if ensureColumn(SCHEMA[i][1], SCHEMA[i][2]) then
+                    added = added + 1
+                end
             end
+
+            for i = 1, #INDEXES do
+                if ensureIndex(INDEXES[i][1], INDEXES[i][2]) then
+                    indexed = indexed + 1
+                end
+            end
+
+            markMigrationApplied(INDEX_MIGRATION_NAME)
         end
 
-        markMigrationApplied()
+        if not migrationApplied(appliedMigrationVersion(FILTER_INDEX_MIGRATION_NAME)) then
+            ensureMigrationTable()
+
+            for i = 1, #SCHEMA do
+                if ensureColumn(SCHEMA[i][1], SCHEMA[i][2]) then
+                    added = added + 1
+                end
+            end
+
+            for i = 1, #FILTER_INDEXES do
+                if ensureIndex(FILTER_INDEXES[i][1], FILTER_INDEXES[i][2]) then
+                    indexed = indexed + 1
+                end
+            end
+
+            markMigrationApplied(FILTER_INDEX_MIGRATION_NAME)
+        end
     end)
 
     if not ok then

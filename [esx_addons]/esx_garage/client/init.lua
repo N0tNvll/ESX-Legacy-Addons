@@ -1,5 +1,5 @@
 local blips = {}
-local peds = {}
+local pedSpawns = {}
 local points = {}
 local markers = {}
 
@@ -14,6 +14,8 @@ local currentLocation = nil
 local PED_DECOR <const> = "esx_garage_ped"
 
 local DEFAULT_MARKER_COLOR <const> = { 65, 130, 255, 120 }
+local PED_SPAWN_DISTANCE <const> = 80.0
+local PED_DESPAWN_DISTANCE <const> = 120.0
 
 local WITHDRAW_INTERACTION <const> = {
     locale = "access_parking",
@@ -91,16 +93,23 @@ local function sweepGaragePeds()
     end
 end
 
+---@param spawn table
+local function deleteGaragePed(spawn)
+    if spawn.ped and DoesEntityExist(spawn.ped) then
+        SetEntityAsMissionEntity(spawn.ped, true, true)
+        DeleteEntity(spawn.ped)
+    end
+
+    spawn.ped = nil
+end
+
 local function clearWorld()
     for i = 1, #blips do
         RemoveBlip(blips[i])
     end
 
-    for i = 1, #peds do
-        if DoesEntityExist(peds[i]) then
-            SetEntityAsMissionEntity(peds[i], true, true)
-            DeleteEntity(peds[i])
-        end
+    for i = 1, #pedSpawns do
+        deleteGaragePed(pedSpawns[i])
     end
 
     for i = 1, #points do
@@ -110,7 +119,7 @@ local function clearWorld()
         end
     end
 
-    blips, peds, points, markers = {}, {}, {}, {}
+    blips, pedSpawns, points, markers = {}, {}, {}, {}
     currentLocation = nil
 
     if ESX.HideUI then
@@ -177,11 +186,12 @@ local function addLocation(location, isImpound)
 
     if location.ped then
         local z = location.ped.z or coords.z
-        local ped = Utils.SpawnFrozenPed(location.ped.model, vector4(coords.x, coords.y, z, location.ped.heading or 0.0))
-        if ped then
-            DecorSetBool(ped, PED_DECOR, true)
-            peds[#peds + 1] = ped
-        end
+        pedSpawns[#pedSpawns + 1] = {
+            model = location.ped.model,
+            coords = vector4(coords.x, coords.y, z, location.ped.heading or 0.0),
+            anchor = coords,
+            snapToGround = location.ped.snapToGround ~= false,
+        }
     end
 
     if isImpound then
@@ -324,12 +334,6 @@ local function fetchVehiclePage(data)
             hasNext = result.hasNext == true,
             hasPrevious = resultPage > 1,
         },
-        stats = {
-            total = tonumber(result.stats and result.stats.total) or #vehicles,
-            stored = tonumber(result.stats and result.stats.stored) or 0,
-            out = tonumber(result.stats and result.stats.out) or 0,
-            impounded = tonumber(result.stats and result.stats.impounded) or 0,
-        },
     }
 end
 
@@ -364,7 +368,6 @@ local function openMenu()
             },
             vehicles = page.vehicles,
             pagination = page.pagination,
-            stats = page.stats,
         }
     })
 
@@ -542,6 +545,37 @@ CreateThread(function()
     end
 
     refresh()
+end)
+
+CreateThread(function()
+    while true do
+        if #pedSpawns > 0 then
+            local pcoords = xLib.cache.coords or GetEntityCoords(PlayerPedId())
+
+            for i = 1, #pedSpawns do
+                local spawn = pedSpawns[i]
+                local distance = #(pcoords - spawn.anchor)
+
+                if spawn.ped and not DoesEntityExist(spawn.ped) then
+                    spawn.ped = nil
+                end
+
+                if spawn.ped then
+                    if distance > PED_DESPAWN_DISTANCE then
+                        deleteGaragePed(spawn)
+                    end
+                elseif distance < PED_SPAWN_DISTANCE then
+                    local ped = Utils.SpawnFrozenPed(spawn.model, spawn.coords, spawn.snapToGround)
+                    if ped then
+                        DecorSetBool(ped, PED_DECOR, true)
+                        spawn.ped = ped
+                    end
+                end
+            end
+        end
+
+        Wait(1000)
+    end
 end)
 
 CreateThread(function()

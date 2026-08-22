@@ -64,10 +64,36 @@ SET @add_owner_custom_name_index := (SELECT IF(
     'ALTER TABLE `owned_vehicles` ADD INDEX `idx_owned_vehicles_owner_custom_name` (`owner`, `custom_name`)'));
 PREPARE s FROM @add_owner_custom_name_index; EXECUTE s; DEALLOCATE PREPARE s;
 
+SET @add_owner_stored_pound_plate_index := (SELECT IF(
+    EXISTS(SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'owned_vehicles' AND INDEX_NAME = 'idx_owned_vehicles_owner_stored_pound_plate'),
+    'SELECT 1',
+    'ALTER TABLE `owned_vehicles` ADD INDEX `idx_owned_vehicles_owner_stored_pound_plate` (`owner`, `stored`, `pound`, `plate`)'));
+PREPARE s FROM @add_owner_stored_pound_plate_index; EXECUTE s; DEALLOCATE PREPARE s;
+
+SET @add_owner_pound_plate_stored_index := (SELECT IF(
+    EXISTS(SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'owned_vehicles' AND INDEX_NAME = 'idx_owned_vehicles_owner_pound_plate_stored'),
+    'SELECT 1',
+    'ALTER TABLE `owned_vehicles` ADD INDEX `idx_owned_vehicles_owner_pound_plate_stored` (`owner`, `pound`, `plate`, `stored`)'));
+PREPARE s FROM @add_owner_pound_plate_stored_index; EXECUTE s; DEALLOCATE PREPARE s;
+
+SET @add_owner_favorite_plate_index := (SELECT IF(
+    EXISTS(SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'owned_vehicles' AND INDEX_NAME = 'idx_owned_vehicles_owner_favorite_plate'),
+    'SELECT 1',
+    'ALTER TABLE `owned_vehicles` ADD INDEX `idx_owned_vehicles_owner_favorite_plate` (`owner`, `is_favorite`, `plate`)'));
+PREPARE s FROM @add_owner_favorite_plate_index; EXECUTE s; DEALLOCATE PREPARE s;
+
 -- Legacy impound (stored = 2) -> stored = 1 + pound. Set the lot id below to a valid impound id from your config.lua.
 -- Idempotent: once converted, no row matches stored = 2 anymore.
 UPDATE `owned_vehicles` SET `stored` = 1, `parking` = NULL, `pound` = 'los_santos' WHERE `stored` = 2;
 
 INSERT INTO `esx_garage_migrations` (`name`, `version`, `applied_at`)
 VALUES ('schema', '1.14.2', UNIX_TIMESTAMP())
+ON DUPLICATE KEY UPDATE `version` = '1.14.2', `applied_at` = UNIX_TIMESTAMP();
+
+INSERT INTO `esx_garage_migrations` (`name`, `version`, `applied_at`)
+VALUES ('performance_indexes', '1.14.2', UNIX_TIMESTAMP())
+ON DUPLICATE KEY UPDATE `version` = '1.14.2', `applied_at` = UNIX_TIMESTAMP();
+
+INSERT INTO `esx_garage_migrations` (`name`, `version`, `applied_at`)
+VALUES ('filter_indexes', '1.14.2', UNIX_TIMESTAMP())
 ON DUPLICATE KEY UPDATE `version` = '1.14.2', `applied_at` = UNIX_TIMESTAMP();

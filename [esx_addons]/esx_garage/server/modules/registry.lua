@@ -87,7 +87,7 @@ local function pedT(ped)
     if not ped then
         return nil
     end
-    return { model = ped.model, z = ped.z, heading = ped.heading }
+    return { model = ped.model, z = ped.z, heading = ped.heading, snapToGround = ped.snapToGround }
 end
 
 ---@param garage Garage
