@@ -25,5 +25,6 @@ return {
     ['not_in_vehicle'] = 'you are not in a vehicle.',
     ['cannot_store'] = 'unable to store this vehicle.',
     ['cannot_access_garage'] = 'you cannot access this garage.',
-    ['received_vehicle'] = 'you received a vehicle (plate: %s).'
+    ['received_vehicle'] = 'you received a vehicle (plate: %s).',
+    ['open_garage'] = 'Open garage'
 }

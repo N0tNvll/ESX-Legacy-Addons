@@ -2,6 +2,15 @@ local MAX_PROPS_BYTES <const> = 16384
 local MAX_PROPS_DEPTH <const> = 4
 local DEFAULT_PAGE_SIZE <const> = 30
 local MAX_ALLOWED_PAGE_SIZE <const> = 500
+local CALLBACK_COOLDOWNS <const> = {
+    ["esx_garage:getVehicles"] = 200,
+    ["esx_garage:retrieveVehicle"] = 1500,
+    ["esx_garage:storeVehicle"] = 1500,
+    ["esx_garage:toggleFavorite"] = 300,
+    ["esx_garage:renameVehicle"] = 1000,
+    ["esx_garage:transferVehicle"] = 1500,
+    ["esx_garage:giveKeys"] = 1000,
+}
 local VEHICLE_SELECT_COLUMNS <const> = table.concat({
     "`plate`",
     "`vehicle`",
@@ -14,6 +23,44 @@ local VEHICLE_SELECT_COLUMNS <const> = table.concat({
     "`last_used`",
     "`mileage`",
 }, ", ")
+
+---@type table<integer, table<string, integer>>
+local callbackCooldowns = {}
+
+---@return integer
+local function currentTimeMs()
+    if type(GetGameTimer) == "function" then
+        return GetGameTimer()
+    end
+
+    return math.floor(os.clock() * 1000)
+end
+
+---@param source integer
+---@param cb function
+---@param callbackName string
+---@return boolean
+local function rejectRateLimited(source, cb, callbackName)
+    local cooldown = CALLBACK_COOLDOWNS[callbackName]
+    if not cooldown then
+        return false
+    end
+
+    local now = currentTimeMs()
+    local playerCooldowns = callbackCooldowns[source]
+    if not playerCooldowns then
+        playerCooldowns = {}
+        callbackCooldowns[source] = playerCooldowns
+    end
+
+    if (playerCooldowns[callbackName] or 0) > now then
+        cb({ success = false, error = "rate_limited" })
+        return true
+    end
+
+    playerCooldowns[callbackName] = now + cooldown
+    return false
+end
 
 ---@param p string
 ---@return string
@@ -247,15 +294,14 @@ local function isConfiguredSpawn(location, spawn)
 end
 
 ---@param source integer
----@param location table
+---@param anchor table?
 ---@return boolean
-local function isNearLocation(source, location)
+local function isNearPoint(source, anchor)
     local ped = GetPlayerPed(source)
     if not ped or ped <= 0 then
         return false
     end
 
-    local anchor = location.entryPoint or location.getOutPoint
     if not anchor then
         return true
     end
@@ -263,6 +309,13 @@ local function isNearLocation(source, location)
     local tolerance = (Config.Settings.interactionDistance or 3.0) + 10.0
 
     return #(GetEntityCoords(ped) - vec3(anchor.x, anchor.y, anchor.z)) <= tolerance
+end
+
+---@param source integer
+---@param location table
+---@return boolean
+local function isNearLocation(source, location)
+    return isNearPoint(source, location.entryPoint or location.getOutPoint)
 end
 
 ---@param spawn table
@@ -369,6 +422,10 @@ local function appendSearchCondition(scopeSql, params, search)
 end
 
 ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, data)
+    if rejectRateLimited(source, cb, "esx_garage:getVehicles") then
+        return
+    end
+
     local waited = 0
     while not GarageReady and waited < 10000 do
         Wait(50)
@@ -464,6 +521,10 @@ ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, data)
 end)
 
 ESX.RegisterServerCallback("esx_garage:retrieveVehicle", function(source, cb, data)
+    if rejectRateLimited(source, cb, "esx_garage:retrieveVehicle") then
+        return
+    end
+
     if not GarageReady then
         return cb({ success = false, error = "error" })
     end
@@ -589,7 +650,7 @@ ESX.RegisterServerCallback("esx_garage:retrieveVehicle", function(source, cb, da
             return { success = false, error = "no_money" }
         end
 
-        MySQL.update("UPDATE `owned_vehicles` SET `pound` = NULL, `parking` = NULL, `last_used` = ? WHERE `owner` = ? AND `plate` = ?",
+        MySQL.update.await("UPDATE `owned_vehicles` SET `stored` = 0, `pound` = NULL, `parking` = NULL, `last_used` = ? WHERE `owner` = ? AND `plate` = ?",
             { os.time(), xPlayer.identifier, row.plate })
 
         return { success = true, data = { netId = xVehicle:getNetId() } }
@@ -605,6 +666,10 @@ ESX.RegisterServerCallback("esx_garage:retrieveVehicle", function(source, cb, da
 end)
 
 ESX.RegisterServerCallback("esx_garage:storeVehicle", function(source, cb, data)
+    if rejectRateLimited(source, cb, "esx_garage:storeVehicle") then
+        return
+    end
+
     if not GarageReady then
         return cb({ success = false, error = "error" })
     end
@@ -635,7 +700,7 @@ ESX.RegisterServerCallback("esx_garage:storeVehicle", function(source, cb, data)
         return cb({ success = false, error = "not_allowed" })
     end
 
-    if not isNearLocation(source, garage) then
+    if not isNearPoint(source, garage.storePoint or garage.entryPoint) then
         return cb({ success = false, error = "too_far" })
     end
 
@@ -725,7 +790,7 @@ ESX.RegisterServerCallback("esx_garage:storeVehicle", function(source, cb, data)
                 { garageId, encoded, xPlayer.identifier, row.plate })
         end
 
-        MySQL.update("UPDATE `owned_vehicles` SET `last_used` = ? WHERE `owner` = ? AND `plate` = ?",
+        MySQL.update.await("UPDATE `owned_vehicles` SET `last_used` = ? WHERE `owner` = ? AND `plate` = ?",
             { os.time(), xPlayer.identifier, row.plate })
 
         return { success = true, data = true }
@@ -741,6 +806,10 @@ ESX.RegisterServerCallback("esx_garage:storeVehicle", function(source, cb, data)
 end)
 
 ESX.RegisterServerCallback("esx_garage:toggleFavorite", function(source, cb, data)
+    if rejectRateLimited(source, cb, "esx_garage:toggleFavorite") then
+        return
+    end
+
     if not GarageReady then
         return cb({ success = false, error = "error" })
     end
@@ -780,6 +849,10 @@ ESX.RegisterServerCallback("esx_garage:toggleFavorite", function(source, cb, dat
 end)
 
 ESX.RegisterServerCallback("esx_garage:renameVehicle", function(source, cb, data)
+    if rejectRateLimited(source, cb, "esx_garage:renameVehicle") then
+        return
+    end
+
     if not GarageReady then
         return cb({ success = false, error = "error" })
     end
@@ -820,6 +893,10 @@ ESX.RegisterServerCallback("esx_garage:renameVehicle", function(source, cb, data
 end)
 
 ESX.RegisterServerCallback("esx_garage:transferVehicle", function(source, cb, data)
+    if rejectRateLimited(source, cb, "esx_garage:transferVehicle") then
+        return
+    end
+
     if not GarageReady then
         return cb({ success = false, error = "error" })
     end
@@ -896,6 +973,10 @@ ESX.RegisterServerCallback("esx_garage:transferVehicle", function(source, cb, da
 end)
 
 ESX.RegisterServerCallback("esx_garage:giveKeys", function(source, cb, data)
+    if rejectRateLimited(source, cb, "esx_garage:giveKeys") then
+        return
+    end
+
     if not Config.Settings.vehicleKeys then
         return cb({ success = false, error = "disabled" })
     end
@@ -1040,6 +1121,10 @@ AddEventHandler("onResourceStop", function(resource)
     if resource == GetCurrentResourceName() then
         impoundOutVehiclesOnStop()
     end
+end)
+
+AddEventHandler("playerDropped", function()
+    callbackCooldowns[source] = nil
 end)
 
 exports("impoundVehicle", impoundVehicle)
