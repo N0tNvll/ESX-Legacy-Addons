@@ -2,9 +2,10 @@ local MAX_PROPS_BYTES <const> = 16384
 local MAX_PROPS_DEPTH <const> = 4
 local MAX_PAGE <const> = 100
 local MAX_SEARCH_LENGTH <const> = 64
-local MAX_PLATE_LENGTH <const> = 8
+local MAX_PLATE_LENGTH <const> = 12
 local DEFAULT_PAGE_SIZE <const> = 30
 local MAX_ALLOWED_PAGE_SIZE <const> = 100
+local HUD_RESOURCE_NAME <const> = "esx_hud"
 local CALLBACK_COOLDOWNS <const> = {
     ["esx_garage:getVehicles"] = 1500,
     ["esx_garage:retrieveVehicle"] = 1500,
@@ -77,6 +78,51 @@ local function isFiniteNumber(value)
     return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
+---@param value any
+---@return integer
+local function storedValue(value)
+    return (value == true or value == 1 or value == "1") and 1 or 0
+end
+
+---@param value any
+---@return boolean
+local function isStored(value)
+    return storedValue(value) == 1
+end
+
+---@param pound any
+---@return string?
+local function activePound(pound)
+    return type(pound) == "string" and pound ~= "" and pound or nil
+end
+
+---@param rows OwnedVehicleRow[]
+local function applyCachedHudMileage(rows)
+    if type(GetResourceState) ~= "function" or GetResourceState(HUD_RESOURCE_NAME) ~= "started" then
+        return
+    end
+
+    local plates = {}
+    for i = 1, #rows do
+        plates[#plates + 1] = rows[i].plate
+    end
+
+    local ok, mileages = pcall(function()
+        return exports[HUD_RESOURCE_NAME]:GetMileages(plates)
+    end)
+
+    if not ok or type(mileages) ~= "table" then
+        return
+    end
+
+    for i = 1, #rows do
+        local mileage = tonumber(mileages[rows[i].plate])
+        if mileage and mileage >= 0 then
+            rows[i].mileage = mileage
+        end
+    end
+end
+
 ---@param requested any
 ---@return integer
 local function vehiclePage(requested)
@@ -119,7 +165,8 @@ local function validPlate(plate)
 
     return #plate >= 1
         and #plate <= MAX_PLATE_LENGTH
-        and plate:match("^[A-Z0-9 ]+$") ~= nil
+        and plate:match("[A-Z0-9]") ~= nil
+        and plate:match("^[A-Z0-9 %-]+$") ~= nil
 end
 
 ---@param values table
@@ -298,7 +345,7 @@ end
 
 ---@param xPlayer table
 ---@param amount integer
----@return boolean
+---@return boolean, string?
 local function charge(xPlayer, amount)
     if amount <= 0 then
         return true
@@ -306,16 +353,37 @@ local function charge(xPlayer, amount)
 
     if xPlayer.getMoney() >= amount then
         xPlayer.removeMoney(amount, "Impound fee")
-        return true
+        return true, "money"
     end
 
     local bank = xPlayer.getAccount("bank")
     if bank and bank.money >= amount then
         xPlayer.removeAccountMoney("bank", amount, "Impound fee")
-        return true
+        return true, "bank"
     end
 
     return false
+end
+
+---@param xPlayer table
+---@param amount integer
+---@param account string?
+local function refundCharge(xPlayer, amount, account)
+    if amount <= 0 or not account then
+        return
+    end
+
+    local ok, err = pcall(function()
+        if account == "money" and type(xPlayer.addMoney) == "function" then
+            xPlayer.addMoney(amount, "Impound fee refund")
+        elseif account == "bank" and type(xPlayer.addAccountMoney) == "function" then
+            xPlayer.addAccountMoney("bank", amount, "Impound fee refund")
+        end
+    end)
+
+    if not ok then
+        print(("[esx_garage] failed to refund impound fee for %s: %s"):format(xPlayer.identifier or "unknown", tostring(err)))
+    end
 end
 
 ---@param xPlayer table
@@ -332,6 +400,152 @@ local function canAfford(xPlayer, amount)
 
     local bank = xPlayer.getAccount("bank")
     return bank ~= nil and bank.money >= amount
+end
+
+---@param result any
+---@return integer
+local function affectedRows(result)
+    if type(result) == "number" then
+        return result
+    end
+
+    if type(result) == "table" then
+        return tonumber(result.affectedRows) or 0
+    end
+
+    return 0
+end
+
+---@param assignments string[]
+---@param params table
+---@param column string
+---@param value any
+local function appendNullableAssignment(assignments, params, column, value)
+    if value == nil then
+        assignments[#assignments + 1] = ("`%s` = NULL"):format(column)
+        return
+    end
+
+    assignments[#assignments + 1] = ("`%s` = ?"):format(column)
+    params[#params + 1] = value
+end
+
+---@param conditions string[]
+---@param params table
+---@param column string
+---@param value any
+local function appendNullableCondition(conditions, params, column, value)
+    if value == nil then
+        conditions[#conditions + 1] = ("`%s` IS NULL"):format(column)
+        return
+    end
+
+    conditions[#conditions + 1] = ("`%s` = ?"):format(column)
+    params[#params + 1] = value
+end
+
+---@param identifier string
+---@param row OwnedVehicleRow
+---@param stored integer
+---@return string, table
+local function retrieveStateCondition(identifier, row, stored)
+    local conditions = { "`owner` = ?", "`plate` = ?", "`stored` = ?" }
+    local params = { identifier, row.plate, stored }
+
+    appendNullableCondition(conditions, params, "parking", row.parking)
+    appendNullableCondition(conditions, params, "pound", row.pound)
+
+    return table.concat(conditions, " AND "), params
+end
+
+---@param identifier string
+---@param row OwnedVehicleRow
+local function restoreRetrieveState(identifier, row)
+    local assignments = { "`stored` = ?" }
+    local params = { storedValue(row.stored) }
+
+    appendNullableAssignment(assignments, params, "parking", row.parking)
+    appendNullableAssignment(assignments, params, "pound", row.pound)
+    appendNullableAssignment(assignments, params, "last_used", row.last_used)
+
+    params[#params + 1] = identifier
+    params[#params + 1] = row.plate
+
+    local ok, err = pcall(MySQL.update.await,
+        ("UPDATE `owned_vehicles` SET %s WHERE `owner` = ? AND `plate` = ?"):format(table.concat(assignments, ", ")),
+        params)
+
+    if not ok then
+        print(("[esx_garage] failed to rollback retrieve state for %s: %s"):format(row.plate, tostring(err)))
+    end
+end
+
+---@param xVehicle table
+local function deleteRetrievedVehicle(xVehicle)
+    local ok, err = pcall(function()
+        xVehicle:delete()
+    end)
+
+    if not ok then
+        print(("[esx_garage] failed to delete retrieved vehicle after failed retrieve: %s"):format(tostring(err)))
+    end
+end
+
+---@param identifier string
+---@param row OwnedVehicleRow
+---@return boolean, string?
+local function prepareRetrieveSpawn(identifier, row)
+    local condition, params = retrieveStateCondition(identifier, row, storedValue(row.stored))
+    local ok, result = pcall(MySQL.update.await,
+        ("UPDATE `owned_vehicles` SET `stored` = 1 WHERE %s"):format(condition),
+        params)
+
+    if not ok then
+        return false, "error"
+    end
+
+    if affectedRows(result) < 1 then
+        return false, "busy"
+    end
+
+    return true
+end
+
+---@param identifier string
+---@param row OwnedVehicleRow
+---@return boolean, string?
+local function commitRetrieveState(identifier, row)
+    local lastUsed = os.time()
+    local condition, params = retrieveStateCondition(identifier, row, 1)
+    local queryParams = { lastUsed }
+    appendParams(queryParams, params)
+
+    local ok, result = pcall(MySQL.update.await,
+        ("UPDATE `owned_vehicles` SET `stored` = 0, `pound` = NULL, `parking` = NULL, `last_used` = ? WHERE %s"):format(condition),
+        queryParams)
+
+    if not ok then
+        return false, "error"
+    end
+
+    if affectedRows(result) < 1 then
+        local current = ownedRow(identifier, row.plate)
+        if current and storedValue(current.stored) == 0 and not activePound(current.pound) then
+            local finalized = pcall(MySQL.update.await,
+                "UPDATE `owned_vehicles` SET `pound` = NULL, `parking` = NULL, `last_used` = ? WHERE `owner` = ? AND `plate` = ? AND `stored` = 0",
+                { lastUsed, identifier, row.plate })
+
+            if finalized then
+                return true
+            end
+
+            return false, "error"
+        end
+
+        return false, "state_changed"
+    end
+
+    return true
 end
 
 ---@param location table
@@ -416,8 +630,30 @@ local function hasUnmanagedWorldVehicle(plateKey, expectedModel, managedEntity)
     return false
 end
 
----@type table<string, boolean>
+---@type table<string, integer>
 local retrieving = {}
+local vehicleOperationToken = 0
+
+---@param key string
+---@return integer?
+local function beginVehicleOperation(key)
+    if retrieving[key] then
+        return nil
+    end
+
+    vehicleOperationToken = vehicleOperationToken + 1
+    retrieving[key] = vehicleOperationToken
+
+    return vehicleOperationToken
+end
+
+---@param key string
+---@param token integer?
+local function endVehicleOperation(key, token)
+    if token and retrieving[key] == token then
+        retrieving[key] = nil
+    end
+end
 
 ---@param requested any
 ---@return integer
@@ -594,6 +830,8 @@ ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, data)
         rows[#rows] = nil
     end
 
+    applyCachedHudMileage(rows)
+
     cb({
         vehicles = rows,
         page = page,
@@ -625,10 +863,10 @@ ESX.RegisterServerCallback("esx_garage:retrieveVehicle", function(source, cb, da
     end
 
     local key = normPlate(plate)
-    if retrieving[key] then
+    local operationToken = beginVehicleOperation(key)
+    if not operationToken then
         return cb({ success = false, error = "busy" })
     end
-    retrieving[key] = true
 
     local ok, result = pcall(function()
         local row = ownedRow(xPlayer.identifier, plate)
@@ -684,7 +922,7 @@ ESX.RegisterServerCallback("esx_garage:retrieveVehicle", function(source, cb, da
 
             local lot = Impounds[row.pound]
             fee = (lot and lot.cost) or Config.Settings.defaultImpoundFee
-        elseif row.stored ~= 1 then
+        elseif not isStored(row.stored) then
             if hasWorldVehicle then
                 return { success = false, error = "not_stored" }
             end
@@ -711,35 +949,50 @@ ESX.RegisterServerCallback("esx_garage:retrieveVehicle", function(source, cb, da
             return { success = false, error = "no_money" }
         end
 
-        if existing then
-            existing:delete()
-        elseif row.stored ~= 1 then
-            MySQL.update.await("UPDATE `owned_vehicles` SET `stored` = 1 WHERE `owner` = ? AND `plate` = ?",
-                { xPlayer.identifier, row.plate })
-        end
-
         if isSpawnBlocked(spawn) then
             return { success = false, error = "blocked" }
         end
 
+        local transitionApplied = false
+
+        if existing then
+            existing:delete()
+        elseif not isStored(row.stored) then
+            local prepared, prepareError = prepareRetrieveSpawn(xPlayer.identifier, row)
+            if not prepared then
+                return { success = false, error = prepareError or "error" }
+            end
+            transitionApplied = true
+        end
+
         local coords = vec4(spawn.x, spawn.y, spawn.z, spawn.w or spawn.h or 0.0)
-        local xVehicle = ESX.CreateExtendedVehicle(xPlayer.identifier, row.plate, coords)
-        if not xVehicle then
+        local spawned, xVehicle = pcall(ESX.CreateExtendedVehicle, xPlayer.identifier, row.plate, coords)
+        if not spawned or not xVehicle then
+            restoreRetrieveState(xPlayer.identifier, row)
             return { success = false, error = "spawn_failed" }
         end
 
-        if fee > 0 and not charge(xPlayer, fee) then
-            xVehicle:delete()
-            return { success = false, error = "no_money" }
+        local chargedOk, charged, chargeAccount = pcall(charge, xPlayer, fee)
+        if not chargedOk or not charged then
+            deleteRetrievedVehicle(xVehicle)
+            if transitionApplied then
+                restoreRetrieveState(xPlayer.identifier, row)
+            end
+            return { success = false, error = chargedOk and "no_money" or "error" }
         end
 
-        MySQL.update.await("UPDATE `owned_vehicles` SET `stored` = 0, `pound` = NULL, `parking` = NULL, `last_used` = ? WHERE `owner` = ? AND `plate` = ?",
-            { os.time(), xPlayer.identifier, row.plate })
+        local committed, commitError = commitRetrieveState(xPlayer.identifier, row)
+        if not committed then
+            deleteRetrievedVehicle(xVehicle)
+            refundCharge(xPlayer, fee, chargeAccount)
+            restoreRetrieveState(xPlayer.identifier, row)
+            return { success = false, error = commitError or "error" }
+        end
 
         return { success = true, data = { netId = xVehicle:getNetId() } }
     end)
 
-    retrieving[key] = nil
+    endVehicleOperation(key, operationToken)
 
     if not ok then
         return cb({ success = false, error = "error" })
@@ -788,10 +1041,10 @@ ESX.RegisterServerCallback("esx_garage:storeVehicle", function(source, cb, data)
     end
 
     local key = normPlate(plate)
-    if retrieving[key] then
+    local operationToken = beginVehicleOperation(key)
+    if not operationToken then
         return cb({ success = false, error = "busy" })
     end
-    retrieving[key] = true
 
     local ok, result = pcall(function()
         local row = ownedRow(xPlayer.identifier, plate)
@@ -799,7 +1052,7 @@ ESX.RegisterServerCallback("esx_garage:storeVehicle", function(source, cb, data)
             return { success = false, error = "not_owned" }
         end
 
-        if row.stored == 1 then
+        if isStored(row.stored) then
             return { success = false, error = "already_stored" }
         end
 
@@ -879,7 +1132,7 @@ ESX.RegisterServerCallback("esx_garage:storeVehicle", function(source, cb, data)
         return { success = true, data = true }
     end)
 
-    retrieving[key] = nil
+    endVehicleOperation(key, operationToken)
 
     if not ok then
         return cb({ success = false, error = "error" })
@@ -1017,10 +1270,10 @@ ESX.RegisterServerCallback("esx_garage:transferVehicle", function(source, cb, da
     end
 
     local key = normPlate(plate)
-    if retrieving[key] then
+    local operationToken = beginVehicleOperation(key)
+    if not operationToken then
         return cb({ success = false, error = "busy" })
     end
-    retrieving[key] = true
 
     local ok, result = pcall(function()
         local row = ownedRow(xPlayer.identifier, plate)
@@ -1028,7 +1281,7 @@ ESX.RegisterServerCallback("esx_garage:transferVehicle", function(source, cb, da
             return { success = false, error = "not_owned" }
         end
 
-        if row.stored ~= 1 then
+        if not isStored(row.stored) then
             return { success = false, error = "not_stored" }
         end
 
@@ -1046,7 +1299,7 @@ ESX.RegisterServerCallback("esx_garage:transferVehicle", function(source, cb, da
         return { success = true }
     end)
 
-    retrieving[key] = nil
+    endVehicleOperation(key, operationToken)
 
     if not ok then
         return cb({ success = false, error = "error" })

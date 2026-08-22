@@ -9,7 +9,7 @@ import { useGarageStore } from '@/store/garage.store';
 import { useNuiEvent } from '@/hooks/useNuiEvent';
 import { useScale } from '@/providers/ScaleProvider';
 import { NuiEventType } from '@/types/nui.types';
-import type { Vehicle, VehiclePagination, VehicleStats } from '@/types/vehicle.types';
+import type { MileageUnit, Vehicle, VehiclePagination, VehicleStats } from '@/types/vehicle.types';
 import type { Garage } from '@/types/garage.types';
 
 const Container = styled.div`
@@ -75,6 +75,7 @@ const LoadingSpinner = styled.div`
 interface OpenGarageData {
   garage: Garage;
   vehicles: Vehicle[];
+  mileageUnit?: MileageUnit;
   pagination: VehiclePagination;
   stats?: VehicleStats;
 }

@@ -49,8 +49,27 @@ PREPARE s FROM @add_last_used; EXECUTE s; DEALLOCATE PREPARE s;
 SET @add_mileage := (SELECT IF(
     EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'owned_vehicles' AND COLUMN_NAME = 'mileage'),
     'SELECT 1',
-    'ALTER TABLE `owned_vehicles` ADD COLUMN `mileage` INT NOT NULL DEFAULT 0'));
+    'ALTER TABLE `owned_vehicles` ADD COLUMN `mileage` DECIMAL(10,2) NOT NULL DEFAULT 0.00'));
 PREPARE s FROM @add_mileage; EXECUTE s; DEALLOCATE PREPARE s;
+
+UPDATE `owned_vehicles` SET `mileage` = 0 WHERE `mileage` IS NULL;
+
+SET @fix_mileage_precision := (SELECT IF(
+    EXISTS(
+        SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'owned_vehicles'
+            AND COLUMN_NAME = 'mileage'
+            AND (DATA_TYPE <> 'decimal'
+                OR NUMERIC_PRECISION <> 10
+                OR NUMERIC_SCALE <> 2
+                OR IS_NULLABLE <> 'NO'
+                OR COLUMN_DEFAULT IS NULL
+                OR COLUMN_DEFAULT NOT IN ('0', '0.0', '0.00'))
+    ),
+    'ALTER TABLE `owned_vehicles` MODIFY COLUMN `mileage` DECIMAL(10,2) NOT NULL DEFAULT 0.00',
+    'SELECT 1'));
+PREPARE s FROM @fix_mileage_precision; EXECUTE s; DEALLOCATE PREPARE s;
 
 SET @add_owner_plate_index := (SELECT IF(
     EXISTS(SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'owned_vehicles' AND INDEX_NAME = 'idx_owned_vehicles_owner_plate'),
@@ -96,4 +115,8 @@ ON DUPLICATE KEY UPDATE `version` = '1.14.2', `applied_at` = UNIX_TIMESTAMP();
 
 INSERT INTO `esx_garage_migrations` (`name`, `version`, `applied_at`)
 VALUES ('filter_indexes', '1.14.2', UNIX_TIMESTAMP())
+ON DUPLICATE KEY UPDATE `version` = '1.14.2', `applied_at` = UNIX_TIMESTAMP();
+
+INSERT INTO `esx_garage_migrations` (`name`, `version`, `applied_at`)
+VALUES ('mileage_precision', '1.14.2', UNIX_TIMESTAMP())
 ON DUPLICATE KEY UPDATE `version` = '1.14.2', `applied_at` = UNIX_TIMESTAMP();

@@ -51,6 +51,7 @@ export const VehicleSchema = z.object({
   impounded: z.boolean(),
   impoundFee: z.number().optional(),
   mileage: z.number(),
+  mileageUnit: z.enum(['mi', 'km']).optional(),
   fuel: z.number().optional(),
   engine: z.number().optional(),
   body: z.number().optional(),
@@ -112,6 +113,7 @@ export const VehicleStatsSchema = z.object({
 export const OpenGarageDataSchema = z.object({
   garage: GarageSchema,
   vehicles: z.array(VehicleSchema),
+  mileageUnit: z.enum(['mi', 'km']).optional(),
   pagination: VehiclePaginationSchema,
   stats: VehicleStatsSchema.optional()
 });

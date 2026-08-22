@@ -203,10 +203,10 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onClick }) =>
     }
   };
 
-  const formatMileage = (mileage: number) => {
-    // Convert to miles (1 km = 0.621371 miles)
-    const miles = (mileage * 0.621371) / 1000;
-    return `${miles.toFixed(1)} miles`;
+  const formatMileage = (mileage: number, unit: 'mi' | 'km' = 'mi') => {
+    const value = Number(mileage);
+    const distance = Number.isFinite(value) ? value : 0;
+    return `${distance.toFixed(1)} ${unit}`;
   };
 
   return (
@@ -247,7 +247,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onClick }) =>
               <DetailText>{vehicle.plate}</DetailText>
             </DetailBadge>
             <DetailBadge>
-              <DetailText>{formatMileage(vehicle.mileage)}</DetailText>
+              <DetailText>{formatMileage(vehicle.mileage, vehicle.mileageUnit)}</DetailText>
             </DetailBadge>
           </VehicleDetails>
         </VehicleInfo>

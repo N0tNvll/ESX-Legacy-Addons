@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { MdSettings } from 'react-icons/md';
@@ -253,6 +253,17 @@ const ActionButton = styled.button<{ $primary?: boolean }>`
       ? props.theme.colors.button.primaryHover
       : 'rgba(242, 242, 242, 0.15)'};
   }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  &:disabled:hover {
+    background: ${props => props.$primary
+      ? props.theme.colors.primary
+      : 'rgba(242, 242, 242, 0.10)'};
+  }
 `;
 
 const SpawnButton = styled(ActionButton)`
@@ -282,24 +293,34 @@ interface VehicleDetailsProps {
 }
 
 export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ vehicle, onClose }) => {
-  const { setLoading, selectedGarage, renameVehicle } = useGarageStore();
+  const { isLoading, selectedGarage, renameVehicle, retrieveVehicle } = useGarageStore();
   const { showNotification } = useNotifications();
   const [mode, setMode] = useState<null | 'rename' | 'transfer'>(null);
   const [input, setInput] = useState('');
+  const [isSpawning, setIsSpawning] = useState(false);
+  const spawnPendingRef = useRef(false);
 
   const isImpoundLot = selectedGarage?.type === 'impound';
   const isOut = !vehicle.stored && !vehicle.impounded;
   const canTake = isImpoundLot ? (vehicle.impounded || isOut) : vehicle.stored;
 
   const handleSpawn = async () => {
-    setLoading(true);
+    if (spawnPendingRef.current || isLoading) {
+      return;
+    }
+
+    spawnPendingRef.current = true;
+    setIsSpawning(true);
     try {
-      await fetchNui(NuiCallbackType.RETRIEVE_VEHICLE, { vehicleId: vehicle.id });
+      const retrieved = await retrieveVehicle(vehicle.id);
+      if (!retrieved) {
+        return;
+      }
+
       onClose();
-    } catch (e) {
-      showNotification(errorMessage(e, 'Cannot retrieve vehicle'), { type: 'error' });
     } finally {
-      setLoading(false);
+      spawnPendingRef.current = false;
+      setIsSpawning(false);
     }
   };
 
@@ -458,8 +479,8 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ vehicle, onClose
       </ActionsSection>
 
       {canTake && (
-        <SpawnButton onClick={handleSpawn}>
-          {vehicle.impounded ? 'Retrieve' : isOut ? 'Recover' : 'Spawn Vehicle'}
+        <SpawnButton onClick={handleSpawn} disabled={isSpawning || isLoading}>
+          {isSpawning ? 'Spawning...' : vehicle.impounded ? 'Retrieve' : isOut ? 'Recover' : 'Spawn Vehicle'}
           {(vehicle.impoundFee ?? 0) > 0 && ` ($${vehicle.impoundFee})`}
         </SpawnButton>
       )}

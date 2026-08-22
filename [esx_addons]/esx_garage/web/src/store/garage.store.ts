@@ -11,6 +11,7 @@ import type {
 import type { Garage } from '@/types/garage.types';
 import { fetchNui } from '@/utils/nui';
 import { NuiCallbackType } from '@/types/nui.types';
+import { isErrorCode, isQuietErrorCode, showErrorNotification } from '@/utils/errors';
 
 interface GarageState {
   // UI State
@@ -39,7 +40,7 @@ interface GarageState {
   resetFilter: () => void;
 
   // Vehicle Actions
-  retrieveVehicle: (vehicleId: string) => Promise<void>;
+  retrieveVehicle: (vehicleId: string) => Promise<boolean>;
   storeVehicle: (vehicleId: string) => Promise<void>;
   renameVehicle: (vehicleId: string, newName: string) => Promise<void>;
   toggleFavorite: (vehicleId: string) => Promise<void>;
@@ -64,12 +65,38 @@ const defaultStats: VehicleStats = {
   impounded: 0
 };
 
+const pendingFavoriteToggles = new Set<string>();
+const pendingVehicleRetrievals = new Set<string>();
+
+const handleGarageActionError = (message: string, error: unknown): void => {
+  showErrorNotification(error, message);
+
+  if (!isQuietErrorCode(error)) {
+    console.error(message, error);
+  }
+};
+
 const calculateStats = (vehicles: Vehicle[]): VehicleStats => ({
   total: vehicles.length,
   stored: vehicles.filter(v => v.stored && !v.impounded).length,
   out: vehicles.filter(v => !v.stored && !v.impounded).length,
   impounded: vehicles.filter(v => v.impounded).length
 });
+
+const normalizeMileage = (mileage: unknown): number => {
+  const value = typeof mileage === 'number' ? mileage : Number(mileage);
+  return Number.isFinite(value) ? value : 0;
+};
+
+const normalizeMileageUnit = (unit: unknown): 'mi' | 'km' => unit === 'km' ? 'km' : 'mi';
+
+const normalizeVehicle = (vehicle: Vehicle): Vehicle => ({
+  ...vehicle,
+  mileage: normalizeMileage((vehicle as { mileage: unknown }).mileage),
+  mileageUnit: normalizeMileageUnit((vehicle as { mileageUnit?: unknown }).mileageUnit)
+});
+
+const normalizeVehicles = (vehicles: Vehicle[]): Vehicle[] => vehicles.map(normalizeVehicle);
 
 export const useGarageStore = create<GarageState>()(
   devtools(
@@ -122,16 +149,17 @@ export const useGarageStore = create<GarageState>()(
 
       updateVehicles: (vehicles) => {
         set((state) => {
-          state.vehicles = vehicles;
+          const normalizedVehicles = normalizeVehicles(vehicles);
+          state.vehicles = normalizedVehicles;
           if (!state.pagination.hasNext && !state.pagination.hasPrevious) {
-            state.stats = calculateStats(vehicles);
+            state.stats = calculateStats(normalizedVehicles);
           }
         });
       },
 
       updateVehiclePage: (page) => {
         set((state) => {
-          state.vehicles = page.vehicles;
+          state.vehicles = normalizeVehicles(page.vehicles);
           state.pagination = page.pagination;
           if (page.stats) {
             state.stats = page.stats;
@@ -165,7 +193,7 @@ export const useGarageStore = create<GarageState>()(
             state.selectedVehicle = null;
           });
         } catch (error) {
-          console.error('Failed to load vehicles:', error);
+          handleGarageActionError('Failed to load vehicles.', error);
         } finally {
           set((state) => { state.isLoading = false; });
         }
@@ -178,6 +206,11 @@ export const useGarageStore = create<GarageState>()(
 
       // Vehicle Actions
       retrieveVehicle: async (vehicleId) => {
+        if (pendingVehicleRetrievals.has(vehicleId)) {
+          return false;
+        }
+
+        pendingVehicleRetrievals.add(vehicleId);
         set((state) => { state.isLoading = true; });
 
         try {
@@ -209,9 +242,12 @@ export const useGarageStore = create<GarageState>()(
               }
             });
           }
+          return !!result;
         } catch (error) {
-          console.error('Failed to retrieve vehicle:', error);
+          handleGarageActionError('Failed to retrieve vehicle.', error);
+          return false;
         } finally {
+          pendingVehicleRetrievals.delete(vehicleId);
           set((state) => { state.isLoading = false; });
         }
       },
@@ -249,7 +285,7 @@ export const useGarageStore = create<GarageState>()(
             });
           }
         } catch (error) {
-          console.error('Failed to store vehicle:', error);
+          handleGarageActionError('Failed to store vehicle.', error);
         } finally {
           set((state) => { state.isLoading = false; });
         }
@@ -275,12 +311,21 @@ export const useGarageStore = create<GarageState>()(
             });
           }
         } catch (error) {
+          if (isErrorCode(error, 'rate_limited')) {
+            handleGarageActionError('Failed to rename vehicle.', error);
+            return;
+          }
+
           console.error('Failed to rename vehicle:', error);
           throw error;
         }
       },
 
       toggleFavorite: async (vehicleId) => {
+        if (pendingFavoriteToggles.has(vehicleId)) {
+          return;
+        }
+
         const applyFavoriteStatus = (isFavorite: boolean) => {
           set((state) => {
             const target = state.vehicles.find(v => v.id === vehicleId);
@@ -300,6 +345,7 @@ export const useGarageStore = create<GarageState>()(
         const newFavoriteStatus = !previousFavoriteStatus;
 
         applyFavoriteStatus(newFavoriteStatus);
+        pendingFavoriteToggles.add(vehicleId);
 
         try {
           const confirmedFavoriteStatus = await fetchNui<boolean>(
@@ -313,7 +359,9 @@ export const useGarageStore = create<GarageState>()(
           }
         } catch (error) {
           applyFavoriteStatus(previousFavoriteStatus);
-          console.error('Failed to toggle favorite:', error);
+          handleGarageActionError('Failed to toggle favorite.', error);
+        } finally {
+          pendingFavoriteToggles.delete(vehicleId);
         }
       },
 

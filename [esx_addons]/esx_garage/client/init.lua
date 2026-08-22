@@ -12,6 +12,8 @@ local impoundsById = {}
 local currentLocation = nil
 
 local PED_DECOR <const> = "esx_garage_ped"
+local HUD_RESOURCE_NAME <const> = "esx_hud"
+local MILES_TO_KILOMETERS <const> = 1.61
 
 local DEFAULT_MARKER_COLOR <const> = { 65, 130, 255, 120 }
 local PED_SPAWN_DISTANCE <const> = 80.0
@@ -82,6 +84,19 @@ end
 ---@return boolean
 local function dbBool(value)
     return value == true or value == 1 or value == "1"
+end
+
+---@return boolean
+local function hudUsesKmh()
+    if type(GetResourceState) ~= "function" or GetResourceState(HUD_RESOURCE_NAME) ~= "started" then
+        return false
+    end
+
+    local ok, _, kmh = pcall(function()
+        return exports[HUD_RESOURCE_NAME]:GetCurrentMileage()
+    end)
+
+    return ok and kmh == true
 end
 
 local function sweepGaragePeds()
@@ -248,14 +263,18 @@ end
 
 ---@param row OwnedVehicleRow
 ---@param currentLot Impound? lot the player is standing at, when the menu is an impound
+---@param useKmh boolean
 ---@return GarageVehicle
-local function wrap(row, currentLot)
+local function wrap(row, currentLot, useKmh)
     local props = json.decode(row.vehicle) or {}
     local model = props.model
     local displayName = model and GetDisplayNameFromVehicleModel(model) or "VEHICLE"
     local pound = activePound(row.pound)
     local impounded = pound ~= nil
-    local outOfSync = row.stored ~= 1 and not impounded
+    local stored = dbBool(row.stored)
+    local outOfSync = not stored and not impounded
+    local mileage = tonumber(row.mileage) or 0
+    mileage = useKmh and mileage * MILES_TO_KILOMETERS or mileage
 
     local fee
     if impounded or outOfSync then
@@ -269,11 +288,12 @@ local function wrap(row, currentLot)
         model = displayName:lower(),
         name = displayName,
         type = nuiVehicleType(row.type or (model and ESX.GetVehicleTypeClient(model))),
-        stored = row.stored == 1 and not impounded,
+        stored = stored and not impounded,
         impounded = impounded,
         garage = row.parking,
         impoundFee = fee,
-        mileage = row.mileage or 0,
+        mileage = mileage,
+        mileageUnit = useKmh and "km" or "mi",
         fuel = props.fuelLevel,
         engine = props.engineHealth and props.engineHealth / 10.0 or nil,
         body = props.bodyHealth and props.bodyHealth / 10.0 or nil,
@@ -299,18 +319,24 @@ end
 ---@param data table?
 ---@return table?, string?
 local function fetchVehiclePage(data)
-    if not currentLocation then
+    local loc = currentLocation
+
+    if not loc then
         return nil, "no_location"
     end
 
     local page = tonumber(data and data.page) or 1
     local pageSize = tonumber(data and data.pageSize)
     local result = serverCall("esx_garage:getVehicles", {
-        garageId = currentLocation.id,
+        garageId = loc.id,
         page = page,
         pageSize = pageSize,
         filter = data and data.filter or nil,
     })
+
+    if currentLocation ~= loc then
+        return nil, "no_location"
+    end
 
     if type(result) == "table" and result.success == false then
         return nil, result.error or "error"
@@ -320,11 +346,12 @@ local function fetchVehiclePage(data)
         return nil, "error"
     end
 
-    local currentLot = impoundsById[currentLocation.id]
+    local currentLot = impoundsById[loc.id]
     local vehicles = {}
+    local useKmh = hudUsesKmh()
 
     for i = 1, #result.vehicles do
-        vehicles[#vehicles + 1] = wrap(result.vehicles[i], currentLot)
+        vehicles[#vehicles + 1] = wrap(result.vehicles[i], currentLot, useKmh)
     end
 
     local resultPage = tonumber(result.page) or page
@@ -332,6 +359,7 @@ local function fetchVehiclePage(data)
 
     return {
         vehicles = vehicles,
+        mileageUnit = useKmh and "km" or "mi",
         pagination = {
             page = resultPage,
             pageSize = resultPageSize,
@@ -348,9 +376,13 @@ local function openMenu()
         return
     end
 
-    local page = fetchVehiclePage({ page = 1 })
+    local page, err = fetchVehiclePage({ page = 1 })
     
     if not page then
+        if err == "no_location" then
+            return
+        end
+
         return ESX.ShowNotification(TranslateCap("cannot_access_garage"), "error")
     end
 
@@ -371,11 +403,27 @@ local function openMenu()
                 keys = Config.Settings.vehicleKeys,
             },
             vehicles = page.vehicles,
+            mileageUnit = page.mileageUnit,
             pagination = page.pagination,
         }
     })
 
     SetNuiFocus(true, true)
+end
+
+local function syncHudMileage(plate)
+    if type(GetResourceState) ~= "function" or GetResourceState(HUD_RESOURCE_NAME) ~= "started" then
+        return
+    end
+
+    local ok, mileage, kmh, loaded = pcall(function()
+        return exports[HUD_RESOURCE_NAME]:GetCurrentMileage()
+    end)
+
+    mileage = tonumber(mileage)
+    if ok and loaded == true and mileage then
+        TriggerServerEvent("esx_hud:UpdateVehicleMileage", plate, mileage, kmh == true)
+    end
 end
 
 local function storeCurrentVehicle()
@@ -389,12 +437,13 @@ local function storeCurrentVehicle()
         return ESX.ShowNotification(TranslateCap("not_in_vehicle"), "error")
     end
 
-    local props = ESX.Game.GetVehicleProperties(vehicle)
+    local props = xLib.game.getVehicleProperties(vehicle)
     if not props or not props.plate then
         return
     end
 
     local netId = NetworkGetNetworkIdFromEntity(vehicle)
+    syncHudMileage(props.plate)
 
     local result = serverCall("esx_garage:storeVehicle", {
         plate = props.plate,

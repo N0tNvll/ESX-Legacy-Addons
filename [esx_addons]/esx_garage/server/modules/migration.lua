@@ -5,6 +5,7 @@ local MIGRATION_TABLE <const> = "esx_garage_migrations"
 local MIGRATION_NAME <const> = "schema"
 local INDEX_MIGRATION_NAME <const> = "performance_indexes"
 local FILTER_INDEX_MIGRATION_NAME <const> = "filter_indexes"
+local MILEAGE_PRECISION_MIGRATION_NAME <const> = "mileage_precision"
 local LEGACY_MIGRATION_VERSION <const> = "1"
 local MIGRATION_VERSION <const> = "1.14.2"
 
@@ -90,6 +91,24 @@ local function ensureColumn(column, definition)
     return true
 end
 
+---@return boolean
+local function mileageColumnNeedsPrecision()
+    local rows = MySQL.query.await(
+        "SELECT DATA_TYPE AS data_type, NUMERIC_PRECISION AS numeric_precision, NUMERIC_SCALE AS numeric_scale, IS_NULLABLE AS is_nullable, COLUMN_DEFAULT AS column_default FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = 'mileage'",
+        { TABLE })
+    local column = rows and rows[1]
+
+    if not column then
+        return false
+    end
+
+    return tostring(column.data_type or ""):lower() ~= "decimal"
+        or tonumber(column.numeric_precision) ~= 10
+        or tonumber(column.numeric_scale) ~= 2
+        or tostring(column.is_nullable or ""):upper() ~= "NO"
+        or tonumber(column.column_default) ~= 0
+end
+
 ---@param index string
 ---@param definition string
 ---@return boolean
@@ -110,7 +129,7 @@ local SCHEMA <const> = {
     { "custom_name", "VARCHAR(50) NULL DEFAULT NULL" },
     { "is_favorite", "TINYINT(1) NOT NULL DEFAULT 0" },
     { "last_used", "INT NULL DEFAULT NULL" },
-    { "mileage", "INT NOT NULL DEFAULT 0" },
+    { "mileage", "DECIMAL(10,2) NOT NULL DEFAULT 0.00" },
 }
 
 ---@type string[][]
@@ -130,7 +149,7 @@ local FILTER_INDEXES <const> = {
 
 CreateThread(function()
 
-    local added, indexed, legacy = 0, 0, 0
+    local added, indexed, legacy, adjusted = 0, 0, 0, 0
 
     local ok, err = pcall(function()
         local version = appliedMigrationVersion(MIGRATION_NAME)
@@ -204,6 +223,20 @@ CreateThread(function()
 
             markMigrationApplied(FILTER_INDEX_MIGRATION_NAME)
         end
+
+        if not migrationApplied(appliedMigrationVersion(MILEAGE_PRECISION_MIGRATION_NAME)) then
+            ensureMigrationTable()
+
+            if ensureColumn("mileage", "DECIMAL(10,2) NOT NULL DEFAULT 0.00") then
+                added = added + 1
+            elseif mileageColumnNeedsPrecision() then
+                MySQL.update.await(("UPDATE `%s` SET `mileage` = 0 WHERE `mileage` IS NULL"):format(TABLE))
+                MySQL.query.await(("ALTER TABLE `%s` MODIFY COLUMN `mileage` DECIMAL(10,2) NOT NULL DEFAULT 0.00"):format(TABLE))
+                adjusted = adjusted + 1
+            end
+
+            markMigrationApplied(MILEAGE_PRECISION_MIGRATION_NAME)
+        end
     end)
 
     if not ok then
@@ -213,7 +246,7 @@ CreateThread(function()
 
     GarageReady = true
 
-    if added > 0 or indexed > 0 or legacy > 0 then
-        print(("[esx_garage] db migration applied: %d column(s) added, %d index(es) added, %d legacy impound row(s) converted"):format(added, indexed, legacy))
+    if added > 0 or indexed > 0 or legacy > 0 or adjusted > 0 then
+        print(("[esx_garage] db migration applied: %d column(s) added, %d column(s) adjusted, %d index(es) added, %d legacy impound row(s) converted"):format(added, adjusted, indexed, legacy))
     end
 end)

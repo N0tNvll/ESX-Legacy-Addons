@@ -1,4 +1,5 @@
 import type { NuiCallbackResponse } from '@/types/nui.types';
+import { isQuietErrorCode } from '@/utils/errors';
 
 /**
  * Checks if the code is running inside FiveM or in a regular browser.
@@ -75,7 +76,9 @@ export async function fetchNui<T = unknown>(
 
     return result.data as T;
   } catch (error) {
-    console.error(`fetchNui error for ${eventName}:`, error);
+    if (!isQuietErrorCode(error)) {
+      console.error(`fetchNui error for ${eventName}:`, error);
+    }
     throw error;
   }
 }

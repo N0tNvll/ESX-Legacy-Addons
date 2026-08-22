@@ -60,7 +60,7 @@
 ---@field custom_name string?
 ---@field is_favorite integer
 ---@field last_used integer?
----@field mileage integer
+---@field mileage number
 
 ---@class GarageVehicle
 ---@field id string
@@ -72,7 +72,8 @@
 ---@field garage string?
 ---@field impounded boolean
 ---@field impoundFee integer?
----@field mileage integer
+---@field mileage number
+---@field mileageUnit 'mi'|'km'
 ---@field fuel number?
 ---@field engine number?
 ---@field body number?
