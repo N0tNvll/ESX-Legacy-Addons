@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { MdGarage, MdClose, MdSearch } from 'react-icons/md';
 import { GiHook } from 'react-icons/gi';
@@ -12,8 +12,8 @@ const HeaderContainer = styled.div`
   flex-direction: row;
   align-items: center;
   width: 100%;
-  padding: 1.5rem 1.25rem 0 1.25rem;
-  height: 3.875rem;
+  padding: 1.5rem 1.25rem 0.75rem 1.25rem;
+  height: 4.625rem;
 `;
 
 const GarageName = styled.div`
@@ -189,15 +189,29 @@ const CloseButton = styled.button`
 // Spacer removed - use margin-left: auto instead
 
 export const GarageHeader: React.FC = () => {
-  const { selectedGarage, stats, filter, setFilter, setOpen } = useGarageStore();
+  const { selectedGarage, stats, filter, setFilter, loadVehicles, setOpen } = useGarageStore();
   const { sendCallback } = useNui();
   const { t } = useTranslation();
   const [searchValue, setSearchValue] = useState('');
+  const searchReady = useRef(false);
 
   const handleSearch = (value: string) => {
     setSearchValue(value);
-    setFilter({ search: value });
   };
+
+  useEffect(() => {
+    if (!searchReady.current) {
+      searchReady.current = true;
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setFilter({ search: searchValue });
+      void loadVehicles(1);
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [loadVehicles, searchValue, setFilter]);
 
   const handleClose = () => {
     sendCallback('garage:closeUI');
@@ -210,6 +224,7 @@ export const GarageHeader: React.FC = () => {
     } else {
       setFilter({ stored: true, impounded: 'all' });
     }
+    void loadVehicles(1);
   };
 
   const handleImpoundedFilter = () => {
@@ -218,6 +233,7 @@ export const GarageHeader: React.FC = () => {
     } else {
       setFilter({ impounded: true, stored: 'all' });
     }
+    void loadVehicles(1);
   };
 
   return (

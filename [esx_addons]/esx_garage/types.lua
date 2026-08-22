@@ -46,6 +46,8 @@
 ---@field vehicleKeys boolean
 ---@field storeMarkerOnlyInVehicle boolean
 ---@field showMarker boolean
+---@field vehiclesPerPage integer
+---@field maxVehiclesPerMenu integer
 
 ---@class OwnedVehicleRow
 ---@field plate string

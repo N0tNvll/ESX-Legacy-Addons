@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { MdStarBorder, MdEdit } from 'react-icons/md';
+import { MdStar, MdStarBorder, MdEdit } from 'react-icons/md';
 import type { Vehicle } from '@/types/vehicle.types';
 import { useGarageStore } from '@/store/garage.store';
 import { getVehicleImagePath } from '@/utils/vehicle';
@@ -258,7 +258,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onClick }) =>
             onClick={handleFavoriteClick}
             title="Toggle Favorite"
           >
-            <MdStarBorder />
+            {vehicle.isFavorite ? <MdStar /> : <MdStarBorder />}
           </ActionButton>
           <ActionButton onClick={handleRenameClick} title="Rename Vehicle">
             <MdEdit />

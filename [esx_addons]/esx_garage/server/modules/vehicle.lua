@@ -1,5 +1,19 @@
 local MAX_PROPS_BYTES <const> = 16384
 local MAX_PROPS_DEPTH <const> = 4
+local DEFAULT_PAGE_SIZE <const> = 30
+local MAX_ALLOWED_PAGE_SIZE <const> = 500
+local VEHICLE_SELECT_COLUMNS <const> = table.concat({
+    "`plate`",
+    "`vehicle`",
+    "`type`",
+    "`stored`",
+    "`parking`",
+    "`pound`",
+    "`custom_name`",
+    "`is_favorite`",
+    "`last_used`",
+    "`mileage`",
+}, ", ")
 
 ---@param p string
 ---@return string
@@ -7,13 +21,97 @@ local function normPlate(p)
     return (p:gsub("%s+$", "")):upper()
 end
 
+---@param values table
+---@param value string
+local function addUniquePlateValue(values, value)
+    if value == "" then
+        return
+    end
+
+    for i = 1, #values do
+        if values[i] == value then
+            return
+        end
+    end
+
+    values[#values + 1] = value
+end
+
+---@param plate string
+---@return string[]
+local function plateValues(plate)
+    local normalized = normPlate(plate)
+    local values = {}
+
+    addUniquePlateValue(values, plate)
+    addUniquePlateValue(values, normalized)
+
+    if #normalized > 0 and #normalized < 8 then
+        addUniquePlateValue(values, normalized .. string.rep(" ", 8 - #normalized))
+    end
+
+    return values
+end
+
+---@param plate string
+---@return string, table
+local function plateCondition(plate)
+    local values = plateValues(plate)
+
+    if #values < 1 then
+        return "`plate` = ?", { "" }
+    end
+
+    if #values == 1 then
+        return "`plate` = ?", values
+    end
+
+    local placeholders = {}
+    for i = 1, #values do
+        placeholders[i] = "?"
+    end
+
+    return ("`plate` IN (%s)"):format(table.concat(placeholders, ", ")), values
+end
+
+---@param target table
+---@param values table
+local function appendParams(target, values)
+    for i = 1, #values do
+        target[#target + 1] = values[i]
+    end
+end
+
+---@param value string
+---@return string
+local function escapeLike(value)
+    return (value:gsub("([\\%%_])", "\\%1"))
+end
+
 ---@param identifier string
 ---@param plate string
 ---@return OwnedVehicleRow?
 local function ownedRow(identifier, plate)
+    local condition, plateParams = plateCondition(plate)
+    local params = { identifier }
+    appendParams(params, plateParams)
+
     return MySQL.single.await(
-        "SELECT `plate`, `vehicle`, `type`, `stored`, `parking`, `pound`, `custom_name`, `is_favorite`, `last_used`, `mileage` FROM `owned_vehicles` WHERE `owner` = ? AND TRIM(TRAILING ' ' FROM `plate`) = ?",
-        { identifier, normPlate(plate) })
+        ("SELECT `plate`, `vehicle`, `type`, `stored`, `parking`, `pound`, `custom_name`, `is_favorite`, `last_used`, `mileage` FROM `owned_vehicles` WHERE `owner` = ? AND %s LIMIT 1"):format(condition),
+        params)
+end
+
+---@param identifier string
+---@param plate string
+---@return string?
+local function ownedPlate(identifier, plate)
+    local condition, plateParams = plateCondition(plate)
+    local params = { identifier }
+    appendParams(params, plateParams)
+
+    return MySQL.scalar.await(
+        ("SELECT `plate` FROM `owned_vehicles` WHERE `owner` = ? AND %s LIMIT 1"):format(condition),
+        params)
 end
 
 ---Strips anything a vehicle props table cannot legitimately contain: exotic
@@ -201,7 +299,100 @@ end
 ---@type table<string, boolean>
 local retrieving = {}
 
-ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, garageId)
+---@param requested any
+---@return integer
+local function vehiclePageSize(requested)
+    local configured = math.floor(tonumber(Config.Settings.vehiclesPerPage) or DEFAULT_PAGE_SIZE)
+    local maxConfigured = math.floor(tonumber(Config.Settings.maxVehiclesPerMenu) or MAX_ALLOWED_PAGE_SIZE)
+    local maxPageSize = math.min(math.max(maxConfigured, 1), MAX_ALLOWED_PAGE_SIZE)
+    local size = math.floor(tonumber(requested) or configured)
+
+    if size < 1 then
+        return DEFAULT_PAGE_SIZE
+    end
+
+    return math.min(size, maxPageSize)
+end
+
+---@param garageId string?
+---@return string, table
+local function garageScopeCondition(garageId)
+    if not Config.Settings.restrictToGarage or not garageId then
+        return "", {}
+    end
+
+    local params = { garageId }
+    local garageIds = {}
+
+    for id in pairs(Garages) do
+        garageIds[#garageIds + 1] = id
+    end
+
+    local invalidParkingCondition = ""
+    if #garageIds > 0 then
+        local placeholders = {}
+
+        for i = 1, #garageIds do
+            placeholders[i] = "?"
+            params[#params + 1] = garageIds[i]
+        end
+
+        invalidParkingCondition = (" OR `parking` NOT IN (%s)"):format(table.concat(placeholders, ", "))
+    end
+
+    return (" AND (`stored` <> 1 OR `pound` IS NOT NULL OR `parking` IS NULL OR `parking` = ?%s)")
+        :format(invalidParkingCondition), params
+end
+
+---@param values table
+---@return table
+local function copyParams(values)
+    local out = {}
+    appendParams(out, values)
+    return out
+end
+
+---@param scopeSql string
+---@param params table
+---@param search string
+---@return string
+local function appendSearchCondition(scopeSql, params, search)
+    if search == "" then
+        return scopeSql
+    end
+
+    local like = ("%s%%"):format(escapeLike(search))
+    params[#params + 1] = like
+    params[#params + 1] = like
+
+    return scopeSql .. " AND (`plate` LIKE ? ESCAPE '\\\\' OR `custom_name` LIKE ? ESCAPE '\\\\')"
+end
+
+---@param scopeSql string
+---@param params table
+---@return table
+local function vehicleStats(scopeSql, params)
+    local row = MySQL.single.await(
+        ([[
+            SELECT
+                COUNT(*) AS `total`,
+                COALESCE(SUM(CASE WHEN `stored` = 1 AND `pound` IS NULL THEN 1 ELSE 0 END), 0) AS `stored`,
+                COALESCE(SUM(CASE WHEN `stored` <> 1 AND `pound` IS NULL THEN 1 ELSE 0 END), 0) AS `out`,
+                COALESCE(SUM(CASE WHEN `pound` IS NOT NULL THEN 1 ELSE 0 END), 0) AS `impounded`
+            FROM `owned_vehicles`
+            WHERE `owner` = ?%s
+        ]]):format(scopeSql),
+        params) or {}
+
+    return {
+        total = tonumber(row.total) or 0,
+        stored = tonumber(row.stored) or 0,
+        out = tonumber(row.out) or 0,
+        impounded = tonumber(row.impounded) or 0,
+    }
+end
+
+ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, data)
     local waited = 0
     while not GarageReady and waited < 10000 do
         Wait(50)
@@ -217,28 +408,74 @@ ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, garage
         return cb(false)
     end
 
+    local request = type(data) == "table" and data or { garageId = data }
+    local garageId = request.garageId
+
     local garage = garageId and Garages[garageId]
     if garage and not CanAccessGarage(source, garage) then
         return cb(false)
     end
 
-    local rows = MySQL.query.await("SELECT * FROM `owned_vehicles` WHERE `owner` = ?", { xPlayer.identifier }) or {}
-
-    if Config.Settings.restrictToGarage and garageId then
-        local filtered = {}
-
-        for i = 1, #rows do
-            local row = rows[i]
-            if row.stored ~= 1 or row.pound ~= nil
-                or not row.parking or not Garages[row.parking] or row.parking == garageId then
-                filtered[#filtered + 1] = row
-            end
-        end
-
-        rows = filtered
+    local page = math.floor(tonumber(request.page) or 1)
+    if page < 1 then
+        page = 1
     end
 
-    cb(rows)
+    local pageSize = vehiclePageSize(request.pageSize)
+    local offset = (page - 1) * pageSize
+    local scopeSql, scopeParams = garageScopeCondition(garageId)
+    local baseParams = { xPlayer.identifier }
+
+    for i = 1, #scopeParams do
+        baseParams[#baseParams + 1] = scopeParams[i]
+    end
+
+    local filter = type(request.filter) == "table" and request.filter or {}
+    local search = type(filter.search) == "string" and filter.search:gsub("^%s+", ""):gsub("%s+$", "") or ""
+    scopeSql = appendSearchCondition(scopeSql, baseParams, search)
+
+    local stats = vehicleStats(scopeSql, baseParams)
+    local pageSql = scopeSql
+    local params = copyParams(baseParams)
+
+    if filter.stored == true then
+        pageSql = pageSql .. " AND `stored` = 1 AND `pound` IS NULL"
+    elseif filter.stored == false then
+        pageSql = pageSql .. " AND `stored` <> 1 AND `pound` IS NULL"
+    end
+
+    if filter.impounded == true then
+        pageSql = pageSql .. " AND `pound` IS NOT NULL"
+    elseif filter.impounded == false then
+        pageSql = pageSql .. " AND `pound` IS NULL"
+    end
+
+    if filter.favorite == true then
+        pageSql = pageSql .. " AND `is_favorite` = 1"
+    elseif filter.favorite == false then
+        pageSql = pageSql .. " AND `is_favorite` = 0"
+    end
+
+    params[#params + 1] = pageSize + 1
+    params[#params + 1] = offset
+
+    local rows = MySQL.query.await(
+        ("SELECT %s FROM `owned_vehicles` WHERE `owner` = ?%s ORDER BY `plate` ASC LIMIT ? OFFSET ?")
+            :format(VEHICLE_SELECT_COLUMNS, pageSql),
+        params) or {}
+
+    local hasNext = #rows > pageSize
+    if hasNext then
+        rows[#rows] = nil
+    end
+
+    cb({
+        vehicles = rows,
+        page = page,
+        pageSize = pageSize,
+        hasNext = hasNext,
+        stats = stats,
+    })
 end)
 
 ESX.RegisterServerCallback("esx_garage:retrieveVehicle", function(source, cb, data)
@@ -533,15 +770,28 @@ ESX.RegisterServerCallback("esx_garage:toggleFavorite", function(source, cb, dat
         return cb({ success = false, error = "invalid" })
     end
 
-    local ok, affected = pcall(MySQL.update.await,
-        "UPDATE `owned_vehicles` SET `is_favorite` = ? WHERE `owner` = ? AND TRIM(TRAILING ' ' FROM `plate`) = ?",
-        { data.isFavorite and 1 or 0, xPlayer.identifier, normPlate(plate) })
+    local ok, updated = pcall(function()
+        local dbPlate = ownedPlate(xPlayer.identifier, plate)
+        if not dbPlate then
+            return false
+        end
+
+        MySQL.update.await(
+            "UPDATE `owned_vehicles` SET `is_favorite` = ? WHERE `owner` = ? AND `plate` = ?",
+            { data.isFavorite and 1 or 0, xPlayer.identifier, dbPlate })
+
+        return true
+    end)
 
     if not ok then
         return cb({ success = false, error = "error" })
     end
 
-    cb({ success = (affected or 0) > 0, data = data.isFavorite })
+    if not updated then
+        return cb({ success = false, error = "not_owned" })
+    end
+
+    cb({ success = true, data = data.isFavorite })
 end)
 
 ESX.RegisterServerCallback("esx_garage:renameVehicle", function(source, cb, data)
@@ -560,15 +810,28 @@ ESX.RegisterServerCallback("esx_garage:renameVehicle", function(source, cb, data
         return cb({ success = false, error = "invalid" })
     end
 
-    local ok, affected = pcall(MySQL.update.await,
-        "UPDATE `owned_vehicles` SET `custom_name` = ? WHERE `owner` = ? AND TRIM(TRAILING ' ' FROM `plate`) = ?",
-        { name, xPlayer.identifier, normPlate(plate) })
+    local ok, updated = pcall(function()
+        local dbPlate = ownedPlate(xPlayer.identifier, plate)
+        if not dbPlate then
+            return false
+        end
+
+        MySQL.update.await(
+            "UPDATE `owned_vehicles` SET `custom_name` = ? WHERE `owner` = ? AND `plate` = ?",
+            { name, xPlayer.identifier, dbPlate })
+
+        return true
+    end)
 
     if not ok then
         return cb({ success = false, error = "error" })
     end
 
-    cb({ success = (affected or 0) > 0, data = name })
+    if not updated then
+        return cb({ success = false, error = "not_owned" })
+    end
+
+    cb({ success = true, data = name })
 end)
 
 ESX.RegisterServerCallback("esx_garage:transferVehicle", function(source, cb, data)
@@ -714,14 +977,23 @@ local function impoundVehicle(plate, lot)
     if xVehicle then
         xVehicle:delete(lotId, true)
     else
+        local condition, plateParams = plateCondition(plate)
+        local params = { lotId }
+        appendParams(params, plateParams)
+
         MySQL.update.await(
-            "UPDATE `owned_vehicles` SET `stored` = 1, `pound` = ?, `parking` = NULL WHERE TRIM(TRAILING ' ' FROM `plate`) = ?",
-            { lotId, normPlate(plate) })
+            ("UPDATE `owned_vehicles` SET `stored` = 1, `pound` = ?, `parking` = NULL WHERE %s"):format(condition),
+            params)
     end
 
+    local condition, plateParams = plateCondition(plate)
+    local params = {}
+    appendParams(params, plateParams)
+    params[#params + 1] = lotId
+
     local settled = MySQL.scalar.await(
-        "SELECT COUNT(*) FROM `owned_vehicles` WHERE TRIM(TRAILING ' ' FROM `plate`) = ? AND `stored` = 1 AND `pound` = ?",
-        { normPlate(plate), lotId }) or 0
+        ("SELECT COUNT(*) FROM `owned_vehicles` WHERE %s AND `stored` = 1 AND `pound` = ?"):format(condition),
+        params) or 0
 
     if settled < 1 then
         return false
@@ -737,16 +1009,17 @@ local function impoundOutVehiclesOnStop()
         return
     end
 
-    local liveImpounded = 0
-    local rowsOk, rows = pcall(MySQL.query.await,
-        "SELECT `plate` FROM `owned_vehicles` WHERE `stored` = 0")
+    local liveImpounded, seen = 0, {}
+    local vehicles = GetAllVehicles()
 
-    if rowsOk then
-        rows = rows or {}
-        for i = 1, #rows do
-            local plate = rows[i].plate
-            if type(plate) == "string" then
-                local xVehicle = ESX.GetExtendedVehicleFromPlate(plate)
+    for i = 1, #vehicles do
+        local plate = GetVehicleNumberPlateText(vehicles[i])
+        if type(plate) == "string" then
+            local key = normPlate(plate)
+            if key ~= "" and not seen[key] then
+                seen[key] = true
+
+                local xVehicle = ESX.GetExtendedVehicleFromPlate(plate) or ESX.GetExtendedVehicleFromPlate(key)
                 if xVehicle then
                     local deleted, deleteErr = pcall(function()
                         xVehicle:delete(lotId, true)
@@ -756,13 +1029,11 @@ local function impoundOutVehiclesOnStop()
                         liveImpounded = liveImpounded + 1
                     else
                         print(("[esx_garage] impoundOutVehiclesOnStop: failed to impound live vehicle %s: %s")
-                            :format(normPlate(plate), tostring(deleteErr)))
+                            :format(key, tostring(deleteErr)))
                     end
                 end
             end
         end
-    else
-        print(("[esx_garage] impoundOutVehiclesOnStop: failed to inspect live out vehicles: %s"):format(tostring(rows)))
     end
 
     local ok, affected = pcall(MySQL.update.await,

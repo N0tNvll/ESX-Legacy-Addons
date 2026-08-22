@@ -3,6 +3,19 @@
 -- Fresh installs / manual setup: run it once, or as many times as you like.
 -- Every statement below is guarded, so re-running is a no-op instead of an error.
 
+CREATE TABLE IF NOT EXISTS `esx_garage_migrations` (
+    `name` VARCHAR(64) NOT NULL,
+    `version` VARCHAR(32) NOT NULL DEFAULT '0',
+    `applied_at` INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (`name`)
+);
+
+SET @fix_migration_version_column := (SELECT IF(
+    EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'esx_garage_migrations' AND COLUMN_NAME = 'version' AND DATA_TYPE = 'varchar'),
+    'SELECT 1',
+    'ALTER TABLE `esx_garage_migrations` MODIFY COLUMN `version` VARCHAR(32) NOT NULL DEFAULT ''0'''));
+PREPARE s FROM @fix_migration_version_column; EXECUTE s; DEALLOCATE PREPARE s;
+
 SET @add_parking := (SELECT IF(
     EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'owned_vehicles' AND COLUMN_NAME = 'parking'),
     'SELECT 1',
@@ -39,6 +52,22 @@ SET @add_mileage := (SELECT IF(
     'ALTER TABLE `owned_vehicles` ADD COLUMN `mileage` INT NOT NULL DEFAULT 0'));
 PREPARE s FROM @add_mileage; EXECUTE s; DEALLOCATE PREPARE s;
 
+SET @add_owner_plate_index := (SELECT IF(
+    EXISTS(SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'owned_vehicles' AND INDEX_NAME = 'idx_owned_vehicles_owner_plate'),
+    'SELECT 1',
+    'ALTER TABLE `owned_vehicles` ADD INDEX `idx_owned_vehicles_owner_plate` (`owner`, `plate`)'));
+PREPARE s FROM @add_owner_plate_index; EXECUTE s; DEALLOCATE PREPARE s;
+
+SET @add_owner_custom_name_index := (SELECT IF(
+    EXISTS(SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'owned_vehicles' AND INDEX_NAME = 'idx_owned_vehicles_owner_custom_name'),
+    'SELECT 1',
+    'ALTER TABLE `owned_vehicles` ADD INDEX `idx_owned_vehicles_owner_custom_name` (`owner`, `custom_name`)'));
+PREPARE s FROM @add_owner_custom_name_index; EXECUTE s; DEALLOCATE PREPARE s;
+
 -- Legacy impound (stored = 2) -> stored = 1 + pound. Set the lot id below to a valid impound id from your config.lua.
 -- Idempotent: once converted, no row matches stored = 2 anymore.
 UPDATE `owned_vehicles` SET `stored` = 1, `parking` = NULL, `pound` = 'los_santos' WHERE `stored` = 2;
+
+INSERT INTO `esx_garage_migrations` (`name`, `version`, `applied_at`)
+VALUES ('schema', '1.14.2', UNIX_TIMESTAMP())
+ON DUPLICATE KEY UPDATE `version` = '1.14.2', `applied_at` = UNIX_TIMESTAMP();

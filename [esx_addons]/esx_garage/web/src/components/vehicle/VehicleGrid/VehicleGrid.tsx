@@ -1,17 +1,20 @@
 import React from 'react';
 import styled from 'styled-components';
+import { MdChevronLeft, MdChevronRight } from 'react-icons/md';
 import type { Vehicle } from '@/types/vehicle.types';
 import { VehicleCard } from '../VehicleCard';
 import { useGarageStore } from '@/store/garage.store';
 
 const GridContainer = styled.div`
   width: 100%;
-  height: calc(100% - 3.875rem - 1.25rem); /* header + bottom spacing */
+  height: calc(100% - 4.625rem - 1.25rem); /* header + bottom spacing */
   display: flex;
+  flex-direction: column;
 `;
 
 const VehiclesWrapper = styled.div`
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding-top: 1.25rem;
@@ -65,17 +68,94 @@ const EmptyState = styled.div`
   gap: 1.25rem;
 `;
 
+const PaginationBar = styled.div`
+  height: 3rem;
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0 1.25rem 0.75rem;
+  flex-shrink: 0;
+`;
+
+const PageButton = styled.button`
+  width: 2rem;
+  height: 2rem;
+  border-radius: ${props => props.theme.sizes.borderRadius.sm};
+  background: ${props => props.theme.colors.backgroundSecondary};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: ${props => props.theme.transitions.fast};
+
+  svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: ${props => props.theme.colors.text.primary};
+  }
+
+  &:hover:not(:disabled) {
+    background: ${props => props.theme.colors.primary};
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+  }
+`;
+
+const PageText = styled.div`
+  min-width: 5rem;
+  text-align: center;
+  color: ${props => props.theme.colors.text.secondary};
+  font-size: 0.875rem;
+  font-weight: ${props => props.theme.fonts.weights.medium};
+`;
+
 interface VehicleGridProps {
   onVehicleClick?: (vehicle: Vehicle) => void;
 }
 
 export const VehicleGrid: React.FC<VehicleGridProps> = ({ onVehicleClick }) => {
-  const { getFilteredVehicles } = useGarageStore();
+  const { getFilteredVehicles, pagination, loadVehicles, isLoading } = useGarageStore();
   const vehicles = getFilteredVehicles();
 
   const handleVehicleClick = (vehicle: Vehicle) => {
     onVehicleClick?.(vehicle);
   };
+
+  const handlePrevious = () => {
+    if (pagination.hasPrevious && !isLoading) {
+      void loadVehicles(pagination.page - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (pagination.hasNext && !isLoading) {
+      void loadVehicles(pagination.page + 1);
+    }
+  };
+
+  const paginationControls = (
+    <PaginationBar>
+      <PageButton
+        aria-label="Previous page"
+        disabled={!pagination.hasPrevious || isLoading}
+        onClick={handlePrevious}
+      >
+        <MdChevronLeft />
+      </PageButton>
+      <PageText>Page {pagination.page}</PageText>
+      <PageButton
+        aria-label="Next page"
+        disabled={!pagination.hasNext || isLoading}
+        onClick={handleNext}
+      >
+        <MdChevronRight />
+      </PageButton>
+    </PaginationBar>
+  );
 
   if (vehicles.length === 0) {
     return (
@@ -88,6 +168,7 @@ export const VehicleGrid: React.FC<VehicleGridProps> = ({ onVehicleClick }) => {
             </div>
           </EmptyState>
         </VehiclesWrapper>
+        {paginationControls}
       </GridContainer>
     );
   }
@@ -105,6 +186,7 @@ export const VehicleGrid: React.FC<VehicleGridProps> = ({ onVehicleClick }) => {
           ))}
         </VehiclesGrid>
       </VehiclesWrapper>
+      {paginationControls}
     </GridContainer>
   );
 };

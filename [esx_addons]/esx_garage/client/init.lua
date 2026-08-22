@@ -76,6 +76,12 @@ local function activePound(pound)
     return type(pound) == "string" and pound ~= "" and pound or nil
 end
 
+---@param value any
+---@return boolean
+local function dbBool(value)
+    return value == true or value == 1 or value == "1"
+end
+
 local function sweepGaragePeds()
     for _, ped in ipairs(GetGamePool("CPed")) do
         if not IsPedAPlayer(ped) and DecorExistOn(ped, PED_DECOR) then
@@ -261,7 +267,7 @@ local function wrap(row, currentLot)
         fuel = props.fuelLevel,
         engine = props.engineHealth and props.engineHealth / 10.0 or nil,
         body = props.bodyHealth and props.bodyHealth / 10.0 or nil,
-        isFavorite = row.is_favorite == 1,
+        isFavorite = dbBool(row.is_favorite),
         customName = row.custom_name,
         lastUsed = row.last_used,
         props = props,
@@ -280,6 +286,53 @@ local function serverCall(name, payload)
     return result
 end
 
+---@param data table?
+---@return table?
+local function fetchVehiclePage(data)
+    if not currentLocation then
+        return nil
+    end
+
+    local page = tonumber(data and data.page) or 1
+    local pageSize = tonumber(data and data.pageSize)
+    local result = serverCall("esx_garage:getVehicles", {
+        garageId = currentLocation.id,
+        page = page,
+        pageSize = pageSize,
+        filter = data and data.filter or nil,
+    })
+
+    if type(result) ~= "table" or type(result.vehicles) ~= "table" then
+        return nil
+    end
+
+    local currentLot = impoundsById[currentLocation.id]
+    local vehicles = {}
+
+    for i = 1, #result.vehicles do
+        vehicles[#vehicles + 1] = wrap(result.vehicles[i], currentLot)
+    end
+
+    local resultPage = tonumber(result.page) or page
+    local resultPageSize = tonumber(result.pageSize) or #vehicles
+
+    return {
+        vehicles = vehicles,
+        pagination = {
+            page = resultPage,
+            pageSize = resultPageSize,
+            hasNext = result.hasNext == true,
+            hasPrevious = resultPage > 1,
+        },
+        stats = {
+            total = tonumber(result.stats and result.stats.total) or #vehicles,
+            stored = tonumber(result.stats and result.stats.stored) or 0,
+            out = tonumber(result.stats and result.stats.out) or 0,
+            impounded = tonumber(result.stats and result.stats.impounded) or 0,
+        },
+    }
+end
+
 local function openMenu()
     local loc = currentLocation
     
@@ -287,18 +340,10 @@ local function openMenu()
         return
     end
 
-    local rows = serverCall("esx_garage:getVehicles", loc.id)
+    local page = fetchVehiclePage({ page = 1 })
     
-    if not rows then
+    if not page then
         return ESX.ShowNotification(TranslateCap("cannot_access_garage"), "error")
-    end
-
-    local currentLot = impoundsById[loc.id]
-
-    local vehicles = {}
-    
-    for i = 1, #rows do
-        vehicles[#vehicles + 1] = wrap(rows[i], currentLot)
     end
 
     local garage = loc.garage
@@ -317,7 +362,9 @@ local function openMenu()
                 color = garage.color,
                 keys = Config.Settings.vehicleKeys,
             },
-            vehicles = vehicles,
+            vehicles = page.vehicles,
+            pagination = page.pagination,
+            stats = page.stats,
         }
     })
 
@@ -399,6 +446,15 @@ local function closeMenu()
     SetNuiFocus(false, false)
     SendNUIMessage({ type = "closeGarage", payload = {} })
 end
+
+RegisterNUICallback("garage:getVehicles", function(data, cb)
+    local page = fetchVehiclePage(data)
+    if not page then
+        return cb({ success = false, error = "no_location" })
+    end
+
+    cb({ success = true, data = page })
+end)
 
 RegisterNUICallback("garage:retrieveVehicle", function(data, cb)
     if not currentLocation then

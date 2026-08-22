@@ -68,3 +68,16 @@ export interface VehicleStats {
   out: number;
   impounded: number;
 }
+
+export interface VehiclePagination {
+  page: number;
+  pageSize: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
+export interface VehiclePageResponse {
+  vehicles: Vehicle[];
+  pagination: VehiclePagination;
+  stats: VehicleStats;
+}

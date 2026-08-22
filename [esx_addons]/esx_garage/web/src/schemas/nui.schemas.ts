@@ -95,9 +95,25 @@ export const GarageSchema = z.object({
   keys: z.boolean().optional()
 });
 
+export const VehiclePaginationSchema = z.object({
+  page: z.number(),
+  pageSize: z.number(),
+  hasNext: z.boolean(),
+  hasPrevious: z.boolean()
+});
+
+export const VehicleStatsSchema = z.object({
+  total: z.number(),
+  stored: z.number(),
+  out: z.number(),
+  impounded: z.number()
+});
+
 export const OpenGarageDataSchema = z.object({
   garage: GarageSchema,
-  vehicles: z.array(VehicleSchema)
+  vehicles: z.array(VehicleSchema),
+  pagination: VehiclePaginationSchema,
+  stats: VehicleStatsSchema
 });
 
 export const NuiCallbackResponseSchema = z.object({

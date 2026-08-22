@@ -15,9 +15,11 @@ A vehicle whose row says `stored = 0` while no entity is left in the world (serv
 
 When the `esx_garage` resource stops, every `stored = 0` vehicle is moved to the first configured impound lot (`Config.Impounds[1]`) by setting `stored = 1`, clearing `parking`, and setting `pound` to that lot id.
 
+Vehicle listing is paginated. `Config.Settings.vehiclesPerPage` controls the normal page size, while `Config.Settings.maxVehiclesPerMenu` caps the largest page a client can request. Large `owned_vehicles` tables should also have an index on `(owner, plate)` so page and plate-specific updates stay cheap.
+
 `Config.Settings.restrictToGarage` ties a stored vehicle to the garage named by `parking`. A `parking` that is `NULL` (every vehicle predating this resource, since the migration does not backfill it) or that names a garage which no longer exists is treated as **available at any garage**, so upgrading or removing a garage can never strand a vehicle. Listing and retrieval share that exact rule, so what the menu shows is always what the server will hand over.
 
-The resource auto-migrates on start (`server/modules/migration.lua`): it adds any missing column and converts legacy tri-state `stored = 2` rows to `stored = 1` + `pound` set to the first configured impound lot (the legacy schema does not record which lot). `esx_garage.sql` mirrors this for fresh installs. No manual step is required on existing servers.
+The resource auto-migrates once per schema version (`server/modules/migration.lua`): it adds any missing column and converts legacy tri-state `stored = 2` rows to `stored = 1` + `pound` set to the first configured impound lot (the legacy schema does not record which lot). Successful migration is recorded as `schema = 1.14.2` in `esx_garage_migrations`, so later resource starts only perform a cheap version check. `esx_garage.sql` mirrors this for fresh installs. No manual step is required on existing servers.
 
 # Legal
 

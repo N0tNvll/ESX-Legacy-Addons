@@ -10,6 +10,8 @@ Config.Settings = {
 	vehicleKeys = false,
 	storeMarkerOnlyInVehicle = true,
 	showMarker = true,
+	vehiclesPerPage = 30,
+	maxVehiclesPerMenu = 100,
 }
 
 ---@type Garage[]
