@@ -4,12 +4,12 @@ local MAX_PAGE <const> = 100
 local MAX_SEARCH_LENGTH <const> = 64
 local MAX_PLATE_LENGTH <const> = 8
 local DEFAULT_PAGE_SIZE <const> = 30
-local MAX_ALLOWED_PAGE_SIZE <const> = 500
+local MAX_ALLOWED_PAGE_SIZE <const> = 100
 local CALLBACK_COOLDOWNS <const> = {
-    ["esx_garage:getVehicles"] = 200,
+    ["esx_garage:getVehicles"] = 1500,
     ["esx_garage:retrieveVehicle"] = 1500,
     ["esx_garage:storeVehicle"] = 1500,
-    ["esx_garage:toggleFavorite"] = 300,
+    ["esx_garage:toggleFavorite"] = 1000,
     ["esx_garage:renameVehicle"] = 1000,
     ["esx_garage:transferVehicle"] = 1500,
     ["esx_garage:giveKeys"] = 1000,
@@ -111,7 +111,15 @@ end
 ---@param plate any
 ---@return boolean
 local function validPlate(plate)
-    return type(plate) == "string" and #plate > 0 and #plate <= MAX_PLATE_LENGTH
+    if type(plate) ~= "string" then
+        return false
+    end
+
+    plate = normPlate(plate)
+
+    return #plate >= 1
+        and #plate <= MAX_PLATE_LENGTH
+        and plate:match("^[A-Z0-9 ]+$") ~= nil
 end
 
 ---@param values table
@@ -519,6 +527,11 @@ ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, data)
 
     local garage = garageId and Garages[garageId]
     local impound = garageId and Impounds[garageId]
+    local location = garage or impound
+    if not location then
+        return cb({ success = false, error = "no_location" })
+    end
+
     if garage and not CanAccessGarage(source, garage) then
         return cb(false)
     end
