@@ -18,6 +18,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   not_stored: 'This vehicle is not stored.',
   plate_mismatch: 'That is not the vehicle for this plate.',
   player: 'Player not found.',
+  rate_limited: 'Please wait a moment before trying again.',
   self: 'You already own this vehicle.',
   spawn_failed: 'The vehicle could not be spawned.',
   target_offline: 'That player is not online.',

@@ -297,10 +297,10 @@ local function serverCall(name, payload)
 end
 
 ---@param data table?
----@return table?
+---@return table?, string?
 local function fetchVehiclePage(data)
     if not currentLocation then
-        return nil
+        return nil, "no_location"
     end
 
     local page = tonumber(data and data.page) or 1
@@ -312,8 +312,12 @@ local function fetchVehiclePage(data)
         filter = data and data.filter or nil,
     })
 
+    if type(result) == "table" and result.success == false then
+        return nil, result.error or "error"
+    end
+
     if type(result) ~= "table" or type(result.vehicles) ~= "table" then
-        return nil
+        return nil, "error"
     end
 
     local currentLot = impoundsById[currentLocation.id]
@@ -451,9 +455,9 @@ local function closeMenu()
 end
 
 RegisterNUICallback("garage:getVehicles", function(data, cb)
-    local page = fetchVehiclePage(data)
+    local page, err = fetchVehiclePage(data)
     if not page then
-        return cb({ success = false, error = "no_location" })
+        return cb({ success = false, error = err or "no_location" })
     end
 
     cb({ success = true, data = page })

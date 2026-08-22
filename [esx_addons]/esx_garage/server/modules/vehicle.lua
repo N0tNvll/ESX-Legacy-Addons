@@ -1,5 +1,8 @@
 local MAX_PROPS_BYTES <const> = 16384
 local MAX_PROPS_DEPTH <const> = 4
+local MAX_PAGE <const> = 100
+local MAX_SEARCH_LENGTH <const> = 64
+local MAX_PLATE_LENGTH <const> = 8
 local DEFAULT_PAGE_SIZE <const> = 30
 local MAX_ALLOWED_PAGE_SIZE <const> = 500
 local CALLBACK_COOLDOWNS <const> = {
@@ -66,6 +69,49 @@ end
 ---@return string
 local function normPlate(p)
     return (p:gsub("%s+$", "")):upper()
+end
+
+---@param value any
+---@return boolean
+local function isFiniteNumber(value)
+    return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
+end
+
+---@param requested any
+---@return integer
+local function vehiclePage(requested)
+    local page = tonumber(requested)
+    if not isFiniteNumber(page) then
+        return 1
+    end
+
+    page = math.floor(page)
+    if page < 1 then
+        return 1
+    end
+
+    return math.min(page, MAX_PAGE)
+end
+
+---@param value any
+---@return string
+local function vehicleSearch(value)
+    if type(value) ~= "string" then
+        return ""
+    end
+
+    local search = value:gsub("^%s+", ""):gsub("%s+$", "")
+    if #search > MAX_SEARCH_LENGTH then
+        search = search:sub(1, MAX_SEARCH_LENGTH)
+    end
+
+    return search
+end
+
+---@param plate any
+---@return boolean
+local function validPlate(plate)
+    return type(plate) == "string" and #plate > 0 and #plate <= MAX_PLATE_LENGTH
 end
 
 ---@param values table
@@ -207,19 +253,25 @@ local function encodeProps(props)
 end
 
 ---@param row OwnedVehicleRow
----@param entity integer
----@return boolean, number?
-local function validateStoredModel(row, entity)
+---@return number?
+local function storedVehicleModel(row)
     if not row or type(row.vehicle) ~= "string" then
-        return false, nil
+        return nil
     end
 
     local ok, storedProps = pcall(json.decode, row.vehicle)
     if not ok or type(storedProps) ~= "table" then
-        return false, nil
+        return nil
     end
 
-    local storedModel = tonumber(storedProps.model)
+    return tonumber(storedProps.model)
+end
+
+---@param row OwnedVehicleRow
+---@param entity integer
+---@return boolean, number?
+local function validateStoredModel(row, entity)
+    local storedModel = storedVehicleModel(row)
     if not storedModel then
         return false, nil
     end
@@ -334,14 +386,21 @@ local function isSpawnBlocked(spawn)
 end
 
 ---@param plateKey string
+---@param expectedModel number?
 ---@param managedEntity integer?
 ---@return boolean
-local function hasUnmanagedWorldVehicle(plateKey, managedEntity)
+local function hasUnmanagedWorldVehicle(plateKey, expectedModel, managedEntity)
+    if not expectedModel then
+        return false
+    end
+
     local vehicles = GetAllVehicles()
 
     for i = 1, #vehicles do
         local veh = vehicles[i]
-        if veh ~= managedEntity and normPlate(GetVehicleNumberPlateText(veh) or "") == plateKey then
+        if veh ~= managedEntity
+            and GetEntityModel(veh) == expectedModel
+            and normPlate(GetVehicleNumberPlateText(veh) or "") == plateKey then
             return true
         end
     end
@@ -355,10 +414,24 @@ local retrieving = {}
 ---@param requested any
 ---@return integer
 local function vehiclePageSize(requested)
-    local configured = math.floor(tonumber(Config.Settings.vehiclesPerPage) or DEFAULT_PAGE_SIZE)
-    local maxConfigured = math.floor(tonumber(Config.Settings.maxVehiclesPerMenu) or MAX_ALLOWED_PAGE_SIZE)
+    local configured = tonumber(Config.Settings.vehiclesPerPage)
+    if not isFiniteNumber(configured) then
+        configured = DEFAULT_PAGE_SIZE
+    end
+    configured = math.floor(configured)
+
+    local maxConfigured = tonumber(Config.Settings.maxVehiclesPerMenu)
+    if not isFiniteNumber(maxConfigured) then
+        maxConfigured = MAX_ALLOWED_PAGE_SIZE
+    end
+    maxConfigured = math.floor(maxConfigured)
+
     local maxPageSize = math.min(math.max(maxConfigured, 1), MAX_ALLOWED_PAGE_SIZE)
-    local size = math.floor(tonumber(requested) or configured)
+    local size = tonumber(requested)
+    if not isFiniteNumber(size) then
+        size = configured
+    end
+    size = math.floor(size)
 
     if size < 1 then
         return DEFAULT_PAGE_SIZE
@@ -450,11 +523,7 @@ ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, data)
         return cb(false)
     end
 
-    local page = math.floor(tonumber(request.page) or 1)
-    if page < 1 then
-        page = 1
-    end
-
+    local page = vehiclePage(request.page)
     local pageSize = vehiclePageSize(request.pageSize)
     local offset = (page - 1) * pageSize
     local scopeSql, scopeParams = garageScopeCondition(garageId)
@@ -470,7 +539,7 @@ ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, data)
     end
 
     local filter = type(request.filter) == "table" and request.filter or {}
-    local search = type(filter.search) == "string" and filter.search:gsub("^%s+", ""):gsub("%s+$", "") or ""
+    local search = vehicleSearch(filter.search)
     scopeSql = appendSearchCondition(scopeSql, baseParams, search)
 
     local pageSql = scopeSql
@@ -536,7 +605,7 @@ ESX.RegisterServerCallback("esx_garage:retrieveVehicle", function(source, cb, da
 
     local plate = data and data.plate
     local spawn = data and data.spawn
-    if type(plate) ~= "string" or type(spawn) ~= "table"
+    if not validPlate(plate) or type(spawn) ~= "table"
         or type(spawn.x) ~= "number" or type(spawn.y) ~= "number" or type(spawn.z) ~= "number"
         or (spawn.w ~= nil and type(spawn.w) ~= "number") or (spawn.h ~= nil and type(spawn.h) ~= "number") then
         return cb({ success = false, error = "invalid" })
@@ -584,7 +653,8 @@ ESX.RegisterServerCallback("esx_garage:retrieveVehicle", function(source, cb, da
             end
         end
 
-        local hasWorldVehicle = managedEntity ~= nil or hasUnmanagedWorldVehicle(key, managedEntity)
+        local expectedModel = storedVehicleModel(row)
+        local hasWorldVehicle = managedEntity ~= nil or hasUnmanagedWorldVehicle(key, expectedModel, managedEntity)
 
         local fee = 0
 
@@ -681,7 +751,7 @@ ESX.RegisterServerCallback("esx_garage:storeVehicle", function(source, cb, data)
 
     local plate = data and data.plate
     local props = data and data.props
-    if type(plate) ~= "string" or type(props) ~= "table" then
+    if not validPlate(plate) or type(props) ~= "table" then
         return cb({ success = false, error = "invalid" })
     end
 
@@ -820,7 +890,7 @@ ESX.RegisterServerCallback("esx_garage:toggleFavorite", function(source, cb, dat
     end
 
     local plate = data and data.plate
-    if type(plate) ~= "string" or type(data.isFavorite) ~= "boolean" then
+    if not validPlate(plate) or type(data.isFavorite) ~= "boolean" then
         return cb({ success = false, error = "invalid" })
     end
 
@@ -864,7 +934,7 @@ ESX.RegisterServerCallback("esx_garage:renameVehicle", function(source, cb, data
 
     local plate = data and data.plate
     local name = data and data.name
-    if type(plate) ~= "string" or type(name) ~= "string" or #name < 1 or #name > 50 then
+    if not validPlate(plate) or type(name) ~= "string" or #name < 1 or #name > 50 then
         return cb({ success = false, error = "invalid" })
     end
 
@@ -908,7 +978,7 @@ ESX.RegisterServerCallback("esx_garage:transferVehicle", function(source, cb, da
 
     local plate = data and data.plate
     local targetId = tonumber(data and data.targetId)
-    if type(plate) ~= "string" or not targetId then
+    if not validPlate(plate) or not targetId then
         return cb({ success = false, error = "invalid" })
     end
 
@@ -991,7 +1061,7 @@ ESX.RegisterServerCallback("esx_garage:giveKeys", function(source, cb, data)
     end
 
     local plate = data and data.plate
-    if type(plate) ~= "string" then
+    if not validPlate(plate) then
         return cb({ success = false, error = "invalid" })
     end
 
@@ -1019,7 +1089,7 @@ end
 ---@param lot string? defaults to the first configured impound
 ---@return boolean
 local function impoundVehicle(plate, lot)
-    if type(plate) ~= "string" then
+    if not validPlate(plate) then
         return false
     end
 
