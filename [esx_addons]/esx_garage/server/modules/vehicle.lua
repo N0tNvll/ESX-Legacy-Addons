@@ -6,15 +6,6 @@ local MAX_PLATE_LENGTH <const> = 12
 local DEFAULT_PAGE_SIZE <const> = 30
 local MAX_ALLOWED_PAGE_SIZE <const> = 100
 local HUD_RESOURCE_NAME <const> = "esx_hud"
-local CALLBACK_COOLDOWNS <const> = {
-    ["esx_garage:getVehicles"] = 1500,
-    ["esx_garage:retrieveVehicle"] = 1500,
-    ["esx_garage:storeVehicle"] = 1500,
-    ["esx_garage:toggleFavorite"] = 1000,
-    ["esx_garage:renameVehicle"] = 1000,
-    ["esx_garage:transferVehicle"] = 1500,
-    ["esx_garage:giveKeys"] = 1000,
-}
 local VEHICLE_SELECT_COLUMNS <const> = table.concat({
     "`plate`",
     "`vehicle`",
@@ -27,44 +18,6 @@ local VEHICLE_SELECT_COLUMNS <const> = table.concat({
     "`last_used`",
     "`mileage`",
 }, ", ")
-
----@type table<integer, table<string, integer>>
-local callbackCooldowns = {}
-
----@return integer
-local function currentTimeMs()
-    if type(GetGameTimer) == "function" then
-        return GetGameTimer()
-    end
-
-    return math.floor(os.clock() * 1000)
-end
-
----@param source integer
----@param cb function
----@param callbackName string
----@return boolean
-local function rejectRateLimited(source, cb, callbackName)
-    local cooldown = CALLBACK_COOLDOWNS[callbackName]
-    if not cooldown then
-        return false
-    end
-
-    local now = currentTimeMs()
-    local playerCooldowns = callbackCooldowns[source]
-    if not playerCooldowns then
-        playerCooldowns = {}
-        callbackCooldowns[source] = playerCooldowns
-    end
-
-    if (playerCooldowns[callbackName] or 0) > now then
-        cb({ success = false, error = "rate_limited" })
-        return true
-    end
-
-    playerCooldowns[callbackName] = now + cooldown
-    return false
-end
 
 ---@param p string
 ---@return string
@@ -341,6 +294,20 @@ local function validateStoredModel(row, entity)
     end
 
     return true, storedModel
+end
+
+---@param xVehicle table
+---@return string?
+local function extendedVehicleOwner(xVehicle)
+    local ok, owner = pcall(function()
+        if type(xVehicle.getOwner) == "function" then
+            return xVehicle:getOwner()
+        end
+
+        return xVehicle.owner
+    end)
+
+    return ok and type(owner) == "string" and owner or nil
 end
 
 ---@param xPlayer table
@@ -1064,6 +1031,11 @@ ESX.RegisterServerCallback("esx_garage:storeVehicle", function(source, cb, data)
 
         local xVehicle = ESX.GetExtendedVehicleFromPlate(row.plate)
         if xVehicle then
+            local managedOwner = extendedVehicleOwner(xVehicle)
+            if managedOwner and managedOwner ~= xPlayer.identifier then
+                return { success = false, error = "plate_conflict" }
+            end
+
             local entity = xVehicle:getEntity()
             if not (entity and entity > 0 and DoesEntityExist(entity)) then
                 return { success = false, error = "no_vehicle" }
@@ -1457,10 +1429,6 @@ AddEventHandler("onResourceStop", function(resource)
     if resource == GetCurrentResourceName() then
         impoundOutVehiclesOnStop()
     end
-end)
-
-AddEventHandler("playerDropped", function()
-    callbackCooldowns[source] = nil
 end)
 
 exports("impoundVehicle", impoundVehicle)

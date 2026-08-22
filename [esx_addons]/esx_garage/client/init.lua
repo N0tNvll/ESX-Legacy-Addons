@@ -261,12 +261,27 @@ local function refresh()
     end
 end
 
+---@param raw any
+---@return table
+local function vehicleProps(raw)
+    if type(raw) ~= "string" then
+        return {}
+    end
+
+    local ok, props = pcall(json.decode, raw)
+    if not ok or type(props) ~= "table" then
+        return {}
+    end
+
+    return props
+end
+
 ---@param row OwnedVehicleRow
 ---@param currentLot Impound? lot the player is standing at, when the menu is an impound
 ---@param useKmh boolean
 ---@return GarageVehicle
 local function wrap(row, currentLot, useKmh)
-    local props = json.decode(row.vehicle) or {}
+    local props = vehicleProps(row.vehicle)
     local model = props.model
     local displayName = model and GetDisplayNameFromVehicleModel(model) or "VEHICLE"
     local pound = activePound(row.pound)

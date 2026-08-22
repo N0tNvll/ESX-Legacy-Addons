@@ -4,6 +4,55 @@ Garages = {}
 ---@type table<string, Impound>
 Impounds = {}
 
+local CALLBACK_COOLDOWNS <const> = {
+    ["esx_garage:getGarages"] = 1500,
+    ["esx_garage:getVehicles"] = 1500,
+    ["esx_garage:retrieveVehicle"] = 1500,
+    ["esx_garage:storeVehicle"] = 1500,
+    ["esx_garage:toggleFavorite"] = 1000,
+    ["esx_garage:renameVehicle"] = 1000,
+    ["esx_garage:transferVehicle"] = 1500,
+    ["esx_garage:giveKeys"] = 1000,
+}
+
+---@type table<integer, table<string, integer>>
+local callbackCooldowns = {}
+
+---@return integer
+local function currentTimeMs()
+    if type(GetGameTimer) == "function" then
+        return GetGameTimer()
+    end
+
+    return math.floor(os.clock() * 1000)
+end
+
+---@param source integer
+---@param cb function
+---@param callbackName string
+---@return boolean
+function rejectRateLimited(source, cb, callbackName)
+    local cooldown = CALLBACK_COOLDOWNS[callbackName]
+    if not cooldown then
+        return false
+    end
+
+    local now = currentTimeMs()
+    local playerCooldowns = callbackCooldowns[source]
+    if not playerCooldowns then
+        playerCooldowns = {}
+        callbackCooldowns[source] = playerCooldowns
+    end
+
+    if (playerCooldowns[callbackName] or 0) > now then
+        cb({ success = false, error = "rate_limited" })
+        return true
+    end
+
+    playerCooldowns[callbackName] = now + cooldown
+    return false
+end
+
 for i = 1, #Config.Garages do
     local garage = Config.Garages[i]
     Garages[garage.id] = garage
@@ -143,9 +192,17 @@ local function accessiblePayload(source)
 end
 
 ESX.RegisterServerCallback("esx_garage:getGarages", function(source, cb)
+    if rejectRateLimited(source, cb, "esx_garage:getGarages") then
+        return
+    end
+
     local payload = accessiblePayload(source)
 
     cb(payload)
+end)
+
+AddEventHandler("playerDropped", function()
+    callbackCooldowns[source] = nil
 end)
 
 ---@param def Garage
