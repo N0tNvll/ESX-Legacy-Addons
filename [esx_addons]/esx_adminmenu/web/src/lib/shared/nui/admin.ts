@@ -212,9 +212,9 @@ export const getRadioChannelPlayers = async (channel: number) => {
 };
 
 type AdminLogPageResponse = NuiSuccess & {
-	logs?: AdminLog[];
-	hasMore?: boolean;
-	nextOffset?: number;
+    logs?: AdminLog[];
+    hasMore?: boolean;
+    nextCursor?: number | null;
 };
 
 // The log page owns its own state instead of a shared store: it is read-only
@@ -225,7 +225,7 @@ export const fetchAdminLogs = async (filters: AdminLogFilters = {}) => {
 	return {
 		logs: res?.success ? (res.logs ?? []) : [],
 		hasMore: res?.hasMore === true,
-		nextOffset: res?.nextOffset ?? 0,
+		nextCursor: res?.nextCursor ?? null,
 		ok: res?.success === true,
 	};
 };

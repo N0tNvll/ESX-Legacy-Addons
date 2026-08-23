@@ -383,7 +383,8 @@ local function registerServerBridge(spec)
                 out[spec.collection] = coll
                 if spec.paging then
                     out.hasMore = res.hasMore == true
-                    out.nextOffset = res.nextOffset or #coll
+                    out.nextOffset = res.nextOffset
+                    out.nextCursor = res.nextCursor
                     out.limit = res.limit
                 end
                 cb(out)

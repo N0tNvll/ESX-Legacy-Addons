@@ -147,18 +147,39 @@ Helpers.registerCallback("esx-adminmenu:server:getAdminLogs", function(source, d
 end)
 
 local MAX_RESULTS = tonumber(Config.AdminLimits and Config.AdminLimits.OfflineSearchResults) or 25
-local MIN_QUERY_LENGTH = math.max(3, math.floor(tonumber(Config.AdminLimits and Config.AdminLimits.MinOfflineSearchLength) or 3))
-local OFFLINE_SEARCH_COOLDOWN_MS = math.max(0, math.floor(tonumber(Config.AdminLimits and Config.AdminLimits.OfflineSearchCooldownMs) or 500))
+local MIN_QUERY_LENGTH = math.max(
+	3,
+	math.floor(tonumber(Config.AdminLimits and Config.AdminLimits.MinOfflineSearchLength) or 3)
+)
+local OFFLINE_SEARCH_COOLDOWN_MS = math.max(
+	0,
+	math.floor(tonumber(Config.AdminLimits and Config.AdminLimits.OfflineSearchCooldownMs) or 1000)
+)
+
 local offlineSearchCooldowns = {}
 
-local SEARCH_COLUMNS = [[SELECT identifier, firstname, lastname, sex, job, job_grade, accounts, metadata,
-	last_seen, created_at, phone_number, `group`, disabled
-	FROM users]]
+local SEARCH_COLUMNS = [[
+	SELECT
+		identifier,
+		firstname,
+		lastname,
+		sex,
+		job,
+		job_grade,
+		accounts,
+		metadata,
+		last_seen,
+		created_at,
+		phone_number,
+		`group`,
+		disabled
+	FROM users
+]]
 
---- Escapes LIKE metacharacters. Without this a query of "%" or "_" would match
---- every row in the table and leak the whole user base in one request.
+-- Escape LIKE metacharacters while still allowing us to append
+-- a trailing % for an indexed prefix search: "pepe%".
 local function escapeLike(value)
-	return (value:gsub("([%%_\\])", "\\%1"))
+	return (value:gsub("([%%_\\\\])", "\\\\%1"))
 end
 
 local function decodeJson(raw)
@@ -167,21 +188,40 @@ local function decodeJson(raw)
 	end
 
 	local ok, decoded = pcall(json.decode, raw)
-	return (ok and type(decoded) == "table") and decoded or {}
+
+	if not ok or type(decoded) ~= "table" then
+		return {}
+	end
+
+	return decoded
 end
-
---- The bare id shared by a player's char/license identifiers.
-local function getBase(identifier)
-	if type(identifier) ~= "string" then
+--[[
+Bare identifier shared by char/license forms.
+Returns the underlying FiveM/ESX identifier without assuming
+a specific multicharacter prefix
+]]--
+local function getUnderlyingIdentifier(identifier)
+	if type(identifier) ~= "string" or identifier == "" then
 		return nil
 	end
 
-	local base = identifier:match("^[^:]+:(.+)$")
-	if not base or base == "" or #base < 5 or #base > 80 then
+	if #identifier > 150 then
 		return nil
 	end
 
-	return base
+	local firstColon = identifier:find(":", 1, true)
+
+	if not firstColon then
+		return nil
+	end
+
+	local remainder = identifier:sub(firstColon + 1)
+
+	if remainder:find(":", 1, true) then
+		return remainder
+	end
+
+	return identifier
 end
 
 local function getNowMs()
@@ -199,11 +239,13 @@ local function isOfflineSearchRateLimited(src)
 
 	local now = getNowMs()
 	local last = offlineSearchCooldowns[src] or 0
+
 	if last > 0 and now >= last and now - last < OFFLINE_SEARCH_COOLDOWN_MS then
 		return true
 	end
 
 	offlineSearchCooldowns[src] = now
+
 	return false
 end
 
@@ -214,138 +256,298 @@ end)
 local function buildOfflineEntry(row, canSeeSensitive)
 	local accounts = decodeJson(row.accounts)
 	local metadata = decodeJson(row.metadata)
-	local base = getBase(row.identifier)
+	local underlyingIdentifier = getUnderlyingIdentifier(row.identifier)
+	local storedHealth = tonumber(metadata.health)
+	local storedArmor = tonumber(metadata.armor)
 
 	return {
 		status = "offline",
 		id = nil,
-		name = ((row.firstname or "") .. " " .. (row.lastname or "")):match("^%s*(.-)%s*$"),
+
+		name = (
+			(row.firstname or "") ..
+			" " ..
+			(row.lastname or "")
+		):match("^%s*(.-)%s*$"),
 
 		cash = tonumber(accounts.money) or 0,
 		bank = tonumber(accounts.bank) or 0,
 		alt_money = tonumber(accounts.black_money) or 0,
 
-		health = metadata.health and metadata.health - 100 or 0,
-		armor = metadata.armor or 0,
+		health = storedHealth and math.max(0, storedHealth - 100) or 0,
+		armor = storedArmor or 0,
 
 		char_identifier = canSeeSensitive and row.identifier or nil,
-		identifier = canSeeSensitive and (base and ("license:" .. base) or row.identifier) or nil,
+
+		identifier = canSeeSensitive
+			and (underlyingIdentifier or row.identifier)
+			or nil,
+
 		phone_number = canSeeSensitive and row.phone_number or nil,
 
-		play_time = Helpers.getFormattedPlayTime(metadata.lastPlaytime or 0),
+		play_time = Helpers.getFormattedPlayTime(
+			tonumber(metadata.lastPlaytime) or 0
+		),
+
 		gender = row.sex == "f" and "f" or "m",
 		job = row.job,
 		job_grade = row.job_grade,
+
 		group = canSeeSensitive and row.group or nil,
+
 		disabled = row.disabled == 1 or row.disabled == true,
+
 		last_join = row.last_seen,
 		first_join = row.created_at,
 	}
 end
 
---- Online players matching the query, taken from the same source as the Online
---- Players tab so both views stay consistent in shape and sensitive-data gating.
-local function findOnlineMatches(src, query)
-	local matches = {}
-	local list = Helpers.getPlayerList(src) or {}
+--[[ 
+We only need this to prevent currently-online characters from also
+appearing as OFFLINE results.
+]]--
+local function getOnlineCharacterIdentifiers()
+	local identifiers = {}
+	local count = 0
 
-	for i = 1, #list do
-		local player = list[i]
-		local haystack = {
-			tostring(player.name or ""),
-			tostring(player.id or ""),
-			tostring(player.char_identifier or ""),
-			tostring(player.identifier or ""),
-		}
+	local players = GetPlayers()
 
-		for j = 1, #haystack do
-			if haystack[j]:lower():find(query, 1, true) then
-				matches[#matches + 1] = player
-				break
+	for i = 1, #players do
+		local src = tonumber(players[i])
+
+		if src then
+			local xPlayer = ESX.GetPlayerFromId(src)
+			local identifier = xPlayer and xPlayer.identifier
+
+			if type(identifier) == "string"
+				and identifier ~= ""
+				and not identifiers[identifier]
+			then
+				identifiers[identifier] = true
+				count = count + 1
 			end
 		end
 	end
 
-	return matches
+	return identifiers, count
 end
 
-Helpers.registerCallback("esx-adminmenu:server:searchOfflinePlayer", function(source, data)
-	local src = source
-
-	if not Helpers.hasPermission(src) then
-		return { success = false, err = "Insufficient Permissions", players = {} }
-	end
-
-	local canSeeSensitive = Helpers.hasFeaturePermission(src, "sensitiveInfo")
-
-	local raw = type(data) == "table" and data.identifier or data
-	if type(raw) ~= "string" then
-		return { success = true, players = {} }
-	end
-
-	local query = raw:match("^%s*(.-)%s*$")
-	if #query < MIN_QUERY_LENGTH or #query > 100 then
-		return { success = true, players = {} }
-	end
-
-	if isOfflineSearchRateLimited(src) then
-		return { success = false, err = "Search rate limited.", players = {} }
-	end
-
+local function searchOfflineDatabase(query, canSeeSensitive, limit)
 	local lowered = query:lower()
-	local players = findOnlineMatches(src, lowered)
 
-	-- Track who is already listed as online so a player is never shown twice.
-	local seen = {}
-	for i = 1, #players do
-		local key = players[i].char_identifier or players[i].identifier
-		if key then
-			seen[key] = true
-		end
-	end
-
-	local rows
-	local fullIdentifier = query:match("^license:[%w%-_]+$") or query:match("^char%d+:[%w%-_]+$")
+	local fullIdentifier =
+		lowered:match("^license:[%w%-_]+$")
+		or lowered:match("^license2:[%w%-_]+$")
+		or lowered:match("^char%d+:[%w%-_]+$")
 
 	if fullIdentifier then
-		-- Fast path: a complete identifier is matched against the PRIMARY key,
-		-- so this stays sargable instead of degrading into a full scan.
-		local base = getBase(query)
-		local candidates = base and { query, "license:" .. base, "license2:" .. base } or { query }
+		if not canSeeSensitive then
+			return {}
+		end
 
-		rows = Helpers.safeQuery(
-			SEARCH_COLUMNS .. " WHERE identifier IN (?, ?, ?) LIMIT ?",
-			{ candidates[1], candidates[2] or candidates[1], candidates[3] or candidates[1], MAX_RESULTS + 1 }
-		)
-	else
-		-- Fuzzy path: name and partial identifier. firstname/lastname carry no
-		-- index, so this scans; MIN_QUERY_LENGTH and LIMIT keep it bounded.
-		local infix = "%" .. escapeLike(query) .. "%"
-
-		rows = Helpers.safeQuery(
-			SEARCH_COLUMNS .. [[ WHERE identifier LIKE ?
-				OR firstname LIKE ?
-				OR lastname LIKE ?
-				OR CONCAT(firstname, ' ', lastname) LIKE ?
-				OR phone_number LIKE ?
-			LIMIT ?]],
-			{ infix, infix, infix, infix, infix, MAX_RESULTS + 1 }
+		return Helpers.safeQuery(
+			SEARCH_COLUMNS .. [[
+				WHERE identifier = ?
+				LIMIT ?
+			]],
+			{
+				lowered,
+				limit,
+			}
 		)
 	end
 
-	if rows then
+	local identifierSearch =
+		lowered:match("^license:")
+		or lowered:match("^license2:")
+		or lowered:match("^char%d+:")
+
+	if identifierSearch then
+		if not canSeeSensitive then
+			return {}
+		end
+
+		return Helpers.safeQuery(
+			SEARCH_COLUMNS .. [[
+				WHERE identifier LIKE ?
+				LIMIT ?
+			]],
+			{
+				escapeLike(lowered) .. "%",
+				limit,
+			}
+		)
+	end
+
+	local looksLikePhone =
+		query:match("^[%d%+%-%s%(%)]+$") ~= nil
+
+	if looksLikePhone then
+		if not canSeeSensitive then
+			return {}
+		end
+
+		return Helpers.safeQuery(
+			SEARCH_COLUMNS .. [[
+				WHERE phone_number LIKE ?
+				LIMIT ?
+			]],
+			{
+				escapeLike(query) .. "%",
+				limit,
+			}
+		)
+	end
+
+	local firstPart, secondPart =
+		query:match("^(%S+)%s+(.+)$")
+
+	if firstPart and secondPart then
+		local firstPrefix =
+			escapeLike(firstPart) .. "%"
+
+		local secondPrefix =
+			escapeLike(secondPart) .. "%"
+
+		return Helpers.safeQuery(
+			SEARCH_COLUMNS .. [[
+				WHERE
+					(
+						firstname LIKE ?
+						AND lastname LIKE ?
+					)
+					OR
+					(
+						firstname LIKE ?
+						AND lastname LIKE ?
+					)
+				LIMIT ?
+			]],
+			{
+				firstPrefix,
+				secondPrefix,
+
+				secondPrefix,
+				firstPrefix,
+
+				limit,
+			}
+		)
+	end
+
+	local prefix = escapeLike(query) .. "%"
+
+	return Helpers.safeQuery(
+		SEARCH_COLUMNS .. [[
+			WHERE firstname LIKE ?
+				OR lastname LIKE ?
+			LIMIT ?
+		]],
+		{
+			prefix,
+			prefix,
+			limit,
+		}
+	)
+end
+
+Helpers.registerCallback(
+	"esx-adminmenu:server:searchOfflinePlayer",
+	function(source, data)
+		local src = source
+
+		if not Helpers.hasPermission(src) then
+			return {
+				success = false,
+				err = "Insufficient Permissions",
+				players = {},
+			}
+		end
+
+		local raw =
+			type(data) == "table"
+			and data.identifier
+			or data
+
+		if type(raw) ~= "string" then
+			return {
+				success = true,
+				players = {},
+			}
+		end
+
+		local query =
+			raw:match("^%s*(.-)%s*$")
+
+		if #query < MIN_QUERY_LENGTH
+			or #query > 100
+		then
+			return {
+				success = true,
+				players = {},
+			}
+		end
+
+		if isOfflineSearchRateLimited(src) then
+			return {
+				success = false,
+				err = "Search rate limited.",
+				players = {},
+			}
+		end
+
+		local canSeeSensitive =
+			Helpers.hasFeaturePermission(
+				src,
+				"sensitiveInfo"
+			)
+
+		local onlineIdentifiers, onlineCount =
+			getOnlineCharacterIdentifiers()
+
+		local databaseLimit =
+			MAX_RESULTS
+			+ math.min(onlineCount, 256)
+			+ 1
+
+		local rows =
+			searchOfflineDatabase(
+				query,
+				canSeeSensitive,
+				databaseLimit
+			)
+
+		if rows == nil then
+			return {
+				success = false,
+				err = "Database unavailable.",
+				players = {},
+			}
+		end
+
+		local players = {}
+
 		for i = 1, #rows do
 			if #players >= MAX_RESULTS then
 				break
 			end
 
 			local row = rows[i]
-			if not seen[row.identifier] then
-				seen[row.identifier] = true
-				players[#players + 1] = buildOfflineEntry(row, canSeeSensitive)
+
+			if row.identifier
+				and not onlineIdentifiers[row.identifier]
+			then
+				players[#players + 1] =
+					buildOfflineEntry(
+						row,
+						canSeeSensitive
+					)
 			end
 		end
-	end
 
-	return { success = true, players = players }
-end)
+		return {
+			success = true,
+			players = players,
+		}
+	end
+)

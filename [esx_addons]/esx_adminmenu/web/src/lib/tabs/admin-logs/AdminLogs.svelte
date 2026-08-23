@@ -23,7 +23,7 @@
 	let logs = $state<AdminLog[]>([]);
 	let loading = $state(false);
 	let hasMore = $state(false);
-	let nextOffset = $state(0);
+	let nextCursor = $state<number | null>(null);
 	let loaded = $state(false);
 
 	let namespaceFilter = $state("");
@@ -72,12 +72,12 @@
 			namespace: namespaceFilter || undefined,
 			days: daysFilter > 0 ? daysFilter : undefined,
 			limit: PAGE_SIZE,
-			offset: reset ? 0 : nextOffset,
+			beforeId: reset ? undefined : (nextCursor ?? undefined),
 		});
 
 		logs = reset ? res.logs : [...logs, ...res.logs];
 		hasMore = res.hasMore;
-		nextOffset = res.nextOffset;
+		nextCursor = res.nextCursor;
 		loading = false;
 		loaded = true;
 	}
