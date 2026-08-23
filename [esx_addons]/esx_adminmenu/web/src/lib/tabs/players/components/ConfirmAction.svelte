@@ -20,7 +20,8 @@
 			label: impound.label ?? id,
 		}))
 	);
-	const selectedImpoundLabel = $derived(selectedImpound ? (uiState.impounds?.[selectedImpound]?.label ?? selectedImpound) : t("select_impound"));
+	const selectedImpoundOption = $derived(impoundOptions.find((impound) => impound.id === selectedImpound) ?? impoundOptions[0] ?? null);
+	const selectedImpoundLabel = $derived(selectedImpoundOption ? selectedImpoundOption.label : t("select_impound"));
 
 	let openedAt = $state<number | null>(null);
 
@@ -30,6 +31,13 @@
 		} else {
 			openedAt = null;
 		}
+	});
+
+	$effect(() => {
+		if (!open || confirmType !== "impound_vehicle") return;
+		if (selectedImpound && impoundOptions.some((impound) => impound.id === selectedImpound)) return;
+
+		selectedImpound = impoundOptions[0]?.id ?? null;
 	});
 
 	let newDate: string = $state("");
@@ -80,9 +88,10 @@
 		}
 
 		if (confirmType === "impound_vehicle") {
-			if (!selectedImpound) return;
+			const impoundName = selectedImpoundOption?.id ?? null;
+			if (!impoundName) return;
 
-			onConfirm({ impoundName: selectedImpound });
+			onConfirm({ impoundName });
 			reset();
 			return;
 		}

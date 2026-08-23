@@ -14,8 +14,8 @@ type InitResourceData = {
 export type NuiMessage =
 	| { action: "initResource"; data: InitResourceData }
 	| { action: "openAdmin"; data: Player[] }
-	| { action: "openAdminDashboard"; data: { players: Player[]; serverData?: ServerState; selectedPlayerId?: number } }
-	| { action: "openAdminMenu"; data?: { serverData?: ServerState } }
+	| { action: "openAdminDashboard"; data: { players: Player[]; serverData?: ServerState; selectedPlayerId?: number; impounds?: Record<string, Impound> | Impound[] } }
+	| { action: "openAdminMenu"; data?: { serverData?: ServerState; impounds?: Record<string, Impound> | Impound[] } }
 	| { action: "updateServerData"; data: ServerState }
 	| { action: "updatePlayers"; data: Player[] }
 	| { action: "closeAdmin"; data?: undefined };

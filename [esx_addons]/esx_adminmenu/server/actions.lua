@@ -693,9 +693,14 @@ Helpers.registerCallback("esx-adminmenu:server:vehicleImpound", function(source,
 	end
 
 	local impoundName = trimString(data.impoundName)
+
+	if impoundName == "" then
+		return setVehicleImpounded(plate)
+	end
+
 	local impounds = Helpers.getImpounds() or {}
 
-	if impoundName == "" or not impounds[impoundName] then
+	if next(impounds) and not impounds[impoundName] then
 		return { success = false, err = "Invalid impound." }
 	end
 

@@ -10,16 +10,24 @@ local function activeTranslations()
 end
 
 local initAttempts = 0
-local maxInitAttempts = 20
+local initRequestPending = false
+local maxInitAttempts = 60
 
 local function hasEntries(value)
     return type(value) == 'table' and next(value) ~= nil
 end
 
 local function requestInitData()
+    if initRequestPending then
+        return
+    end
+
+    initRequestPending = true
     initAttempts = initAttempts + 1
 
     ESX.TriggerServerCallback('esx-adminmenu:server:getInitData', function(data)
+        initRequestPending = false
+
         if not data or data.err then
             if data and data.err and Config.Debug then
                 print(data.err)
@@ -37,6 +45,11 @@ local function requestInitData()
             SetTimeout(1000, requestInitData)
         end
     end)
+end
+
+function RefreshAdminInitData()
+    initAttempts = 0
+    requestInitData()
 end
 
 requestInitData()

@@ -74,6 +74,12 @@ local function notifyClientError(err)
     end
 end
 
+local function refreshInitData()
+    if type(RefreshAdminInitData) == "function" then
+        RefreshAdminInitData()
+    end
+end
+
 local function openDashboard(cb)
     ESX.TriggerServerCallback("esx-adminmenu:server:openDashboard", function(res)
         if not res or not res.success then
@@ -86,12 +92,14 @@ local function openDashboard(cb)
             return
         end
 
+        refreshInitData()
         ToggleNUIFocus(true, "dashboard")
         SendNUIMessage({
             action = "openAdminDashboard",
             data = {
                 players = res.players or {},
                 serverData = res.serverData,
+                impounds = res.impounds,
             },
         })
 
@@ -113,11 +121,13 @@ local function openAdminMenu(cb)
             return
         end
 
+        refreshInitData()
         ToggleNUIFocus(true, "menu")
         SendNUIMessage({
             action = "openAdminMenu",
             data = {
                 serverData = res.serverData,
+                impounds = res.impounds,
             },
         })
 
@@ -592,6 +602,7 @@ RegisterNetEvent("esx-adminmenu:client:copyToClipboard", function(text)
 end)
 
 RegisterNetEvent("esx-adminmenu:client:open", function(data)
+    refreshInitData()
     ToggleNUIFocus(true, "dashboard")
     SendNUIMessage({
         action = "openAdminDashboard",
@@ -607,6 +618,7 @@ end)
 
 RegisterNetEvent("esx-adminmenu:client:openInformation", function(data)
     data = data or {}
+    refreshInitData()
     ToggleNUIFocus(true, "dashboard")
     SendNUIMessage({
         action = "openAdminDashboard",

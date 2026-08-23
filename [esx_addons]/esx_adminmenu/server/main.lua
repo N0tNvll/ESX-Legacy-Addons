@@ -29,6 +29,7 @@ Helpers.registerCallback("esx-adminmenu:server:canOpen", function(source)
 	return {
 		success = true,
 		serverData = Helpers.getServerData(),
+		impounds = Helpers.getImpounds(),
 	}
 end)
 
@@ -66,6 +67,7 @@ Helpers.registerCallback("esx-adminmenu:server:openDashboard", function(source)
 		success = true,
 		players = Helpers.getPlayerList(source) or {},
 		serverData = Helpers.getServerData(),
+		impounds = Helpers.getImpounds(),
 	}
 end)
 
