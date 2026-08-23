@@ -5,12 +5,16 @@ export interface Vector3 {
 }
 
 export interface SpawnPoint extends Vector3 {
-	heading: number;
+	heading?: number;
+	w?: number;
 }
 
 export interface Impound {
-	getOutPoint: Vector3;
-	spawnPoint: SpawnPoint;
+	id?: string;
+	label?: string;
+	getOutPoint?: Vector3;
+	spawnPoint?: SpawnPoint;
+	spawns?: SpawnPoint[];
 	sprite?: number;
 	scale?: number;
 	colour?: number;

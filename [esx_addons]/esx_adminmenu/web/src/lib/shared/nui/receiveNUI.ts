@@ -2,10 +2,12 @@ import type { ServerState } from "../types/server";
 import type { Translations } from "../stores/translations.svelte";
 import type { Player } from "../../tabs/players/types/player";
 import type { VehicleSpawnerConfig } from "../stores/user.svelte";
+import type { Impound } from "../types/impounds";
 
 type InitResourceData = {
   translations: Translations;
   serverData: ServerState;
+  impounds?: Record<string, Impound> | Impound[];
   vehicleConfig?: VehicleSpawnerConfig;
 };
 

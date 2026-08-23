@@ -582,9 +582,18 @@ local function decodeVehicleProps(rawVehicle)
     return {}
 end
 
+local function escapeLike(value)
+    return (value:gsub("([%%_\\\\])", "\\\\%1"))
+end
+
 local function toVehicleRecord(row, canSeeSensitive)
     local vehicleProps = decodeVehicleProps(row.vehicle)
     local vehicleHash = tonumber(vehicleProps.model)
+    local pound = type(row.pound) == "string" and trim(row.pound) or nil
+
+    if pound == "" then
+        pound = nil
+    end
 
     if not vehicleHash then
         return nil
@@ -596,51 +605,12 @@ local function toVehicleRecord(row, canSeeSensitive)
         model = vehicleHash,
         type = capitalize(row.type or "car"),
         stored = row.stored == 1 or row.stored == "1" or row.stored == true,
-        impounded = row.pound ~= nil,
-        impoundName = row.pound,
+        impounded = pound ~= nil,
+        impoundName = pound,
     }
 end
 
-function Helpers.getVehiclesPage(data, canSeeSensitive)
-    data = data or {}
-
-    local limit = tonumber(data.limit) or MAX_VEHICLE_PAGE_SIZE
-    limit = math.max(1, math.min(limit, MAX_VEHICLE_PAGE_SIZE))
-
-    local offset = tonumber(data.offset) or 0
-    offset = math.max(0, offset)
-
-    local search = trim(data.search):sub(1, 64)
-    local params = {}
-    local where = ""
-
-    if search ~= "" then
-        -- Prefix (anchored) match so the plate/owner/type indexes can be used
-        -- instead of forcing a full table scan with a leading wildcard.
-        local pattern = search .. "%"
-
-        -- Only expose owner as a searchable/returned field to sensitive-tier admins.
-        if canSeeSensitive then
-            where = " WHERE plate LIKE ? OR owner LIKE ? OR type LIKE ?"
-            params[#params + 1] = pattern
-            params[#params + 1] = pattern
-            params[#params + 1] = pattern
-        else
-            where = " WHERE plate LIKE ? OR type LIKE ?"
-            params[#params + 1] = pattern
-            params[#params + 1] = pattern
-        end
-    end
-
-    params[#params + 1] = limit + 1
-    params[#params + 1] = offset
-
-    local rows = Helpers.safeQuery(
-        ("SELECT owner, plate, vehicle, stored, pound, type FROM owned_vehicles%s ORDER BY plate ASC LIMIT ? OFFSET ?")
-        :format(where),
-        params
-    )
-
+local function vehiclePageResult(rows, limit, nextOffset, canSeeSensitive)
     local result = {}
     local rowCount = #(rows or {})
     local count = math.min(rowCount, limit)
@@ -656,9 +626,61 @@ function Helpers.getVehiclesPage(data, canSeeSensitive)
     return {
         vehicles = result,
         hasMore = rowCount > limit,
-        nextOffset = offset + count,
+        nextOffset = nextOffset,
         limit = limit,
     }
+end
+
+local function searchVehicles(search, limit, canSeeSensitive)
+    local pattern = escapeLike(search) .. "%"
+    local params = { pattern, pattern }
+    local where = " WHERE plate LIKE ? OR type LIKE ?"
+
+    if canSeeSensitive then
+        where = " WHERE plate LIKE ? OR owner LIKE ? OR type LIKE ?"
+        params = { pattern, pattern, pattern }
+    end
+
+    params[#params + 1] = limit + 1
+
+    local rows = Helpers.safeQuery(
+        ("SELECT owner, plate, vehicle, stored, pound, type FROM owned_vehicles%s ORDER BY plate ASC LIMIT ?")
+        :format(where),
+        params
+    )
+
+    local page = vehiclePageResult(rows, limit, limit, canSeeSensitive)
+    page.hasMore = false
+    page.nextOffset = #page.vehicles
+
+    return page
+end
+
+function Helpers.getVehiclesPage(data, canSeeSensitive)
+    data = data or {}
+
+    local limit = tonumber(data.limit) or MAX_VEHICLE_PAGE_SIZE
+    limit = math.max(1, math.min(limit, MAX_VEHICLE_PAGE_SIZE))
+
+    local offset = tonumber(data.offset) or 0
+    offset = math.max(0, offset)
+
+    local search = trim(data.search):sub(1, 64)
+
+    if search ~= "" then
+        return searchVehicles(search, limit, canSeeSensitive)
+    end
+
+    local params = {}
+    params[#params + 1] = limit + 1
+    params[#params + 1] = offset
+
+    local rows = Helpers.safeQuery(
+        "SELECT owner, plate, vehicle, stored, pound, type FROM owned_vehicles ORDER BY plate ASC LIMIT ? OFFSET ?",
+        params
+    )
+
+    return vehiclePageResult(rows, limit, offset + math.min(#(rows or {}), limit), canSeeSensitive)
 end
 
 local function normalizeTimestamp(value)
@@ -899,6 +921,28 @@ end
 
 -- Only memoize a successful, non-empty result so a start-order race with
 -- esx_garage self-heals instead of caching an empty list forever.
+local function normalizeImpounds(result)
+    local out = {}
+
+    if type(result) ~= "table" then
+        return out
+    end
+
+    for key, impound in pairs(result) do
+        if type(impound) == "table" then
+            local id = type(impound.id) == "string" and trim(impound.id) or nil
+
+            if id and id ~= "" then
+                out[id] = impound
+            elseif type(key) == "string" and key ~= "" then
+                out[key] = impound
+            end
+        end
+    end
+
+    return out
+end
+
 function Helpers.getImpounds()
     if impounds and next(impounds) then
         return impounds
@@ -908,8 +952,10 @@ function Helpers.getImpounds()
         return exports["esx_garage"]:getImpounds()
     end)
 
-    if ok and type(result) == "table" and next(result) then
-        impounds = result
+    local normalized = ok and normalizeImpounds(result) or {}
+
+    if next(normalized) then
+        impounds = normalized
         return impounds
     end
 

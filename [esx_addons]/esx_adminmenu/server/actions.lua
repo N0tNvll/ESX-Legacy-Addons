@@ -638,7 +638,17 @@ local function vehicleUpdate(source, data, query, params, feature)
 end
 
 Helpers.registerCallback("esx-adminmenu:server:vehicleImpound", function(source, data)
+	if not Helpers.hasFeaturePermission(source, "vehicleManagement") then
+		return { success = false, err = "Insufficient Permissions" }
+	end
+
 	data = data or {}
+	local plate = normalizePlate(data.plate)
+
+	if not plate then
+		return { success = false, err = "Missing plate" }
+	end
+
 	local impoundName = trimString(data.impoundName)
 	local impounds = Helpers.getImpounds() or {}
 
@@ -646,17 +656,38 @@ Helpers.registerCallback("esx-adminmenu:server:vehicleImpound", function(source,
 		return { success = false, err = "Invalid impound." }
 	end
 
-	return vehicleUpdate(
-		source,
-		data,
-		"UPDATE owned_vehicles SET pound = ? WHERE plate = ?",
-		{ impoundName },
-		"vehicleManagement"
+	local ok, handled = pcall(function()
+		return exports["esx_garage"]:impoundVehicle(plate, impoundName)
+	end)
+
+	if ok and handled == true then
+		return { success = true }
+	end
+
+	local affected = Helpers.safeUpdate(
+		"UPDATE owned_vehicles SET stored = 1, parking = NULL, pound = ? WHERE TRIM(TRAILING ' ' FROM plate) = ?",
+		{ impoundName, plate }
 	)
+
+	if affected == nil then
+		return { success = false, err = "Failed to impound vehicle." }
+	end
+
+	if affected < 1 then
+		return { success = false, err = "Vehicle not found." }
+	end
+
+	return { success = true }
 end)
 
 Helpers.registerCallback("esx-adminmenu:server:vehicleUnimpound", function(source, data)
-	return vehicleUpdate(source, data or {}, "UPDATE owned_vehicles SET pound = NULL WHERE plate = ?", {}, "vehicleManagement")
+	return vehicleUpdate(
+		source,
+		data or {},
+		"UPDATE owned_vehicles SET stored = 1, parking = NULL, pound = NULL WHERE TRIM(TRAILING ' ' FROM plate) = ?",
+		{},
+		"vehicleManagement"
+	)
 end)
 
 Helpers.registerCallback("esx-adminmenu:server:vehicleDelete", function(source, data)

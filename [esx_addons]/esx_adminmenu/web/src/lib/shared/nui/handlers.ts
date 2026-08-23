@@ -12,7 +12,7 @@ import type { Player } from "../../tabs/players/types/player";
 import type { Impound } from "../types/impounds";
 
 type NuiMessage =
-	| { action: "initResource"; data: { translations: Translations; serverData: ServerState; impounds: Record<string, Impound>; vehicleConfig?: VehicleSpawnerConfig } }
+	| { action: "initResource"; data: { translations: Translations; serverData: ServerState; impounds: Record<string, Impound> | Impound[]; vehicleConfig?: VehicleSpawnerConfig } }
 	| { action: "openAdmin"; data: Player[] }
 	| { action: "openAdminDashboard"; data: { players: Player[]; serverData?: ServerState; selectedPlayerId?: number } }
 	| { action: "openAdminMenu"; data?: { serverData?: ServerState } }

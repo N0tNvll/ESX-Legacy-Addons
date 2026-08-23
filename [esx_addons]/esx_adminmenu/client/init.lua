@@ -9,16 +9,34 @@ local function activeTranslations()
     return locale or {}
 end
 
-ESX.TriggerServerCallback('esx-adminmenu:server:getInitData', function(data)
-    if not data or data.err then
-        if data.err and Config.Debug then
-            print(data.err)
+local initAttempts = 0
+local maxInitAttempts = 20
+
+local function hasEntries(value)
+    return type(value) == 'table' and next(value) ~= nil
+end
+
+local function requestInitData()
+    initAttempts = initAttempts + 1
+
+    ESX.TriggerServerCallback('esx-adminmenu:server:getInitData', function(data)
+        if not data or data.err then
+            if data and data.err and Config.Debug then
+                print(data.err)
+            end
+            return
         end
-        return
-    end
-    data.translations = activeTranslations()
-    SendNUIMessage({
-        action = 'initResource',
-        data = data
-    })
-end)
+
+        data.translations = activeTranslations()
+        SendNUIMessage({
+            action = 'initResource',
+            data = data
+        })
+
+        if not hasEntries(data.impounds) and initAttempts < maxInitAttempts then
+            SetTimeout(1000, requestInitData)
+        end
+    end)
+end
+
+requestInitData()
