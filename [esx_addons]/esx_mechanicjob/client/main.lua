@@ -1,6 +1,6 @@
 local HasAlreadyEnteredMarker, LastZone = false, nil
 local CurrentAction, CurrentActionMsg, CurrentActionData = nil, '', {}
-local CurrentlyTowedVehicle, Blips, NPCOnJob, NPCTargetTowable, NPCTargetTowableZone = nil, {}, false, nil, nil
+local CurrentlyTowedVehicle, Blips, NPCOnJob, NPCTargetTowable, NPCTargetTowableNetId, NPCTargetTowableZone = nil, {}, false, nil, nil, nil
 local NPCHasSpawnedTowable, NPCLastCancel, NPCHasBeenNextToTowable, NPCTargetDeleterZone = false,
 	GetGameTimer() - 5 * 60000, false, false
 local isDead, isBusy = false, false
@@ -16,16 +16,36 @@ function SelectRandomTowable()
 end
 
 function StartNPCJob()
+	TriggerServerEvent('esx_mechanicjob:startNPCJob')
+end
+
+RegisterNetEvent('esx_mechanicjob:npcJobStarted')
+AddEventHandler('esx_mechanicjob:npcJobStarted', function(targetZone)
+	if NPCOnJob or not Config.Zones[targetZone] then
+		return
+	end
+
 	NPCOnJob = true
 
-	NPCTargetTowableZone = SelectRandomTowable()
+	NPCTargetTowableZone = targetZone
 	local zone = Config.Zones[NPCTargetTowableZone]
 
 	Blips['NPCTargetTowableZone'] = AddBlipForCoord(zone.Pos.x, zone.Pos.y, zone.Pos.z)
 	SetBlipRoute(Blips['NPCTargetTowableZone'], true)
 
 	ESX.ShowNotification(TranslateCap('drive_to_indicated'))
-end
+end)
+
+RegisterNetEvent('esx_mechanicjob:npcJobCompleted')
+AddEventHandler('esx_mechanicjob:npcJobCompleted', function(targetNetId)
+	local targetVehicle = targetNetId and NetToVeh(targetNetId) or NPCTargetTowable
+
+	if targetVehicle and targetVehicle ~= 0 and DoesEntityExist(targetVehicle) then
+		ESX.Game.DeleteVehicle(targetVehicle)
+	end
+
+	StopNPCJob()
+end)
 
 function StopNPCJob(cancel)
 	if Blips['NPCTargetTowableZone'] then
@@ -42,11 +62,13 @@ function StopNPCJob(cancel)
 
 	NPCOnJob                          = false
 	NPCTargetTowable                  = nil
+	NPCTargetTowableNetId             = nil
 	NPCTargetTowableZone              = nil
 	NPCHasSpawnedTowable              = false
 	NPCHasBeenNextToTowable           = false
 
 	if cancel then
+		TriggerServerEvent('esx_mechanicjob:stopNPCJob')
 		ESX.ShowNotification(TranslateCap('mission_canceled'), "error")
 	else
 		--TriggerServerEvent('esx_mechanicjob:onNPCJobCompleted')
@@ -235,7 +257,7 @@ local function markVehicleImpounded(vehicle)
 
 	local plate = ESX.Math.Trim(GetVehicleNumberPlateText(vehicle) or '')
 	if plate ~= '' then
-		TriggerServerEvent('esx_mechanicjob:impoundOwnedVehicle', plate)
+		TriggerServerEvent('esx_mechanicjob:impoundOwnedVehicle', plate, VehToNet(vehicle))
 	end
 end
 
@@ -429,9 +451,7 @@ function OpenMobileMechanicActionsMenu()
 					if NPCOnJob then
 						if NPCTargetDeleterZone then
 							if CurrentlyTowedVehicle == NPCTargetTowable then
-								ESX.Game.DeleteVehicle(NPCTargetTowable)
-								TriggerServerEvent('esx_mechanicjob:onNPCJobMissionCompleted')
-								StopNPCJob()
+								TriggerServerEvent('esx_mechanicjob:onNPCJobMissionCompleted', NPCTargetTowableNetId, VehToNet(vehicle))
 								NPCTargetDeleterZone = false
 							else
 								ESX.ShowNotification(TranslateCap('not_right_veh'))
@@ -771,6 +791,8 @@ CreateThread(function()
 
 				ESX.Game.SpawnVehicle(model, zone.Pos, 0, function(vehicle)
 					NPCTargetTowable = vehicle
+					NPCTargetTowableNetId = VehToNet(vehicle)
+					TriggerServerEvent('esx_mechanicjob:npcJobTargetSpawned', NPCTargetTowableNetId)
 				end)
 
 				NPCHasSpawnedTowable = true
@@ -785,6 +807,7 @@ CreateThread(function()
 			if #(coords - zone.Pos) < Config.NPCNextToDistance then
 				Sleep = 0
 				ESX.ShowNotification(TranslateCap('please_tow'))
+				TriggerServerEvent('esx_mechanicjob:npcJobTargetReached', NPCTargetTowableNetId)
 				NPCHasBeenNextToTowable = true
 			end
 		end

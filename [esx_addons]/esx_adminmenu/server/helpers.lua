@@ -21,6 +21,7 @@ local MAX_VEHICLE_PAGE_SIZE = tonumber(ADMIN_LIMITS.VehiclePageSize) or 100
 local MAX_BAN_PAGE_SIZE = tonumber(ADMIN_LIMITS.BanPageSize) or 100
 local recentPlayers = {}
 local MAX_RECENT_PLAYERS = tonumber(ADMIN_LIMITS.RecentPlayersCap) or 100
+local VEHICLE_SELECT_COLUMNS = "owner, plate, vehicle, stored, pound, type"
 local serverStartedAt = os.time()
 local serverManagementConfig = Config.ServerManagement or {}
 local serverEnvironment = {
@@ -621,6 +622,17 @@ local function vehicleResultKey(row)
     return plate .. "\0" .. owner
 end
 
+local function compareVehicleRows(left, right)
+    local leftPlate = trim(left and left.plate)
+    local rightPlate = trim(right and right.plate)
+
+    if leftPlate ~= rightPlate then
+        return leftPlate < rightPlate
+    end
+
+    return trim(left and left.owner) < trim(right and right.owner)
+end
+
 local function vehiclePageResult(rows, limit, nextOffset, canSeeSensitive)
     local result = {}
     local rowCount = #(rows or {})
@@ -648,25 +660,46 @@ local function vehiclePageResult(rows, limit, nextOffset, canSeeSensitive)
     }
 end
 
-local function searchVehicles(search, limit, canSeeSensitive)
-    local pattern = escapeLike(search) .. "%"
-    local params = { pattern, pattern }
-    local where = " WHERE plate LIKE ? OR type LIKE ?"
+local function queryVehiclePrefix(column, pattern, limit)
+    local orderBy = column == "plate" and "`plate` ASC" or ("`%s` ASC, `plate` ASC"):format(column)
 
-    if canSeeSensitive then
-        where = " WHERE plate LIKE ? OR owner LIKE ? OR type LIKE ?"
-        params = { pattern, pattern, pattern }
+    return Helpers.safeQuery(
+        ("SELECT %s FROM owned_vehicles WHERE `%s` LIKE ? ESCAPE '\\\\' ORDER BY %s LIMIT ?")
+        :format(VEHICLE_SELECT_COLUMNS, column, orderBy),
+        { pattern, limit + 1 }
+    )
+end
+
+local function appendUniqueVehicleRows(target, seen, rows)
+    if type(rows) ~= "table" then
+        return
     end
 
-    params[#params + 1] = limit + 1
+    for i = 1, #rows do
+        local key = vehicleResultKey(rows[i])
 
-    local rows = Helpers.safeQuery(
-        ("SELECT owner, plate, vehicle, stored, pound, type FROM owned_vehicles%s ORDER BY plate ASC LIMIT ?")
-        :format(where),
-        params
-    )
+        if key and not seen[key] then
+            seen[key] = true
+            target[#target + 1] = rows[i]
+        end
+    end
+end
 
-    local page = vehiclePageResult(rows, limit, limit, canSeeSensitive)
+local function searchVehicles(search, limit, canSeeSensitive)
+    local pattern = escapeLike(search) .. "%"
+    local rows = {}
+    local seen = {}
+
+    if canSeeSensitive then
+        appendUniqueVehicleRows(rows, seen, queryVehiclePrefix("owner", pattern, limit))
+    end
+
+    appendUniqueVehicleRows(rows, seen, queryVehiclePrefix("plate", pattern, limit))
+    appendUniqueVehicleRows(rows, seen, queryVehiclePrefix("type", pattern, limit))
+
+    table.sort(rows, compareVehicleRows)
+
+    local page = vehiclePageResult(rows, limit, #rows, canSeeSensitive)
     page.hasMore = false
     page.nextOffset = #page.vehicles
 
@@ -702,7 +735,7 @@ function Helpers.getVehiclesPage(data, canSeeSensitive)
     params[#params + 1] = offset
 
     local rows = Helpers.safeQuery(
-        "SELECT owner, plate, vehicle, stored, pound, type FROM owned_vehicles ORDER BY plate ASC LIMIT ? OFFSET ?",
+        ("SELECT %s FROM owned_vehicles ORDER BY plate ASC LIMIT ? OFFSET ?"):format(VEHICLE_SELECT_COLUMNS),
         params
     )
 

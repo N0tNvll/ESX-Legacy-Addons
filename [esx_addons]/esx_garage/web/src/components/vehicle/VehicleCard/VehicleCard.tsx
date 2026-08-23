@@ -153,15 +153,6 @@ const StatusIndicator = styled.div<{ $impounded?: boolean }>`
   margin-left: auto;
 `;
 
-const PriceTag = styled.div`
-  background: ${(props) => props.theme.colors.secondary};
-  color: ${(props) => props.theme.colors.text.primary};
-  padding: 0.25rem 0.5rem;
-  border-radius: ${(props) => props.theme.sizes.borderRadius.sm};
-  font-size: 0.625rem;
-  font-weight: ${(props) => props.theme.fonts.weights.bold};
-`;
-
 const RenameInput = styled.input`
   background: ${(props) => props.theme.colors.backgroundSecondary};
   border: 1px solid ${(props) => props.theme.colors.primary};
@@ -267,7 +258,6 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onClick }) =>
       </InfoContainer>
 
       <BottomContainer>
-        {(vehicle.impoundFee ?? 0) > 0 && <PriceTag>${vehicle.impoundFee}</PriceTag>}
         {vehicle.impounded ? (
           <StatusIndicator $impounded>Impounded</StatusIndicator>
         ) : (

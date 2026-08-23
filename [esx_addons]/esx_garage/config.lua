@@ -45,6 +45,7 @@ Config.Garages = {
 }
 
 ---@type Impound[]
+-- `cost` is optional. When omitted, Config.Settings.defaultImpoundFee is used.
 Config.Impounds = {
 	{
 		id = "los_santos",
