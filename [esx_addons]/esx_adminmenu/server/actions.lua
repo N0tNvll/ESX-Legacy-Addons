@@ -83,6 +83,58 @@ local function normalizePlate(plate)
 	return plate
 end
 
+local function addUniquePlateValue(values, value)
+	if type(value) ~= "string" or value == "" then
+		return
+	end
+
+	for i = 1, #values do
+		if values[i] == value then
+			return
+		end
+	end
+
+	values[#values + 1] = value
+end
+
+local function plateLookupValues(plate)
+	local normalized = normalizePlate(plate)
+	local values = {}
+
+	addUniquePlateValue(values, normalized)
+
+	if normalized and #normalized > 0 and #normalized < 8 then
+		addUniquePlateValue(values, normalized .. string.rep(" ", 8 - #normalized))
+	end
+
+	return values
+end
+
+local function plateCondition(plate)
+	local values = plateLookupValues(plate)
+
+	if #values < 1 then
+		return "`plate` = ?", { "" }
+	end
+
+	if #values == 1 then
+		return "`plate` = ?", values
+	end
+
+	local placeholders = {}
+	for i = 1, #values do
+		placeholders[i] = "?"
+	end
+
+	return ("`plate` IN (%s)"):format(table.concat(placeholders, ", ")), values
+end
+
+local function appendParams(target, values)
+	for i = 1, #values do
+		target[#target + 1] = values[i]
+	end
+end
+
 local function normalizeBanDuration(minutes)
 	local duration = tonumber(minutes)
 	if not duration or duration <= 0 then
@@ -615,7 +667,7 @@ end)
 
 -- VEHICLES
 
-local function vehicleUpdate(source, data, query, params, feature)
+local function vehicleUpdate(source, data, queryTemplate, params, feature)
 	if not Helpers.hasFeaturePermission(source, feature or "vehicleManagement") then
 		return { success = false, err = "Insufficient Permissions" }
 	end
@@ -628,10 +680,11 @@ local function vehicleUpdate(source, data, query, params, feature)
 		return { success = false, err = "Missing plate" }
 	end
 
-	params[#params + 1] = plate
+	local condition, plateParams = plateCondition(plate)
+	appendParams(params, plateParams)
 
 	async(function()
-		Helpers.safeUpdate(query, params)
+		Helpers.safeUpdate(queryTemplate:format(condition), params)
 	end)
 
 	return { success = true }
@@ -664,9 +717,13 @@ local function setVehicleImpounded(plate, impoundName)
 		return { success = false, err = "Invalid impound." }
 	end
 
+	local condition, plateParams = plateCondition(plate)
+	local params = { impoundName }
+	appendParams(params, plateParams)
+
 	local affected = Helpers.safeUpdate(
-		"UPDATE owned_vehicles SET stored = 1, parking = NULL, pound = ? WHERE TRIM(TRAILING ' ' FROM plate) = ?",
-		{ impoundName, plate }
+		("UPDATE owned_vehicles SET stored = 1, parking = NULL, pound = ? WHERE %s"):format(condition),
+		params
 	)
 
 	if affected == nil then
@@ -711,14 +768,14 @@ Helpers.registerCallback("esx-adminmenu:server:vehicleUnimpound", function(sourc
 	return vehicleUpdate(
 		source,
 		data or {},
-		"UPDATE owned_vehicles SET stored = 1, parking = NULL, pound = NULL WHERE TRIM(TRAILING ' ' FROM plate) = ?",
+		"UPDATE owned_vehicles SET stored = 1, parking = NULL, pound = NULL WHERE %s",
 		{},
 		"vehicleManagement"
 	)
 end)
 
 Helpers.registerCallback("esx-adminmenu:server:vehicleDelete", function(source, data)
-	return vehicleUpdate(source, data or {}, "DELETE FROM owned_vehicles WHERE plate = ?", {}, "vehicleDestructive")
+	return vehicleUpdate(source, data or {}, "DELETE FROM owned_vehicles WHERE %s", {}, "vehicleDestructive")
 end)
 
 RegisterNetEvent("esx-adminmenu:server:impoundDeletedVehicle")
