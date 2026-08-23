@@ -796,12 +796,24 @@ function ClientActions.FlipVehicle()
 	return true
 end
 
+local function markDeletedVehicleImpounded(vehicle)
+	if not DoesEntityExist(vehicle) then
+		return
+	end
+
+	local plate = trimString(GetVehicleNumberPlateText(vehicle))
+	if plate ~= "" then
+		TriggerServerEvent("esx-adminmenu:server:impoundDeletedVehicle", plate)
+	end
+end
+
 function ClientActions.DeleteVehicle()
 	local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
 	if vehicle == 0 then
 		return false, "You must be in a vehicle."
 	end
 
+	markDeletedVehicleImpounded(vehicle)
 	SetEntityAsMissionEntity(vehicle, true, true)
 	DeleteEntity(vehicle)
 
@@ -827,6 +839,7 @@ function ClientActions.SpawnVehicle(data)
 	local deleteCurrent = true
 
 	if currentVehicle ~= 0 and deleteCurrent then
+		markDeletedVehicleImpounded(currentVehicle)
 		SetEntityAsMissionEntity(currentVehicle, true, true)
 		DeleteEntity(currentVehicle)
 	end

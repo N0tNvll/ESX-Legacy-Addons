@@ -1376,6 +1376,65 @@ local function impoundVehicle(plate, lot)
     return true
 end
 
+local deletedVehicleImpounds = {}
+
+local function queueDeletedVehicleImpound(plate, model)
+    if not validPlate(plate) then
+        return
+    end
+
+    local key = normPlate(plate)
+    if deletedVehicleImpounds[key] then
+        return
+    end
+
+    deletedVehicleImpounds[key] = true
+
+    SetTimeout(1500, function()
+        deletedVehicleImpounds[key] = nil
+
+        local lotId = defaultImpoundLot()
+        if not lotId then
+            return
+        end
+
+        local condition, plateParams = plateCondition(plate)
+        local ok, row = pcall(MySQL.single.await,
+            ("SELECT `stored`, `pound`, `vehicle` FROM `owned_vehicles` WHERE %s AND `stored` = 0 AND (`pound` IS NULL OR `pound` = '') LIMIT 1")
+            :format(condition),
+            plateParams)
+
+        if not ok or not row then
+            return
+        end
+
+        local storedModel = storedVehicleModel(row)
+        if type(model) == "number" and model ~= 0 and storedModel and storedModel ~= model then
+            return
+        end
+
+        local impounded, err = pcall(impoundVehicle, plate, lotId)
+        if not impounded then
+            print(("[esx_garage] failed to impound deleted vehicle %s: %s"):format(key, tostring(err)))
+        end
+    end)
+end
+
+AddEventHandler("entityRemoved", function(entity)
+    local typeOk, entityType = pcall(GetEntityType, entity)
+    if not typeOk or entityType ~= 2 then
+        return
+    end
+
+    local plateOk, plate = pcall(GetVehicleNumberPlateText, entity)
+    if not plateOk then
+        return
+    end
+
+    local modelOk, model = pcall(GetEntityModel, entity)
+    queueDeletedVehicleImpound(plate, modelOk and model or nil)
+end)
+
 local function impoundOutVehiclesOnStop()
     local lotId = defaultImpoundLot()
     if not lotId then

@@ -7,6 +7,75 @@ end
 TriggerEvent('esx_phone:registerNumber', 'police', TranslateCap('alert_police'), true, true)
 TriggerEvent('esx_society:registerSociety', 'police', TranslateCap('society_police'), 'society_police', 'society_police', 'society_police', {type = 'public'})
 
+local function normalizeImpoundPlate(plate)
+	if type(plate) ~= 'string' then
+		return nil
+	end
+
+	plate = plate:gsub("^%s+", ""):gsub("%s+$", "")
+	if plate == "" then
+		return nil
+	end
+
+	return plate
+end
+
+local function impoundPlateKey(plate)
+	return plate:gsub("^%s+", ""):gsub("%s+$", ""):upper()
+end
+
+local function isNearImpoundVehicle(source, plate)
+	local ped = GetPlayerPed(source)
+	if not ped or ped == 0 then
+		return false
+	end
+
+	local plateKey = impoundPlateKey(plate)
+	local vehicle = GetVehiclePedIsIn(ped, false)
+
+	if vehicle ~= 0 and impoundPlateKey(GetVehicleNumberPlateText(vehicle) or '') == plateKey then
+		return true
+	end
+
+	local coords = GetEntityCoords(ped)
+	local vehicles = GetAllVehicles()
+
+	for i = 1, #vehicles do
+		vehicle = vehicles[i]
+
+		if impoundPlateKey(GetVehicleNumberPlateText(vehicle) or '') == plateKey
+			and #(GetEntityCoords(vehicle) - coords) <= 8.0 then
+			return true
+		end
+	end
+
+	return false
+end
+
+RegisterNetEvent('esx_policejob:impoundOwnedVehicle')
+AddEventHandler('esx_policejob:impoundOwnedVehicle', function(plate)
+	local source = source
+	local xPlayer = ESX.Player(source)
+
+	if not xPlayer or xPlayer.getJob().name ~= 'police' then
+		print(('[^3WARNING^7] Player ^5%s^7 Attempted To Exploit Vehicle Impound!'):format(source))
+		return
+	end
+
+	plate = normalizeImpoundPlate(plate)
+	if not plate then
+		return
+	end
+
+	if not isNearImpoundVehicle(source, plate) then
+		return
+	end
+
+	pcall(function()
+		exports['esx_garage']:impoundVehicle(plate)
+	end)
+end)
+
 RegisterNetEvent('esx_policejob:confiscatePlayerItem')
 AddEventHandler('esx_policejob:confiscatePlayerItem', function(target, itemType, itemName, amount)
 	local source = source

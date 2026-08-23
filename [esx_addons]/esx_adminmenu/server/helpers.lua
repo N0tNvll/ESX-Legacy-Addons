@@ -610,16 +610,33 @@ local function toVehicleRecord(row, canSeeSensitive)
     }
 end
 
+local function vehicleResultKey(row)
+    local plate = trim(row and row.plate):upper()
+    local owner = trim(row and row.owner)
+
+    if plate == "" then
+        return nil
+    end
+
+    return plate .. "\0" .. owner
+end
+
 local function vehiclePageResult(rows, limit, nextOffset, canSeeSensitive)
     local result = {}
     local rowCount = #(rows or {})
     local count = math.min(rowCount, limit)
+    local seen = {}
 
     for i = 1, count do
-        local vehicle = toVehicleRecord(rows[i], canSeeSensitive)
+        local key = vehicleResultKey(rows[i])
 
-        if vehicle then
-            result[#result + 1] = vehicle
+        if key and not seen[key] then
+            local vehicle = toVehicleRecord(rows[i], canSeeSensitive)
+
+            if vehicle then
+                seen[key] = true
+                result[#result + 1] = vehicle
+            end
         end
     end
 
@@ -668,6 +685,15 @@ function Helpers.getVehiclesPage(data, canSeeSensitive)
     local search = trim(data.search):sub(1, 64)
 
     if search ~= "" then
+        if offset > 0 then
+            return {
+                vehicles = {},
+                hasMore = false,
+                nextOffset = offset,
+                limit = limit,
+            }
+        end
+
         return searchVehicles(search, limit, canSeeSensitive)
     end
 

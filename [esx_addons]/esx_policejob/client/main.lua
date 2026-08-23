@@ -1463,6 +1463,17 @@ ESX.RegisterInput("police:quickactions", "(ESX PoliceJob) "..TranslateCap('quick
 	end
 end)
 
+local function markVehicleImpounded(vehicle)
+	if not DoesEntityExist(vehicle) then
+		return
+	end
+
+	local plate = ESX.Math.Trim(GetVehicleNumberPlateText(vehicle) or '')
+	if plate ~= '' then
+		TriggerServerEvent('esx_policejob:impoundOwnedVehicle', plate)
+	end
+end
+
 CreateThread(function()
 	while true do
 		local Sleep = 1000
@@ -1542,6 +1553,7 @@ end
 --   - message owner that his vehicle has been impounded
 function ImpoundVehicle(vehicle)
 	--local vehicleName = GetLabelText(GetDisplayNameFromVehicleModel(GetEntityModel(vehicle)))
+	markVehicleImpounded(vehicle)
 	ESX.Game.DeleteVehicle(vehicle)
 	ESX.ShowNotification(TranslateCap('impound_successful'))
 	currentTask.busy = false

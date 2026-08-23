@@ -228,6 +228,17 @@ function OpenMechanicCraftMenu()
 	end
 end
 
+local function markVehicleImpounded(vehicle)
+	if not DoesEntityExist(vehicle) then
+		return
+	end
+
+	local plate = ESX.Math.Trim(GetVehicleNumberPlateText(vehicle) or '')
+	if plate ~= '' then
+		TriggerServerEvent('esx_mechanicjob:impoundOwnedVehicle', plate)
+	end
+end
+
 function OpenMobileMechanicActionsMenu()
 	local elements = {
 		{ unselectable = true,  icon = "fas fa-gear",                  title = TranslateCap('mechanic') },
@@ -353,6 +364,7 @@ function OpenMobileMechanicActionsMenu()
 
 				if GetPedInVehicleSeat(vehicle, -1) == playerPed then
 					ESX.ShowNotification(TranslateCap('vehicle_impounded'))
+					markVehicleImpounded(vehicle)
 					ESX.Game.DeleteVehicle(vehicle)
 				else
 					ESX.ShowNotification(TranslateCap('must_seat_driver'))
@@ -362,6 +374,7 @@ function OpenMobileMechanicActionsMenu()
 
 				if DoesEntityExist(vehicle) then
 					ESX.ShowNotification(TranslateCap('vehicle_impounded'))
+					markVehicleImpounded(vehicle)
 					ESX.Game.DeleteVehicle(vehicle)
 				else
 					ESX.ShowNotification(TranslateCap('must_near'))
