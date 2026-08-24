@@ -10,6 +10,7 @@ local function OpenNui(zone, mode)
 	currentShop = zone
 	uiOpen = true
 
+	ESX.HideUI()
 	SetNuiFocus(true, true)
 	SendNUIMessage({
 		type = 'openShop',

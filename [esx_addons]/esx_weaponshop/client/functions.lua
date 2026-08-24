@@ -30,7 +30,7 @@ local CATEGORY_ORDER = {
 function GetItemLabel(weaponName)
 	local label = ESX.GetWeaponLabel(weaponName)
 
-	if Config.OxInventory then
+	if Config.OxInventory and GetResourceState('ox_inventory') == 'started' then
 		local oxItem = exports.ox_inventory:Items(weaponName)
 		if oxItem then
 			label = oxItem.label
@@ -44,7 +44,7 @@ end
 ---@param weaponName string
 ---@return string
 function GetWeaponImage(weaponName)
-	if Config.OxInventory then
+	if Config.OxInventory and GetResourceState('ox_inventory') == 'started' then
 		local oxItem = exports.ox_inventory:Items(weaponName)
 		if oxItem and oxItem.client and oxItem.client.image then
 			return oxItem.client.image

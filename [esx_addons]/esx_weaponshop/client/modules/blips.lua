@@ -8,17 +8,18 @@ function CreateShopBlips()
 
 	for _, zoneData in pairs(Config.Zones) do
 		local blipSettings = zoneData.Blip
-		if blipSettings.Enabled then
-			local posCount = #zoneData.Locations
+		local locations = zoneData.Locations
+		if blipSettings and blipSettings.Enabled and type(locations) == 'table' then
+			local posCount = #locations
 
 			for i = 1, posCount do
-				local location = zoneData.Locations[i]
+				local location = locations[i]
 				local blip = AddBlipForCoord(location.x, location.y, location.z)
 
 				SetBlipSprite(blip, blipSettings.Sprite)
 				SetBlipDisplay(blip, blipSettings.Display)
 				SetBlipScale(blip, blipSettings.Scale)
-				SetBlipColour(blip, blipSettings.Colour)
+				SetBlipColour(blip, blipSettings.Color)
 				SetBlipAsShortRange(blip, blipSettings.ShortRange)
 
 				BeginTextCommandSetBlipName('STRING')

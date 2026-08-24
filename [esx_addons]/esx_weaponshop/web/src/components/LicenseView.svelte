@@ -31,7 +31,7 @@
 <div class="license">
   <div class="card">
     <div class="icon">
-      <i class="fa-regular fa-id-card"></i>
+      <span class="license-icon" aria-hidden="true">ID</span>
     </div>
     <div class="title">{shopStore.locales.licenseTitle}</div>
     <div class="description">{shopStore.locales.licenseDescription}</div>
@@ -64,8 +64,21 @@
 
   .icon {
     color: var(--brand-color);
-    font-size: 2rem;
     margin-bottom: 0.85rem;
+    display: flex;
+    justify-content: center;
+  }
+
+  .license-icon {
+    width: 3rem;
+    height: 2rem;
+    border: 0.12rem solid currentColor;
+    border-radius: 0.2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 800;
   }
 
   .title {
@@ -93,7 +106,7 @@
     margin-top: 0.7rem;
     border: none;
     border-radius: 0.3rem;
-    font-family: 'Poppins', sans-serif;
+    font-family: var(--font-family);
     font-weight: 600;
     font-size: 0.9rem;
     padding: 0.7rem 0.5rem;

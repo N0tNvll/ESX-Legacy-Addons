@@ -18,7 +18,8 @@
 <style>
   .item-grid {
     display: grid;
-    grid-template-columns: repeat(var(--grid-columns), 1fr);
+    grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
+    grid-auto-rows: 9.55rem;
     gap: 0.55rem;
     max-height: 64vh;
     overflow-y: auto;

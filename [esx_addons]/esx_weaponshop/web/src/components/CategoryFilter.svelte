@@ -43,7 +43,7 @@
   .category-wrap {
     background: rgba(var(--lightest-color-rgb), 0.1);
     color: rgba(var(--lightest-color-rgb), 0.5);
-    font-family: Poppins, sans-serif;
+    font-family: var(--font-family);
     font-weight: 500;
     font-size: 0.8rem;
     padding: 0.3rem 0.55rem;

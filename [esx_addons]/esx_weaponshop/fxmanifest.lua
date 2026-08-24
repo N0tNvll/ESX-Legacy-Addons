@@ -17,13 +17,18 @@ shared_scripts {
 
 client_scripts {
 	'client/functions.lua',
-	'client/modules/*.lua',
+	'client/modules/blips.lua',
+	'client/modules/markers.lua',
+	'client/modules/nui.lua',
+	'client/modules/interactions.lua',
 	'client/main.lua'
 }
 
 server_scripts {
 	'server/functions.lua',
-	'server/modules/*.lua',
+	'server/modules/validation.lua',
+	'server/modules/inventory.lua',
+	'server/modules/transactions.lua',
 	'server/main.lua'
 }
 
@@ -33,4 +38,8 @@ files {
 	'web/dist/**/*'
 }
 
-dependency 'es_extended'
+dependencies {
+	'es_extended',
+	'esx_license',
+	'/onesync'
+}

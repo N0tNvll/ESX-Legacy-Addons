@@ -14,9 +14,6 @@ export const DEBOUNCE_DELAY_MS = 150;
 /** Number of columns in the shop item grid layout */
 export const GRID_COLUMNS = 4;
 
-/** Color for placeholder/secondary icons (search icon, etc.) */
-export const SEARCH_ICON_COLOR = '#aaa';
-
 /**
  * Scaling breakpoints for different screen resolutions
  */

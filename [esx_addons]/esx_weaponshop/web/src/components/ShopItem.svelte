@@ -60,6 +60,7 @@
     transition: all 0.2s ease;
     border: 1px solid transparent;
     overflow: hidden;
+    min-height: 9.55rem;
   }
 
   .shop-item:hover,
@@ -73,12 +74,15 @@
   }
 
   .item-image {
-    padding: 1.1rem 0.6rem 0.6rem;
+    --weapon-image-width: auto;
+    --weapon-image-max-width: 64%;
+    --weapon-image-max-height: 3.95rem;
+    padding: 0.85rem 0.75rem 0.45rem;
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 7rem;
-    height: 7rem;
+    height: 7.15rem;
+    flex: 0 0 7.15rem;
   }
 
   .item-info {
@@ -86,7 +90,8 @@
     justify-content: space-between;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.45rem 0.5rem 0.55rem;
+    min-height: 2.4rem;
+    padding: 0.45rem 0.6rem 0.55rem;
   }
 
   .item-label {

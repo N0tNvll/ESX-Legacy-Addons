@@ -77,11 +77,14 @@
   }
 
   img {
-    width: 100%;
-    height: 100%;
+    width: var(--weapon-image-width, auto);
+    height: auto;
+    max-width: var(--weapon-image-max-width, 100%);
+    max-height: var(--weapon-image-max-height, 100%);
     object-fit: contain;
     opacity: 0;
     transition: opacity 0.3s ease;
+    filter: drop-shadow(0 0.65rem 0.65rem rgba(0, 0, 0, 0.35));
   }
 
   img.loaded {
