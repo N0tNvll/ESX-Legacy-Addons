@@ -12,7 +12,49 @@ export interface ShopItem {
   category: string;
   /** Image URL */
   image: string;
+  /** Available upgrades for this weapon */
+  upgrades: WeaponUpgrades;
+  /** Current player state for this weapon */
+  state: WeaponState;
 }
+
+export interface WeaponAmmoUpgrade {
+  label: string;
+  pricePerRound: number;
+  defaultAmount: number;
+  minAmount: number;
+  maxAmount: number;
+  quickAmounts: number[];
+}
+
+export interface WeaponComponentUpgrade {
+  name: string;
+  label: string;
+  price: number;
+}
+
+export interface WeaponTintUpgrade {
+  index: number;
+  label: string;
+  price: number;
+  color: string;
+}
+
+export interface WeaponUpgrades {
+  supported: boolean;
+  ammo: WeaponAmmoUpgrade | null;
+  components: WeaponComponentUpgrade[];
+  tints: WeaponTintUpgrade[];
+}
+
+export interface WeaponState {
+  owned: boolean;
+  ammo: number;
+  tintIndex: number;
+  components: string[];
+}
+
+export type WeaponDetailsTab = 'weapon' | 'ammo' | 'components' | 'tints';
 
 /**
  * Shop category representation
@@ -32,6 +74,14 @@ export interface ShopLocales {
   searchPlaceholder: string;
   /** Buy button label */
   buy: string;
+  /** Apply button label */
+  apply: string;
+  /** Owned state label */
+  owned: string;
+  /** Equipped state label */
+  equipped: string;
+  /** Unavailable state label */
+  unavailable: string;
   /** Empty details-panel message */
   noWeaponSelected: string;
   /** Shown when a weapon has no usable image */
@@ -44,6 +94,21 @@ export interface ShopLocales {
   buyLicense: string;
   /** Cancel button label */
   cancel: string;
+  tabWeapon: string;
+  tabAmmo: string;
+  tabComponents: string;
+  tabTints: string;
+  ammo: string;
+  ammoUnit: string;
+  pricePerRound: string;
+  total: string;
+  buyAmmo: string;
+  components: string;
+  tints: string;
+  requiresWeapon: string;
+  noAmmoAvailable: string;
+  noComponentsAvailable: string;
+  noTintsAvailable: string;
 }
 
 /**
@@ -69,6 +134,8 @@ export interface ShopData {
   mode: ShopMode;
   /** Weapon license price */
   licensePrice: number;
+  /** Weapon selected after a shop refresh */
+  selectedName?: string | null;
 }
 
 /**

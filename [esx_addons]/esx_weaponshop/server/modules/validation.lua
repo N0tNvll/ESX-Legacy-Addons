@@ -1,3 +1,15 @@
+local MAX_LOG_VALUE_LENGTH = 80
+
+local function FormatLogValue(value)
+	local text = tostring(value)
+
+	if #text > MAX_LOG_VALUE_LENGTH then
+		return text:sub(1, MAX_LOG_VALUE_LENGTH) .. '...'
+	end
+
+	return text
+end
+
 ---Gets weapon price from a configured zone
 ---@param weaponName string
 ---@param zone string
@@ -17,11 +29,76 @@ function GetPrice(weaponName, zone)
 		local weapon = zoneConfig.Items[i]
 
 		if weapon.name == weaponName then
-			return tonumber(weapon.price) or -1
+			return NormalizeMoneyAmount(weapon.price) or -1
 		end
 	end
 
 	return -1
+end
+
+---Gets a weapon entry from a configured zone.
+---@param weaponName string
+---@param zone string
+---@return table|nil weapon
+function GetZoneWeaponEntry(weaponName, zone)
+	if type(weaponName) ~= 'string' or type(zone) ~= 'string' then
+		return nil
+	end
+
+	local zoneConfig = Config.Zones[zone]
+
+	if not zoneConfig or not zoneConfig.Items then
+		return nil
+	end
+
+	for i = 1, #zoneConfig.Items do
+		if zoneConfig.Items[i].name == weaponName then
+			return zoneConfig.Items[i]
+		end
+	end
+
+	return nil
+end
+
+---Validates a bounded text identifier used by upgrade requests.
+---@param value any
+---@param fieldName string
+---@param source number
+---@return boolean valid
+function ValidateUpgradeIdentifier(value, fieldName, source)
+	if type(value) ~= 'string' or value == '' or #value > 64 then
+		print(('[^3WARNING^7] Player ^5%s^7 sent invalid weaponshop %s - %s!'):format(
+			source,
+			fieldName,
+			FormatLogValue(value)
+		))
+		return false
+	end
+
+	return true
+end
+
+---Normalizes ammo purchase amounts to a configured safe range.
+---@param amount any
+---@return number|nil amount
+function NormalizeAmmoAmount(amount)
+	local ammoConfig = Config.WeaponShopUpgrades and Config.WeaponShopUpgrades.Ammo or {}
+	local value = tonumber(amount)
+
+	if not value or value ~= value or value == math.huge or value == -math.huge then
+		return nil
+	end
+
+	value = math.floor(value)
+
+	local minAmount = math.max(tonumber(ammoConfig.MinAmount) or 1, 1)
+	local maxAmount = math.max(tonumber(ammoConfig.MaxAmount) or 250, minAmount)
+
+	if value < minAmount or value > maxAmount then
+		return nil
+	end
+
+	return value
 end
 
 ---Validates weapon input is a bounded string
@@ -32,7 +109,7 @@ function ValidateWeaponName(weaponName, source)
 	if type(weaponName) ~= 'string' or weaponName == '' or #weaponName > 64 then
 		print(('[^3WARNING^7] Player ^5%s^7 attempted to buy weapon with Invalid name - %s!'):format(
 			source,
-			tostring(weaponName)
+			FormatLogValue(weaponName)
 		))
 		return false
 	end
@@ -45,10 +122,10 @@ end
 ---@param source number Player source for logging
 ---@return boolean valid
 function ValidateZone(zone, source)
-	if type(zone) ~= 'string' or not Config.Zones[zone] then
+	if type(zone) ~= 'string' or zone == '' or #zone > 64 or not Config.Zones[zone] then
 		print(('[^3WARNING^7] Player ^5%s^7 attempted to buy weapon from Invalid zone - %s!'):format(
 			source,
-			tostring(zone)
+			FormatLogValue(zone)
 		))
 		return false
 	end

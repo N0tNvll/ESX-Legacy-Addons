@@ -10,6 +10,8 @@ import type { ThemeConvars } from './shop';
 export const NUI_EVENTS = {
   /** Purchase a weapon from the shop */
   BUY_WEAPON: 'buyWeapon',
+  /** Purchase ammo, component, or tint for an owned weapon */
+  BUY_UPGRADE: 'buyUpgrade',
   /** Purchase a weapon license */
   BUY_LICENSE: 'buyLicense',
   /** Close the UI */

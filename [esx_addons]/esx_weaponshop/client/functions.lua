@@ -70,13 +70,70 @@ function GetShopLocales()
 	return {
 		searchPlaceholder = TranslateCap('search_placeholder'),
 		buy = TranslateCap('buy'),
+		apply = TranslateCap('apply'),
+		owned = TranslateCap('owned'),
+		equipped = TranslateCap('equipped'),
+		unavailable = TranslateCap('unavailable'),
 		noWeaponSelected = TranslateCap('no_weapon_selected'),
 		noImageAvailable = TranslateCap('no_image_available'),
 		licenseTitle = TranslateCap('license_shop_title'),
 		licenseDescription = TranslateCap('license_description'),
 		buyLicense = TranslateCap('buy_license'),
-		cancel = TranslateCap('menu_cancel')
+		cancel = TranslateCap('menu_cancel'),
+		tabWeapon = TranslateCap('tab_weapon'),
+		tabAmmo = TranslateCap('tab_ammo'),
+		tabComponents = TranslateCap('tab_components'),
+		tabTints = TranslateCap('tab_tints'),
+		ammo = TranslateCap('upgrade_ammo'),
+		ammoUnit = TranslateCap('ammo_unit'),
+		pricePerRound = TranslateCap('price_per_round'),
+		total = TranslateCap('total'),
+		buyAmmo = TranslateCap('buy_ammo'),
+		components = TranslateCap('upgrade_components'),
+		tints = TranslateCap('upgrade_tints'),
+		requiresWeapon = TranslateCap('requires_weapon'),
+		noAmmoAvailable = TranslateCap('no_ammo_available'),
+		noComponentsAvailable = TranslateCap('no_components_available'),
+		noTintsAvailable = TranslateCap('no_tints_available')
 	}
+end
+
+local function BuildWeaponState(weaponName, upgrades)
+	local state = {
+		owned = false,
+		ammo = 0,
+		tintIndex = 0,
+		components = {}
+	}
+
+	if Config.OxInventory then
+		return state
+	end
+
+	local ped = PlayerPedId()
+	local weaponHash = joaat(weaponName)
+
+	state.owned = HasPedGotWeapon(ped, weaponHash, false)
+
+	if not state.owned then
+		return state
+	end
+
+	state.ammo = GetAmmoInPedWeapon(ped, weaponHash)
+	state.tintIndex = GetPedWeaponTintIndex(ped, weaponHash)
+
+	if upgrades and type(upgrades.components) == 'table' then
+		for i = 1, #upgrades.components do
+			local ok, first, second = pcall(ESX.GetWeaponComponent, weaponName, upgrades.components[i].name)
+			local component = ok and (type(second) == 'table' and second or type(first) == 'table' and first) or nil
+
+			if component and HasPedGotWeaponComponent(ped, weaponHash, component.hash) then
+				state.components[#state.components + 1] = upgrades.components[i].name
+			end
+		end
+	end
+
+	return state
 end
 
 ---Builds NUI item list for a zone
@@ -88,12 +145,15 @@ function BuildShopItems(zone)
 
 	for i = 1, #zoneItems do
 		local item = zoneItems[i]
+		local upgrades = BuildWeaponUpgrades(item.name)
 		items[i] = {
 			name = item.name,
 			label = GetItemLabel(item.name),
 			price = item.price,
 			category = GetWeaponCategory(item.name),
-			image = GetWeaponImage(item.name)
+			image = GetWeaponImage(item.name),
+			upgrades = upgrades,
+			state = BuildWeaponState(item.name, upgrades)
 		}
 	end
 

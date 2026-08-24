@@ -93,3 +93,107 @@ function AddWeapon(source, xPlayer, weaponName)
 
 	return added
 end
+
+---Checks whether the player owns a weapon in the active non-ox loadout.
+---@param xPlayer table ESX player object
+---@param weaponName string
+---@return boolean
+function HasPlayerWeapon(xPlayer, weaponName)
+	if Config.OxInventory then
+		return false
+	end
+
+	if type(xPlayer.hasWeapon) ~= 'function' then
+		return false
+	end
+
+	local checked, hasWeapon = pcall(function()
+		return xPlayer.hasWeapon(weaponName)
+	end)
+
+	return checked and hasWeapon == true
+end
+
+---Adds ammo to an owned weapon.
+---@param xPlayer table ESX player object
+---@param weaponName string
+---@param amount number
+---@return boolean
+function AddWeaponAmmo(xPlayer, weaponName, amount)
+	if Config.OxInventory or type(xPlayer.addWeaponAmmo) ~= 'function' then
+		return false
+	end
+
+	local added = pcall(function()
+		xPlayer.addWeaponAmmo(weaponName, amount)
+	end)
+
+	return added
+end
+
+---Checks whether a weapon component is already owned.
+---@param xPlayer table ESX player object
+---@param weaponName string
+---@param componentName string
+---@return boolean
+function HasWeaponComponent(xPlayer, weaponName, componentName)
+	if Config.OxInventory or type(xPlayer.hasWeaponComponent) ~= 'function' then
+		return false
+	end
+
+	local checked, hasComponent = pcall(function()
+		return xPlayer.hasWeaponComponent(weaponName, componentName)
+	end)
+
+	return checked and hasComponent == true
+end
+
+---Adds a component to an owned weapon.
+---@param xPlayer table ESX player object
+---@param weaponName string
+---@param componentName string
+---@return boolean
+function AddWeaponComponent(xPlayer, weaponName, componentName)
+	if Config.OxInventory or type(xPlayer.addWeaponComponent) ~= 'function' then
+		return false
+	end
+
+	local added = pcall(function()
+		xPlayer.addWeaponComponent(weaponName, componentName)
+	end)
+
+	return added
+end
+
+---Gets the current tint index for an owned weapon.
+---@param xPlayer table ESX player object
+---@param weaponName string
+---@return number
+function GetWeaponTint(xPlayer, weaponName)
+	if Config.OxInventory or type(xPlayer.getWeaponTint) ~= 'function' then
+		return 0
+	end
+
+	local checked, tintIndex = pcall(function()
+		return xPlayer.getWeaponTint(weaponName)
+	end)
+
+	return checked and tonumber(tintIndex) or 0
+end
+
+---Sets a tint on an owned weapon.
+---@param xPlayer table ESX player object
+---@param weaponName string
+---@param tintIndex number
+---@return boolean
+function SetWeaponTint(xPlayer, weaponName, tintIndex)
+	if Config.OxInventory or type(xPlayer.setWeaponTint) ~= 'function' then
+		return false
+	end
+
+	local set = pcall(function()
+		xPlayer.setWeaponTint(weaponName, tintIndex)
+	end)
+
+	return set
+end

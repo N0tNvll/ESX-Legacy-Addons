@@ -60,7 +60,8 @@
     transition: all 0.2s ease;
     border: 1px solid transparent;
     overflow: hidden;
-    min-height: 9.55rem;
+    height: 100%;
+    min-height: 0;
   }
 
   .shop-item:hover,
@@ -81,8 +82,8 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 7.15rem;
-    flex: 0 0 7.15rem;
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .item-info {
@@ -90,8 +91,9 @@
     justify-content: space-between;
     align-items: center;
     gap: 0.4rem;
-    min-height: 2.4rem;
-    padding: 0.45rem 0.6rem 0.55rem;
+    flex: 0 0 2.35rem;
+    min-height: 2.35rem;
+    padding: 0.4rem 0.6rem 0.5rem;
   }
 
   .item-label {

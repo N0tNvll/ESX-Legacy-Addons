@@ -12,6 +12,7 @@ shared_scripts {
 	'locales/*.lua',
 	'shared/config/main.lua',
 	'shared/config/shops.lua',
+	'shared/config/upgrades.lua',
 	'shared/functions.lua'
 }
 

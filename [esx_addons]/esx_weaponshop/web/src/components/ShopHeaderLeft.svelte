@@ -22,7 +22,7 @@
     align-items: center;
     font-family: var(--font-family);
     gap: 0.65rem;
-    height: 5vh;
+    height: var(--shop-header-height, 4.6vh);
     margin-left: 1rem;
   }
 

@@ -30,9 +30,6 @@
 
 <div class="license">
   <div class="card">
-    <div class="icon">
-      <span class="license-icon" aria-hidden="true">ID</span>
-    </div>
     <div class="title">{shopStore.locales.licenseTitle}</div>
     <div class="description">{shopStore.locales.licenseDescription}</div>
     <div class="price">${shopStore.licensePrice.toLocaleString()}</div>
@@ -60,25 +57,6 @@
     border-radius: 0.4rem;
     padding: 2rem 1.75rem;
     text-align: center;
-  }
-
-  .icon {
-    color: var(--brand-color);
-    margin-bottom: 0.85rem;
-    display: flex;
-    justify-content: center;
-  }
-
-  .license-icon {
-    width: 3rem;
-    height: 2rem;
-    border: 0.12rem solid currentColor;
-    border-radius: 0.2rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.78rem;
-    font-weight: 800;
   }
 
   .title {
@@ -117,6 +95,7 @@
     margin-top: 1.25rem;
     background: var(--brand-color);
     color: var(--darkest-color);
+    text-transform: uppercase;
   }
 
   .buy:disabled {

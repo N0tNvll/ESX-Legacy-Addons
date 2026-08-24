@@ -52,19 +52,20 @@
 
 <style>
   .shop-header-right {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    height: 5vh;
+    height: var(--shop-toolbar-height, 2.35rem);
     width: 100%;
-    padding-top: 0.5rem;
-    padding-right: 0.15rem;
+    margin-bottom: var(--shop-toolbar-content-gap, 1rem);
+    padding-right: 0;
   }
 
   .shop-search-icon {
     position: relative;
     flex: 1;
-    height: 2.35rem;
+    height: var(--shop-toolbar-height, 2.35rem);
   }
 
   .shop-search-icon input {
@@ -73,11 +74,11 @@
     color: var(--lightest-color);
     font-family: var(--font-family);
     font-weight: 400;
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     border-radius: 0.25rem;
     padding: 0 0.5rem 0 2rem;
-    height: 2.35rem;
-    line-height: 2.35rem;
+    height: var(--shop-toolbar-height, 2.35rem);
+    line-height: var(--shop-toolbar-height, 2.35rem);
     width: 100%;
   }
 
@@ -113,9 +114,9 @@
   .shop-close {
     background-color: rgba(var(--lightest-color-rgb), 0.12);
     color: var(--lightest-color);
-    height: 2.35rem;
-    width: 2.35rem;
-    min-width: 2.35rem;
+    height: var(--shop-toolbar-height, 2.35rem);
+    width: var(--shop-toolbar-height, 2.35rem);
+    min-width: var(--shop-toolbar-height, 2.35rem);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -123,7 +124,10 @@
     border: 1px solid rgba(var(--lightest-color-rgb), 0.08);
     cursor: pointer;
     transition: all 0.2s ease;
-    margin-left: auto;
+    position: absolute;
+    top: calc(var(--shop-header-top-offset, 0.75rem) - var(--shop-header-height, 4.6vh) - var(--shop-toolbar-top-gap, 0.5rem));
+    right: 0;
+    z-index: 2;
   }
 
   .shop-close:hover {

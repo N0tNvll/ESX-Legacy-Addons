@@ -28,6 +28,7 @@
     overflow-x: auto;
     scrollbar-width: none;
     max-width: 100%;
+    height: 100%;
   }
 
   .category-filter::-webkit-scrollbar {
@@ -37,6 +38,8 @@
   .categories-scroller {
     display: flex;
     gap: 0.5rem;
+    align-items: stretch;
+    height: 100%;
     min-width: fit-content;
   }
 
@@ -46,12 +49,15 @@
     font-family: var(--font-family);
     font-weight: 500;
     font-size: 0.8rem;
-    padding: 0.3rem 0.55rem;
+    height: 100%;
+    min-height: var(--shop-toolbar-height, 2.35rem);
+    padding: 0 0.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 0.3rem;
     white-space: nowrap;
+    text-transform: uppercase;
     flex-shrink: 0;
     border: none;
     cursor: pointer;

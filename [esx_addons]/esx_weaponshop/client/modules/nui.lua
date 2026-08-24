@@ -4,7 +4,8 @@ local uiOpen = false
 ---Opens weaponshop NUI
 ---@param zone string Shop zone name
 ---@param mode string NUI mode (`shop` or `license`)
-local function OpenNui(zone, mode)
+---@param selectedName string|nil Weapon selected after refresh
+local function OpenNui(zone, mode, selectedName)
 	local items = BuildShopItems(zone)
 
 	currentShop = zone
@@ -21,7 +22,8 @@ local function OpenNui(zone, mode)
 			locales = GetShopLocales(),
 			legal = Config.Zones[zone].Legal,
 			mode = mode,
-			licensePrice = Config.LicensePrice
+			licensePrice = Config.LicensePrice,
+			selectedName = selectedName
 		}
 	})
 end
@@ -73,12 +75,33 @@ RegisterNUICallback('buyWeapon', function(data, cb)
 		if bought then
 			local price = GetZoneWeaponPrice(currentShop, data.weaponName)
 			DisplayBoughtScaleform(data.weaponName, price)
+			OpenNui(currentShop, 'shop', data.weaponName)
 		else
 			PlaySoundFrontend(-1, 'ERROR', 'HUD_AMMO_SHOP_SOUNDSET', false)
 		end
 
 		cb({ ok = bought and true or false })
 	end, data.weaponName, currentShop)
+end)
+
+-- Upgrade purchase callback
+RegisterNUICallback('buyUpgrade', function(data, cb)
+	if type(data) ~= 'table' or type(data.weaponName) ~= 'string' or type(data.action) ~= 'string' or not currentShop then
+		cb({ ok = false })
+		return
+	end
+
+	ESX.TriggerServerCallback('esx_weaponshop:buyUpgrade', function(bought)
+		if bought then
+			PlaySoundFrontend(-1, 'WEAPON_PURCHASE', 'HUD_AMMO_SHOP_SOUNDSET', false)
+			ESX.ShowNotification(TranslateCap('upgrade_bought'))
+			OpenNui(currentShop, 'shop', data.weaponName)
+		else
+			PlaySoundFrontend(-1, 'ERROR', 'HUD_AMMO_SHOP_SOUNDSET', false)
+		end
+
+		cb({ ok = bought and true or false })
+	end, data, currentShop)
 end)
 
 -- License callback

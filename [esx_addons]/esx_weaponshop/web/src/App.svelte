@@ -104,15 +104,36 @@
 
 <style>
   .shop-container {
+    --shop-gutter: 1rem;
+    --shop-header-height: 4.6vh;
+    --shop-header-top-offset: 0.75rem;
+    --shop-toolbar-height: 2.35rem;
+    --shop-toolbar-top-gap: 0.75rem;
+    --shop-toolbar-content-gap: 0.75rem;
+    --shop-grid-content-height: 39.85rem;
     background: var(--darkest-color);
     width: 80vw;
-    height: 80vh;
+    height: min(
+      80vh,
+      calc(
+        var(--shop-header-height) +
+        var(--shop-toolbar-top-gap) +
+        var(--shop-toolbar-height) +
+        var(--shop-toolbar-content-gap) +
+        var(--shop-grid-content-height) +
+        var(--shop-gutter)
+      )
+    );
+    max-height: 80vh;
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     display: flex;
     flex-direction: column;
+    border: 1px solid rgba(var(--lightest-color-rgb), 0.08);
+    border-radius: 0.85rem;
+    overflow: hidden;
   }
 
   .shop-content {
@@ -120,7 +141,7 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
-    gap: 1rem;
+    gap: var(--shop-gutter);
   }
 
   .left-panel {
@@ -135,15 +156,18 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    padding-top: calc(var(--shop-header-height) + var(--shop-toolbar-top-gap));
   }
 
   .category-section {
-    margin: 0.5rem 0 1rem 1rem;
+    height: var(--shop-toolbar-height);
+    margin: var(--shop-toolbar-top-gap) 0 var(--shop-toolbar-content-gap) var(--shop-gutter);
   }
 
   .items-section {
-    margin-left: 1rem;
+    margin: 0 0 var(--shop-gutter) var(--shop-gutter);
     flex: 1;
+    min-height: 0;
     overflow: hidden;
   }
 </style>

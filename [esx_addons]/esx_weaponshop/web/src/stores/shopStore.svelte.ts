@@ -1,5 +1,54 @@
-import type { ShopCategory, ShopData, ShopItem, ShopLocales, ShopMode } from '@/types/shop';
+import type { ShopCategory, ShopData, ShopItem, ShopLocales, ShopMode, WeaponDetailsTab, WeaponUpgrades, WeaponState } from '@/types/shop';
 import { getDocsWeaponImage } from '@utils/weaponImage';
+
+const EMPTY_UPGRADES: WeaponUpgrades = {
+  supported: true,
+  ammo: null,
+  components: [],
+  tints: []
+};
+
+const EMPTY_STATE: WeaponState = {
+  owned: false,
+  ammo: 0,
+  tintIndex: 0,
+  components: []
+};
+
+const PISTOL_UPGRADES: WeaponUpgrades = {
+  supported: true,
+  ammo: {
+    label: 'Rounds',
+    pricePerRound: 5,
+    defaultAmount: 30,
+    minAmount: 1,
+    maxAmount: 250,
+    quickAmounts: [30, 60, 120, 250]
+  },
+  components: [
+    { name: 'clip_extended', label: 'Extended Clip', price: 650 },
+    { name: 'flashlight', label: 'Flashlight', price: 250 },
+    { name: 'suppressor', label: 'Suppressor', price: 1250 },
+    { name: 'luxary_finish', label: 'Luxury Finish', price: 1800 }
+  ],
+  tints: [
+    { index: 0, label: 'Default', price: 0, color: '#9A9A9A' },
+    { index: 1, label: 'Green', price: 250, color: '#3E8F45' },
+    { index: 2, label: 'Gold', price: 750, color: '#D6A536' },
+    { index: 3, label: 'Pink', price: 350, color: '#D96AA7' },
+    { index: 4, label: 'Army', price: 450, color: '#6C7A45' },
+    { index: 5, label: 'LSPD', price: 500, color: '#3A6EA5' },
+    { index: 6, label: 'Orange', price: 400, color: '#D87522' },
+    { index: 7, label: 'Platinum', price: 900, color: '#D8DDE2' }
+  ]
+};
+
+const OWNED_PISTOL_STATE: WeaponState = {
+  owned: true,
+  ammo: 42,
+  tintIndex: 0,
+  components: ['flashlight']
+};
 
 /**
  * Mock data for development - Categories
@@ -17,24 +66,43 @@ const MOCK_CATEGORIES: ShopCategory[] = [
  * Images always come from FiveM docs in the browser
  */
 const MOCK_ITEMS: ShopItem[] = [
-  { name: 'WEAPON_PISTOL', label: 'Pistol', price: 500, category: 'handguns', image: getDocsWeaponImage('WEAPON_PISTOL') },
-  { name: 'WEAPON_COMBATPISTOL', label: 'Combat Pistol', price: 800, category: 'handguns', image: getDocsWeaponImage('WEAPON_COMBATPISTOL') },
-  { name: 'WEAPON_BAT', label: 'Baseball Bat', price: 50, category: 'melee', image: getDocsWeaponImage('WEAPON_BAT') },
-  { name: 'WEAPON_MACHETE', label: 'Machete', price: 110, category: 'melee', image: getDocsWeaponImage('WEAPON_MACHETE') },
-  { name: 'WEAPON_ASSAULTRIFLE', label: 'Assault Rifle', price: 11000, category: 'rifles', image: getDocsWeaponImage('WEAPON_ASSAULTRIFLE') },
-  { name: 'WEAPON_CARBINERIFLE', label: 'Carbine Rifle', price: 13000, category: 'rifles', image: getDocsWeaponImage('WEAPON_CARBINERIFLE') },
-  { name: 'WEAPON_FIREEXTINGUISHER', label: 'Fire Extinguisher', price: 100, category: 'misc', image: getDocsWeaponImage('WEAPON_FIREEXTINGUISHER') }
+  { name: 'WEAPON_PISTOL', label: 'Pistol', price: 500, category: 'handguns', image: getDocsWeaponImage('WEAPON_PISTOL'), upgrades: PISTOL_UPGRADES, state: OWNED_PISTOL_STATE },
+  { name: 'WEAPON_COMBATPISTOL', label: 'Combat Pistol', price: 800, category: 'handguns', image: getDocsWeaponImage('WEAPON_COMBATPISTOL'), upgrades: PISTOL_UPGRADES, state: EMPTY_STATE },
+  { name: 'WEAPON_BAT', label: 'Baseball Bat', price: 50, category: 'melee', image: getDocsWeaponImage('WEAPON_BAT'), upgrades: EMPTY_UPGRADES, state: EMPTY_STATE },
+  { name: 'WEAPON_MACHETE', label: 'Machete', price: 110, category: 'melee', image: getDocsWeaponImage('WEAPON_MACHETE'), upgrades: EMPTY_UPGRADES, state: EMPTY_STATE },
+  { name: 'WEAPON_ASSAULTRIFLE', label: 'Assault Rifle', price: 11000, category: 'rifles', image: getDocsWeaponImage('WEAPON_ASSAULTRIFLE'), upgrades: PISTOL_UPGRADES, state: EMPTY_STATE },
+  { name: 'WEAPON_CARBINERIFLE', label: 'Carbine Rifle', price: 13000, category: 'rifles', image: getDocsWeaponImage('WEAPON_CARBINERIFLE'), upgrades: PISTOL_UPGRADES, state: EMPTY_STATE },
+  { name: 'WEAPON_FIREEXTINGUISHER', label: 'Fire Extinguisher', price: 100, category: 'misc', image: getDocsWeaponImage('WEAPON_FIREEXTINGUISHER'), upgrades: EMPTY_UPGRADES, state: EMPTY_STATE }
 ];
 
 const DEFAULT_LOCALES: ShopLocales = {
   searchPlaceholder: 'Search weapons...',
   buy: 'Buy',
+  apply: 'Apply',
+  owned: 'Owned',
+  equipped: 'Equipped',
+  unavailable: 'Unavailable',
   noWeaponSelected: 'Select a weapon to inspect',
   noImageAvailable: 'No image available',
   licenseTitle: 'License Shop',
   licenseDescription: 'A weapon license is required to purchase from this shop.',
   buyLicense: 'Buy weapon license?',
-  cancel: 'Cancel'
+  cancel: 'Cancel',
+  tabWeapon: 'Weapon',
+  tabAmmo: 'Ammo',
+  tabComponents: 'Attachments',
+  tabTints: 'Tints',
+  ammo: 'Ammo',
+  ammoUnit: 'rounds',
+  pricePerRound: 'Per round',
+  total: 'Total',
+  buyAmmo: 'Buy Ammo',
+  components: 'Attachments',
+  tints: 'Tints',
+  requiresWeapon: 'Buy this weapon first',
+  noAmmoAvailable: 'Ammo is not available for this weapon',
+  noComponentsAvailable: 'No attachments available',
+  noTintsAvailable: 'No tints available'
 };
 
 /**
@@ -74,6 +142,12 @@ class ShopStore {
 
   /** Whether a purchase request is in flight */
   buying: boolean = $state(false);
+
+  /** Active details panel tab */
+  activeDetailsTab: WeaponDetailsTab = $state('weapon');
+
+  /** Selected ammo amount for the ammo tab */
+  ammoAmount: number = $state(30);
 
   /**
    * Filtered items based on category and search
@@ -123,7 +197,11 @@ class ShopStore {
     this.activeCategory = 'all';
     this.searchQuery = '';
     this.buying = false;
-    this.selectedName = data.items[0]?.name ?? null;
+    this.activeDetailsTab = 'weapon';
+    this.selectedName = data.selectedName && data.items.some((item) => item.name === data.selectedName)
+      ? data.selectedName
+      : (data.items[0]?.name ?? null);
+    this.syncAmmoAmount();
   }
 
   /**
@@ -133,6 +211,7 @@ class ShopStore {
     this.items = MOCK_ITEMS;
     this.categories = MOCK_CATEGORIES;
     this.selectedName = MOCK_ITEMS[0]?.name ?? null;
+    this.syncAmmoAmount();
   }
 
   /**
@@ -157,6 +236,44 @@ class ShopStore {
    */
   selectItem(itemName: string): void {
     this.selectedName = itemName;
+    this.activeDetailsTab = 'weapon';
+    this.syncAmmoAmount();
+  }
+
+  /**
+   * Sets active details tab
+   * @param tab - Details tab identifier
+   */
+  setDetailsTab(tab: WeaponDetailsTab): void {
+    this.activeDetailsTab = tab;
+    this.syncAmmoAmount();
+  }
+
+  /**
+   * Sets a bounded ammo amount for the selected weapon
+   * @param amount - Ammo amount
+   */
+  setAmmoAmount(amount: number): void {
+    const ammo = this.selectedItem?.upgrades.ammo;
+    if (!ammo) {
+      this.ammoAmount = 0;
+      return;
+    }
+
+    if (!Number.isFinite(amount)) {
+      this.ammoAmount = ammo.minAmount;
+      return;
+    }
+
+    this.ammoAmount = Math.max(ammo.minAmount, Math.min(ammo.maxAmount, Math.floor(amount)));
+  }
+
+  /**
+   * Resets ammo selector to the selected weapon default.
+   */
+  syncAmmoAmount(): void {
+    const ammo = this.selectedItem?.upgrades.ammo;
+    this.ammoAmount = ammo?.defaultAmount ?? 0;
   }
 
   /**
@@ -168,6 +285,8 @@ class ShopStore {
     this.selectedName = null;
     this.buying = false;
     this.mode = 'shop';
+    this.activeDetailsTab = 'weapon';
+    this.ammoAmount = 30;
   }
 }
 

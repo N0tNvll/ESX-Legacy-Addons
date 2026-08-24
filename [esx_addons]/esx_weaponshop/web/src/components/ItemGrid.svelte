@@ -17,14 +17,22 @@
 
 <style>
   .item-grid {
+    --row-gap: 0.55rem;
+    --bottom-safe-space: 0.35rem;
     display: grid;
     grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
+    grid-template-rows: repeat(4, minmax(0, 1fr));
     grid-auto-rows: 9.55rem;
-    gap: 0.55rem;
-    max-height: 64vh;
+    gap: var(--row-gap);
+    height: 100%;
+    max-height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
-    padding-right: 0.5rem;
-    padding-bottom: 0.5rem;
+    padding: 0 0 var(--bottom-safe-space);
+    scrollbar-width: none;
+  }
+
+  .item-grid::-webkit-scrollbar {
+    display: none;
   }
 </style>
