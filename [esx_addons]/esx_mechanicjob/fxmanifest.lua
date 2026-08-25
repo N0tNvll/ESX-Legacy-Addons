@@ -16,6 +16,13 @@ client_scripts {
 	'@es_extended/locale.lua',
 	'locales/*.lua',
 	'config.lua',
+	'client/modules/init.lua',
+	'client/modules/utils.lua',
+	'client/modules/npc_jobs.lua',
+	'client/modules/menus.lua',
+	'client/modules/item_actions.lua',
+	'client/modules/markers.lua',
+	'client/modules/commands.lua',
 	'client/main.lua'
 }
 

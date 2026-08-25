@@ -9,6 +9,11 @@ local NPC_JOB_DELIVERY_DISTANCE = 25.0
 local NPC_JOB_VEHICLE_DISTANCE = 15.0
 local FLATBED_MODEL = `flatbed`
 
+local function failNPCJobCompletion(source, translationKey)
+	local message = translationKey and TranslateCap(translationKey) or nil
+	TriggerClientEvent('esx_mechanicjob:npcJobCompletionFailed', source, message)
+end
+
 local function getRandomTowableZone()
 	if not Config.Towables or #Config.Towables == 0 then
 		return nil
@@ -207,12 +212,14 @@ RegisterServerEvent('esx_mechanicjob:onNPCJobMissionCompleted')
 AddEventHandler('esx_mechanicjob:onNPCJobMissionCompleted', function(targetNetId, flatbedNetId)
 	local source = source
 	if MechanicJob.rejectRateLimited(source, 'esx_mechanicjob:onNPCJobMissionCompleted', NPC_JOB_COMPLETE_COOLDOWN) then
+		failNPCJobCompletion(source)
 		return
 	end
 
 	local xPlayer, job = MechanicJob.getMechanicPlayer(source)
 	if not xPlayer then
 		PlayersNPCJobs[source] = nil
+		failNPCJobCompletion(source)
 		return
 	end
 
@@ -220,45 +227,55 @@ AddEventHandler('esx_mechanicjob:onNPCJobMissionCompleted', function(targetNetId
 	local npcJob = PlayersNPCJobs[source]
 
 	if not npcJob or now - npcJob.startedAt < NPC_JOB_MIN_DURATION then
+		failNPCJobCompletion(source, 'not_right_place')
 		return
 	end
 
 	if not npcJob.targetReached then
+		failNPCJobCompletion(source, 'not_right_place')
 		return
 	end
 
 	targetNetId = normalizeNetId(targetNetId)
 	if not targetNetId or not npcJob.targetNetId or targetNetId ~= npcJob.targetNetId then
+		failNPCJobCompletion(source, 'not_right_veh')
 		return
 	end
 
 	local targetVehicle = getVehicleFromNetId(targetNetId)
 	if not targetVehicle then
+		failNPCJobCompletion(source, 'not_right_veh')
 		return
 	end
 
 	local flatbedVehicle = getVehicleFromNetId(flatbedNetId)
 	if not flatbedVehicle or GetEntityModel(flatbedVehicle) ~= FLATBED_MODEL then
+		failNPCJobCompletion(source, 'imp_flatbed')
 		return
 	end
 
 	if not MechanicJob.isPlayerNearZone(source, 'VehicleDelivery', NPC_JOB_DELIVERY_DISTANCE) then
+		failNPCJobCompletion(source, 'not_right_place')
 		return
 	end
 
 	if not isEntityNearZone(targetVehicle, 'VehicleDelivery', NPC_JOB_DELIVERY_DISTANCE) then
+		failNPCJobCompletion(source, 'not_right_place')
 		return
 	end
 
 	if not MechanicJob.isPlayerNearCoords(source, GetEntityCoords(flatbedVehicle), NPC_JOB_VEHICLE_DISTANCE) then
+		failNPCJobCompletion(source, 'not_right_place')
 		return
 	end
 
 	if not areEntitiesNear(targetVehicle, flatbedVehicle, NPC_JOB_VEHICLE_DISTANCE) then
+		failNPCJobCompletion(source, 'not_right_place')
 		return
 	end
 
 	if (LastNPCJobReward[source] or 0) > now then
+		failNPCJobCompletion(source)
 		return
 	end
 

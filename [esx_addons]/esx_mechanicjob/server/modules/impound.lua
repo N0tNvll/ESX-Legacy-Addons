@@ -37,6 +37,18 @@ local function getVehicleFromNetId(netId)
 	return vehicle
 end
 
+local function isImpoundVehicleNearPlayer(ped, coords, vehicle, plateKey)
+	if not vehicle or vehicle == 0 or not DoesEntityExist(vehicle) then
+		return false
+	end
+
+	if impoundPlateKey(GetVehicleNumberPlateText(vehicle) or '') ~= plateKey then
+		return false
+	end
+
+	return GetVehiclePedIsIn(ped, false) == vehicle or #(GetEntityCoords(vehicle) - coords) <= 8.0
+end
+
 local function isNearImpoundVehicle(source, plate, vehicleNetId)
 	local ped = GetPlayerPed(source)
 	if not ped or ped == 0 then
@@ -44,14 +56,27 @@ local function isNearImpoundVehicle(source, plate, vehicleNetId)
 	end
 
 	local plateKey = impoundPlateKey(plate)
-	local vehicle = getVehicleFromNetId(vehicleNetId) or GetVehiclePedIsIn(ped, false)
+	local coords = GetEntityCoords(ped)
+	local vehicle = getVehicleFromNetId(vehicleNetId)
 
-	if not vehicle or vehicle == 0 or impoundPlateKey(GetVehicleNumberPlateText(vehicle) or '') ~= plateKey then
-		return false
+	if isImpoundVehicleNearPlayer(ped, coords, vehicle, plateKey) then
+		return true
 	end
 
-	local coords = GetEntityCoords(ped)
-	return #(GetEntityCoords(vehicle) - coords) <= 8.0
+	vehicle = GetVehiclePedIsIn(ped, false)
+	if isImpoundVehicleNearPlayer(ped, coords, vehicle, plateKey) then
+		return true
+	end
+
+	local vehicles = GetAllVehicles()
+
+	for i = 1, #vehicles do
+		if isImpoundVehicleNearPlayer(ped, coords, vehicles[i], plateKey) then
+			return true
+		end
+	end
+
+	return false
 end
 
 RegisterNetEvent('esx_mechanicjob:impoundOwnedVehicle')
