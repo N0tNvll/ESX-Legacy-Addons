@@ -227,8 +227,37 @@ local function IsPlayerNearConfiguredAtm(playerId)
     return false
 end
 
+local function FindConfiguredAtmNearCoords(coords, distance)
+    if not coords then
+        return nil
+    end
+
+    for i = 1, #(Config.AtmLocations or {}) do
+        local atmCoords = Config.AtmLocations[i]
+        if #(coords - atmCoords) <= distance then
+            return atmCoords
+        end
+    end
+
+    return nil
+end
+
+local function NormalizeAtmCoords(coords)
+    local coordsType = type(coords)
+    if coordsType ~= "table" and coordsType ~= "vector3" then
+        return nil
+    end
+
+    local x, y, z = tonumber(coords.x), tonumber(coords.y), tonumber(coords.z)
+    if not x or not y or not z then
+        return nil
+    end
+
+    return vector3(x, y, z)
+end
+
 local function NormalizeClientAtmData(atmData)
-    if Config.ClientAtmFallback == false or type(atmData) ~= "table" or type(atmData.coords) ~= "table" then
+    if Config.ClientAtmFallback == false or type(atmData) ~= "table" then
         return nil
     end
 
@@ -237,14 +266,14 @@ local function NormalizeClientAtmData(atmData)
         return nil
     end
 
-    local x, y, z = tonumber(atmData.coords.x), tonumber(atmData.coords.y), tonumber(atmData.coords.z)
-    if not x or not y or not z then
+    local coords = NormalizeAtmCoords(atmData.coords)
+    if not coords then
         return nil
     end
 
     return {
         model = model,
-        coords = vector3(x, y, z)
+        coords = coords
     }
 end
 
@@ -260,7 +289,13 @@ local function IsPlayerNearClientAtm(playerId, atmData)
     end
 
     local distance = GetConfigNumber("ClientAtmFallbackDistance", GetConfigNumber("AtmInteractionDistance", 2.0))
-    if #(coords - atm.coords) <= distance then
+    local configuredAtmCoords = FindConfiguredAtmNearCoords(atm.coords, distance)
+    if not configuredAtmCoords then
+        return false
+    end
+
+    if #(coords - configuredAtmCoords) <= distance then
+        atm.coords = configuredAtmCoords
         return true, atm
     end
 
