@@ -23,7 +23,7 @@ end
 function IsPlateTaken(plate)
 	local p = promise.new()
 	
-	ESX.TriggerServerCallback('esx_vehicleshop:isPlateTaken', function(isPlateTaken)
+	xLib.callback('esx_vehicleshop:isPlateTaken', false, function(isPlateTaken)
 		p:resolve(isPlateTaken)
 	end, plate)
 

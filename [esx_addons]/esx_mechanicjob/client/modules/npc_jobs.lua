@@ -99,7 +99,7 @@ CreateThread(function()
 				if Config.Vehicles and #Config.Vehicles > 0 then
 					local model = Config.Vehicles[math.random(#Config.Vehicles)]
 
-					ESX.Game.SpawnVehicle(model, zone.Pos, 0.0, function(vehicle)
+					xLib.game.spawnVehicle(model, zone.Pos, 0.0, function(vehicle)
 						State.npcTargetTowable = vehicle
 						State.npcTargetTowableNetId = Mechanic.getVehicleNetId(vehicle)
 

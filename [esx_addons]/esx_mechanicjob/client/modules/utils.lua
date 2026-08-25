@@ -41,7 +41,7 @@ function Mechanic.getVehicleNetId(vehicle)
 end
 
 function Mechanic.getVehicleInDirection()
-	local vehicle = ESX.Game.GetVehicleInDirection()
+	local vehicle = xLib.game.getVehicleInDirection()
 
 	if Mechanic.vehicleExists(vehicle) then
 		return vehicle
@@ -63,7 +63,7 @@ function Mechanic.getNearbyFlatbed(playerPed)
 	local flatbedFilter = {}
 	flatbedFilter[`flatbed`] = true
 
-	local closestVehicle, closestDistance = ESX.Game.GetClosestVehicle(coords, flatbedFilter)
+	local closestVehicle, closestDistance = xLib.game.getClosestVehicle(coords, flatbedFilter)
 
 	if Mechanic.vehicleExists(closestVehicle) and closestDistance ~= -1 and closestDistance <= 12.0 then
 		return closestVehicle
@@ -124,7 +124,7 @@ function Mechanic.deleteVehicle(vehicle)
 	end
 
 	Mechanic.requestEntityControl(vehicle, 1000)
-	ESX.Game.DeleteVehicle(vehicle)
+	xLib.game.deleteVehicle(vehicle)
 
 	return true
 end
@@ -150,7 +150,7 @@ function Mechanic.spawnObject(model)
 		z = z - 2.0
 	end
 
-	ESX.Game.SpawnObject(model, { x = x, y = y, z = z }, function(object)
+	xLib.game.spawnObject(model, { x = x, y = y, z = z }, function(object)
 		SetEntityHeading(object, GetEntityHeading(playerPed))
 		PlaceObjectOnGroundProperly(object)
 	end)

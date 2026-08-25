@@ -35,7 +35,7 @@ AddEventHandler('esx_service:notifyAllInService', function(notification, name)
 	end
 end)
 
-ESX.RegisterServerCallback('esx_service:enableService', function(source, cb, name)
+xLib.callback.registerCompat('esx_service:enableService', function(source, cb, name)
 	local inServiceCount = GetInServiceCount(name)
 	
 	if inServiceCount >= MaxInService[name] then
@@ -47,7 +47,7 @@ ESX.RegisterServerCallback('esx_service:enableService', function(source, cb, nam
 	end
 end)
 
-ESX.RegisterServerCallback('esx_service:isInService', function(source, cb, name)
+xLib.callback.registerCompat('esx_service:isInService', function(source, cb, name)
 	local isInService = false
 
 	if InService[name] ~= nil then
@@ -61,7 +61,7 @@ ESX.RegisterServerCallback('esx_service:isInService', function(source, cb, name)
 	cb(isInService)
 end)
 
-ESX.RegisterServerCallback('esx_service:isPlayerInService', function(source, cb, name, target)
+xLib.callback.registerCompat('esx_service:isPlayerInService', function(source, cb, name, target)
 	local isPlayerInService = false
 	local targetXPlayer = ESX.Player(target)
 
@@ -72,7 +72,7 @@ ESX.RegisterServerCallback('esx_service:isPlayerInService', function(source, cb,
 	cb(isPlayerInService)
 end)
 
-ESX.RegisterServerCallback('esx_service:getInServiceList', function(source, cb, name)
+xLib.callback.registerCompat('esx_service:getInServiceList', function(source, cb, name)
 	cb(InService[name])
 end)
 

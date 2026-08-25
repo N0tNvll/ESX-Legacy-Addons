@@ -9,6 +9,7 @@ legacyversion '1.14.1'
 
 shared_script '@es_extended/imports.lua'
 
+shared_script '@esx_lib/imports.lua'
 server_scripts {
 	'@es_extended/locale.lua',
 	'locales/*.lua',

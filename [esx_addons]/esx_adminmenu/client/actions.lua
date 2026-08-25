@@ -1310,7 +1310,7 @@ function Spectate(targetId, targetCoords)
 			if IsDisabledControlJustPressed(0, 322) and GetGameTimer() >= escCooldownUntil then
 				escCooldownUntil = GetGameTimer() + escCooldown
 
-				ESX.TriggerServerCallback("esx-adminmenu:server:spectate:stop", function(res)
+				xLib.callback("esx-adminmenu:server:spectate:stop", false, function(res)
 					if not res or res.err then
 						print("[esx-adminmenu]", res and res.err)
 						return

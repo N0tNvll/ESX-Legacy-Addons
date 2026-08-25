@@ -54,7 +54,7 @@ function OpenMobileAmbulanceActionsMenu()
 
 			ESX.OpenContext("right", elements2, function(menu2, element2)
 				if isBusy then return end
-				local closestPlayer, closestDistance = ESX.Game.GetClosestPlayer()
+				local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
 
 				if element2.value == 'search' then
 					TriggerServerEvent('esx_ambulancejob:svsearch')
@@ -64,7 +64,7 @@ function OpenMobileAmbulanceActionsMenu()
 					if element2.value == 'revive' then
 						revivePlayer(closestPlayer)
 					elseif element2.value == 'small' then
-						ESX.TriggerServerCallback('esx_ambulancejob:getItemAmount', function(quantity)
+						xLib.callback('esx_ambulancejob:getItemAmount', false, function(quantity)
 							if quantity > 0 then
 								local closestPlayerPed = GetPlayerPed(closestPlayer)
 								local health = GetEntityHealth(closestPlayerPed)
@@ -91,7 +91,7 @@ function OpenMobileAmbulanceActionsMenu()
 						end, 'bandage')
 
 					elseif element2.value == 'big' then
-						ESX.TriggerServerCallback('esx_ambulancejob:getItemAmount', function(quantity)
+						xLib.callback('esx_ambulancejob:getItemAmount', false, function(quantity)
 							if quantity > 0 then
 								local closestPlayerPed = GetPlayerPed(closestPlayer)
 								local health = GetEntityHealth(closestPlayerPed)
@@ -128,7 +128,7 @@ end
 function revivePlayer(closestPlayer)
 	isBusy = true
 
-	ESX.TriggerServerCallback('esx_ambulancejob:getItemAmount', function(quantity)
+	xLib.callback('esx_ambulancejob:getItemAmount', false, function(quantity)
 		if quantity > 0 then
 			local closestPlayerPed = GetPlayerPed(closestPlayer)
 			local closestPlayerSrc = GetPlayerServerId(closestPlayer)
@@ -141,7 +141,7 @@ function revivePlayer(closestPlayer)
 				for i = 1, 15 do
 					Wait(900)
 
-					ESX.Streaming.RequestAnimDict(lib, function()
+					xLib.streaming.requestAnimDict(lib, function()
 						TaskPlayAnim(playerPed, lib, anim, 8.0, -8.0, -1, 0, 0.0, false, false, false)
 						RemoveAnimDict(lib)
 					end)
@@ -168,7 +168,7 @@ function FastTravel(coords, heading)
 		Wait(500)
 	end
 
-	ESX.Game.Teleport(playerPed, coords, function()
+	xLib.entity.Teleport(playerPed, coords, function()
 		DoScreenFadeIn(800)
 
 		if heading then
@@ -390,7 +390,7 @@ RegisterKeyMapping("ambulance", "Open Ambulance Actions Menu", "keyboard", "F6")
 RegisterNetEvent('esx_ambulancejob:putInVehicle')
 AddEventHandler('esx_ambulancejob:putInVehicle', function()
 	local playerPed = PlayerPedId()
-	local vehicle, distance = ESX.Game.GetClosestVehicle()
+	local vehicle, distance = xLib.game.getClosestVehicle()
 
 	if vehicle and distance < 5 then
 		local maxSeats, freeSeat = GetVehicleMaxNumberOfPassengers(vehicle)
@@ -417,7 +417,7 @@ function OpenCloakroomMenu()
 
 	ESX.OpenContext("right", elements, function(menu, element)
 		if element.value == "citizen_wear" then
-			ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin, jobSkin)
+			xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
 				TriggerEvent('skinchanger:loadSkin', skin)
 				isOnDuty = false
 
@@ -431,7 +431,7 @@ function OpenCloakroomMenu()
 				end
 			end)
 		elseif element.value == "ambulance_wear" then
-			ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin, jobSkin)
+			xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
 				if skin.sex == 0 then
 					TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_male)
 				else
@@ -439,7 +439,7 @@ function OpenCloakroomMenu()
 				end
 
 				isOnDuty = true
-				ESX.TriggerServerCallback('esx_ambulancejob:getDeadPlayers', function(_deadPlayers)
+				xLib.callback('esx_ambulancejob:getDeadPlayers', false, function(_deadPlayers)
 					TriggerEvent('esx_ambulancejob:setDeadPlayers', _deadPlayers)
 				end)
 				if Config.Debug then

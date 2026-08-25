@@ -1,7 +1,7 @@
 local isDead = false
 
 local function showBillsMenu()
-	ESX.TriggerServerCallback('esx_billing:getBills', function(bills)
+	xLib.callback('esx_billing:getBills', false, function(bills)
 		if #bills <= 0 then return ESX.ShowNotification(TranslateCap('no_invoices')) end
 
 		local elements = {
@@ -20,7 +20,7 @@ local function showBillsMenu()
 		ESX.OpenContext('right', elements, function(menu, element)
 			local billId = element.billId
 
-			ESX.TriggerServerCallback('esx_billing:payBill', function(resp)
+			xLib.callback('esx_billing:payBill', false, function(resp)
 				showBillsMenu()
 
 				if not resp then return end

@@ -11,7 +11,7 @@ local function OpenNearbyShop()
 	end
 
 	if Config.LicenseEnable and zone.Legal then
-		ESX.TriggerServerCallback('esx_license:checkLicense', function(hasWeaponLicense)
+		xLib.callback('esx_license:checkLicense', false, function(hasWeaponLicense)
 			if hasWeaponLicense then
 				OpenShop(zoneName)
 			else
@@ -24,7 +24,7 @@ local function OpenNearbyShop()
 end
 
 -- Register ESX interaction
-ESX.RegisterInteraction('open_weaponshop', function()
+xLib.interactions.register('open_weaponshop', function()
 	OpenNearbyShop()
 end, function()
 	return GetNearbyZone() ~= nil and not IsUIOpen()

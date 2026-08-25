@@ -12,7 +12,7 @@ MySQL.ready(function()
 	ParkBoats()
 end)
 
-ESX.RegisterServerCallback('esx_boat:buyBoat', function(source, cb, vehicleProps)
+xLib.callback.registerCompat('esx_boat:buyBoat', function(source, cb, vehicleProps)
 	local xPlayer = ESX.Player(source)
 	local price   = getPriceFromModel(vehicleProps.model)
 
@@ -54,7 +54,7 @@ AddEventHandler('esx_boat:takeOutVehicle', function(plate)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_boat:storeVehicle', function (source, cb, plate)
+xLib.callback.registerCompat('esx_boat:storeVehicle', function (source, cb, plate)
 	local xPlayer = ESX.Player(source)
 
 	MySQL.update('UPDATE owned_vehicles SET `stored` = @stored WHERE owner = @owner AND plate = @plate', {
@@ -66,7 +66,7 @@ ESX.RegisterServerCallback('esx_boat:storeVehicle', function (source, cb, plate)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_boat:getGarage', function(source, cb)
+xLib.callback.registerCompat('esx_boat:getGarage', function(source, cb)
 	local xPlayer = ESX.Player(source)
 
 	MySQL.query('SELECT vehicle FROM owned_vehicles WHERE owner = @owner AND type = @type AND `stored` = @stored', {
@@ -84,7 +84,7 @@ ESX.RegisterServerCallback('esx_boat:getGarage', function(source, cb)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_boat:buyBoatLicense', function(source, cb)
+xLib.callback.registerCompat('esx_boat:buyBoatLicense', function(source, cb)
 	local xPlayer = ESX.Player(source)
 
 	if xPlayer.getMoney() >= Config.LicensePrice then

@@ -60,7 +60,7 @@ function Helpers.resolveVehicleName(hash)
 end
 
 -- Callback helper for the /admincar command.
-ESX.RegisterClientCallback("esx-adminmenu:client:adminCarVehicleProps", function(cb, data)
+xLib.callback.registerCompat("esx-adminmenu:client:adminCarVehicleProps", function(cb, data)
 	data = data or {}
 	local ped = PlayerPedId()
 	local vehicle = GetVehiclePedIsIn(ped, false)

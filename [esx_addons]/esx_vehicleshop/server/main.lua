@@ -73,7 +73,7 @@ AddEventHandler('esx_vehicleshop:setVehicleOwnedPlayerId', function(playerId, ve
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_vehicleshop:getSoldVehicles', function(source, cb)
+xLib.callback.registerCompat('esx_vehicleshop:getSoldVehicles', function(source, cb)
 	MySQL.query('SELECT client, model, plate, soldby, date FROM vehicle_sold ORDER BY DATE DESC', function(result)
 		cb(result)
 	end)
@@ -149,7 +149,7 @@ AddEventHandler('esx_vehicleshop:putStockItems', function(itemName, count)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_vehicleshop:buyVehicle', function(source, cb, model, plate)
+xLib.callback.registerCompat('esx_vehicleshop:buyVehicle', function(source, cb, model, plate)
 	local xPlayer = ESX.Player(source)
 	local modelPrice = getVehicleFromModel(model).price
 
@@ -172,13 +172,13 @@ ESX.RegisterServerCallback('esx_vehicleshop:buyVehicle', function(source, cb, mo
 	end
 end)
 
-ESX.RegisterServerCallback('esx_vehicleshop:getCommercialVehicles', function(source, cb)
+xLib.callback.registerCompat('esx_vehicleshop:getCommercialVehicles', function(source, cb)
 	MySQL.query('SELECT price, vehicle FROM cardealer_vehicles ORDER BY vehicle ASC', function(result)
 		cb(result)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_vehicleshop:buyCarDealerVehicle', function(source, cb, model)
+xLib.callback.registerCompat('esx_vehicleshop:buyCarDealerVehicle', function(source, cb, model)
 	local xPlayer = ESX.Player(source)
 
 	if xPlayer.getJob().name ~= 'cardealer' then
@@ -234,7 +234,7 @@ AddEventHandler('esx_vehicleshop:returnProvider', function(vehicleModel)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_vehicleshop:getRentedVehicles', function(source, cb)
+xLib.callback.registerCompat('esx_vehicleshop:getRentedVehicles', function(source, cb)
 	MySQL.query('SELECT * FROM rented_vehicles ORDER BY player_name ASC', function(result)
 		local vehicles = {}
 
@@ -251,7 +251,7 @@ ESX.RegisterServerCallback('esx_vehicleshop:getRentedVehicles', function(source,
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_vehicleshop:giveBackVehicle', function(source, cb, plate)
+xLib.callback.registerCompat('esx_vehicleshop:giveBackVehicle', function(source, cb, plate)
 	MySQL.single('SELECT base_price, vehicle FROM rented_vehicles WHERE plate = ?', {plate},
 	function(result)
 		if not result then
@@ -268,7 +268,7 @@ ESX.RegisterServerCallback('esx_vehicleshop:giveBackVehicle', function(source, c
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_vehicleshop:resellVehicle', function(source, cb, plate, model)
+xLib.callback.registerCompat('esx_vehicleshop:resellVehicle', function(source, cb, plate, model)
 	local xPlayer, resellPrice = ESX.Player(source)
 
 	if xPlayer.getJob().name == 'cardealer' or not Config.EnablePlayerManagement then
@@ -313,27 +313,27 @@ ESX.RegisterServerCallback('esx_vehicleshop:resellVehicle', function(source, cb,
 	end
 end)
 
-ESX.RegisterServerCallback('esx_vehicleshop:getStockItems', function(source, cb)
+xLib.callback.registerCompat('esx_vehicleshop:getStockItems', function(source, cb)
 	TriggerEvent('esx_addoninventory:getSharedInventory', 'society_cardealer', function(inventory)
 		cb(inventory.items)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_vehicleshop:getPlayerInventory', function(source, cb)
+xLib.callback.registerCompat('esx_vehicleshop:getPlayerInventory', function(source, cb)
 	local xPlayer = ESX.Player(source)
 	local items = xPlayer.getInventory(true)
 
 	cb({items = items})
 end)
 
-ESX.RegisterServerCallback('esx_vehicleshop:isPlateTaken', function(source, cb, plate)
+xLib.callback.registerCompat('esx_vehicleshop:isPlateTaken', function(source, cb, plate)
 	MySQL.scalar('SELECT plate FROM owned_vehicles WHERE plate = ?', {plate},
 	function(result)
 		cb(result ~= nil)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_vehicleshop:retrieveJobVehicles', function(source, cb, type)
+xLib.callback.registerCompat('esx_vehicleshop:retrieveJobVehicles', function(source, cb, type)
 	local xPlayer = ESX.Player(source)
 
 	MySQL.query('SELECT * FROM owned_vehicles WHERE owner = ? AND type = ? AND job = ?', {xPlayer.getIdentifier(), type, xPlayer.getJob().name},

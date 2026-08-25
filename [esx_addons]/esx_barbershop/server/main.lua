@@ -8,7 +8,7 @@ RegisterNetEvent('esx_barbershop:pay', function()
 	TriggerClientEvent('esx:showNotification', src, TranslateCap('you_paid', ESX.Math.GroupDigits(Config.Price)))
 end)
 
-ESX.RegisterServerCallback('esx_barbershop:checkMoney', function(source, cb)
+xLib.callback.registerCompat('esx_barbershop:checkMoney', function(source, cb)
 	local xPlayer = ESX.Player(source)
 		
 	if not xPlayer and source then return print(('^3[WARNING]^0 xPlayer for Id %s, couldn`t be found.'):format(source)) end

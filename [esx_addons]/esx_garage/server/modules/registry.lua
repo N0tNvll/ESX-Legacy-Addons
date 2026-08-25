@@ -209,7 +209,7 @@ local function accessiblePayload(source)
     return { garages = garages, impounds = impounds }
 end
 
-ESX.RegisterServerCallback("esx_garage:getGarages", function(source, cb)
+xLib.callback.registerCompat("esx_garage:getGarages", function(source, cb)
     if rejectRateLimited(source, cb, "esx_garage:getGarages") then
         return
     end

@@ -171,7 +171,7 @@ function BANK:HandleUi(state, atm, atmData)
     inMenu = true
     local accessType = atm and "atm" or "bank"
 
-    ESX.TriggerServerCallback("esx_banking:getPlayerData", function(data)
+    xLib.callback("esx_banking:getPlayerData", false, function(data)
         if not inMenu then
             return
         end
@@ -314,7 +314,7 @@ RegisterNUICallback("checkPincode", function(data, cb)
         return
     end
 
-    ESX.TriggerServerCallback("esx_banking:checkPincode", function(pincode)
+    xLib.callback("esx_banking:checkPincode", false, function(pincode)
         if pincode then
             cb({success = true})
             ESX.ShowNotification(TranslateCap("pincode_found"), "success")

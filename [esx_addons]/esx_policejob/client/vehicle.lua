@@ -50,7 +50,7 @@ function OpenVehicleSpawnerMenu(type, station, part, partNum)
 				{unselectable = true, icon = "fas fa-car", title = "Garage"}
 			}
 
-			ESX.TriggerServerCallback('esx_vehicleshop:retrieveJobVehicles', function(jobVehicles)
+			xLib.callback('esx_vehicleshop:retrieveJobVehicles', false, function(jobVehicles)
 				if #jobVehicles > 0 then
 					local allVehicleProps = {}
 
@@ -87,7 +87,7 @@ function OpenVehicleSpawnerMenu(type, station, part, partNum)
 								if foundSpawn then
 									ESX.CloseContext()
 
-									ESX.Game.SpawnVehicle(elementG.model, spawnPoint.coords, spawnPoint.heading, function(vehicle)
+									xLib.game.spawnVehicle(elementG.model, spawnPoint.coords, spawnPoint.heading, function(vehicle)
 										local vehicleProps = allVehicleProps[elementG.plate]
 										xLib.game.setVehicleProperties(vehicle, vehicleProps)
 
@@ -113,7 +113,7 @@ function OpenVehicleSpawnerMenu(type, station, part, partNum)
 end
 
 function StoreNearbyVehicle(playerCoords)
-	local vehicles, plates, index = ESX.Game.GetVehiclesInArea(playerCoords, 30.0), {}, {}
+	local vehicles, plates, index = xLib.game.getVehiclesInArea(playerCoords, 30.0), {}, {}
 
 	if next(vehicles) then
 		for i = 1, #vehicles do
@@ -131,11 +131,11 @@ function StoreNearbyVehicle(playerCoords)
 		return
 	end
 
-	ESX.TriggerServerCallback('esx_policejob:storeNearbyVehicle', function(plate)
+	xLib.callback('esx_policejob:storeNearbyVehicle', false, function(plate)
 		if plate then
 			local vehicleId = index[plate]
 			local attempts = 0
-			ESX.Game.DeleteVehicle(vehicleId)
+			xLib.game.deleteVehicle(vehicleId)
 			local isBusy = true
 
 			CreateThread(function()
@@ -160,12 +160,12 @@ function StoreNearbyVehicle(playerCoords)
 					break
 				end
 
-				vehicles = ESX.Game.GetVehiclesInArea(playerCoords, 30.0)
+				vehicles = xLib.game.getVehiclesInArea(playerCoords, 30.0)
 				if #vehicles > 0 then
 					for i = 1, #vehicles do
 						local vehicle = vehicles[i]
 						if ESX.Math.Trim(GetVehicleNumberPlateText(vehicle)) == plate then
-							ESX.Game.DeleteVehicle(vehicle)
+							xLib.game.deleteVehicle(vehicle)
 							break
 						end
 					end
@@ -185,7 +185,7 @@ function GetAvailableVehicleSpawnPoint(station, part, partNum)
 	local found, foundSpawnPoint = false, nil
 
 	for i=1, #spawnPoints, 1 do
-		if ESX.Game.IsSpawnPointClear(spawnPoints[i].coords, spawnPoints[i].radius) then
+		if xLib.game.isSpawnPointClear(spawnPoints[i].coords, spawnPoints[i].radius) then
 			found, foundSpawnPoint = true, spawnPoints[i]
 			break
 		end
@@ -213,7 +213,7 @@ function OpenShopMenu(elements, restoreCoords, shopCoords)
 				DeleteSpawnedVehicles()
 				WaitForVehicleToLoad(element.model)
 
-				ESX.Game.SpawnLocalVehicle(element.model, shopCoords, 0.0, function(vehicle)
+				xLib.game.spawnLocalVehicle(element.model, shopCoords, 0.0, function(vehicle)
 					table.insert(spawnedVehicles, vehicle)
 					TaskWarpPedIntoVehicle(playerPed, vehicle, -1)
 					FreezeEntityPosition(vehicle, true)
@@ -239,14 +239,14 @@ function OpenShopMenu(elements, restoreCoords, shopCoords)
 						FreezeEntityPosition(playerPed, false)
 						SetEntityVisible(playerPed, true)
 
-						ESX.Game.Teleport(playerPed, restoreCoords)
+						xLib.entity.Teleport(playerPed, restoreCoords)
 					elseif element3.value == "buy" then
 						local newPlate = exports['esx_vehicleshop']:GeneratePlate()
 						local vehicle  = GetVehiclePedIsIn(playerPed, false)
 						local props    = xLib.game.getVehicleProperties(vehicle)
 						props.plate    = newPlate
 
-						ESX.TriggerServerCallback('esx_policejob:buyJobVehicle', function (bought)
+						xLib.callback('esx_policejob:buyJobVehicle', false, function (bought)
 							if bought then
 								ESX.ShowNotification(TranslateCap('vehicleshop_bought', element.name, ESX.Math.GroupDigits(element.price)))
 
@@ -256,7 +256,7 @@ function OpenShopMenu(elements, restoreCoords, shopCoords)
 								FreezeEntityPosition(playerPed, false)
 								SetEntityVisible(playerPed, true)
 
-								ESX.Game.Teleport(playerPed, restoreCoords)
+								xLib.entity.Teleport(playerPed, restoreCoords)
 							else
 								ESX.ShowNotification(TranslateCap('vehicleshop_money'))
 								ESX.CloseContext()
@@ -271,7 +271,7 @@ function OpenShopMenu(elements, restoreCoords, shopCoords)
 					FreezeEntityPosition(playerPed, false)
 					SetEntityVisible(playerPed, true)
 
-					ESX.Game.Teleport(playerPed, restoreCoords)
+					xLib.entity.Teleport(playerPed, restoreCoords)
 				end)
 			end
 		end)
@@ -295,7 +295,7 @@ end)
 function DeleteSpawnedVehicles()
 	while #spawnedVehicles > 0 do
 		local vehicle = spawnedVehicles[1]
-		ESX.Game.DeleteVehicle(vehicle)
+		xLib.game.deleteVehicle(vehicle)
 		table.remove(spawnedVehicles, 1)
 	end
 end

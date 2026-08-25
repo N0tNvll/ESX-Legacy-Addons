@@ -64,14 +64,14 @@ RegisterNetEvent('esx_billing:sendBillToIdentifier', function(targetIdentifier, 
 end)
 exports("BillPlayerByIdentifier", billPlayerByIdentifier)
 
-ESX.RegisterServerCallback('esx_billing:getBills', function(source, cb)
+xLib.callback.registerCompat('esx_billing:getBills', function(source, cb)
 	local xPlayer = ESX.Player(source)
 
 	local result = MySQL.query.await('SELECT amount, id, label FROM billing WHERE identifier = ?', { xPlayer.getIdentifier() })
 	cb(result)
 end)
 
-ESX.RegisterServerCallback('esx_billing:getTargetBills', function(source, cb, target)
+xLib.callback.registerCompat('esx_billing:getTargetBills', function(source, cb, target)
 	local xPlayer = ESX.Player(target)
 
 	if not xPlayer then return cb({}) end
@@ -80,7 +80,7 @@ ESX.RegisterServerCallback('esx_billing:getTargetBills', function(source, cb, ta
 	cb(result)
 end)
 
-ESX.RegisterServerCallback('esx_billing:payBill', function(source, cb, billId)
+xLib.callback.registerCompat('esx_billing:payBill', function(source, cb, billId)
 	local xPlayer = ESX.Player(source)
 
 	local result = MySQL.single.await('SELECT sender, target_type, target, amount FROM billing WHERE id = ?', { billId })

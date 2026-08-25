@@ -4,7 +4,7 @@ AddEventHandler('esx_service:notifyAllInService', function(notification, target)
 	if target == PlayerId() then return end
 
 	local targetPed = GetPlayerPed(target)
-	local mugshot, mugshotStr = ESX.Game.GetPedMugshot(targetPed)
+	local mugshot, mugshotStr = xLib.game.getPedMugshot(targetPed)
 
 	ESX.ShowAdvancedNotification(notification.title, notification.subject, notification.msg, mugshotStr, notification.iconType)
 	UnregisterPedheadshot(mugshot)

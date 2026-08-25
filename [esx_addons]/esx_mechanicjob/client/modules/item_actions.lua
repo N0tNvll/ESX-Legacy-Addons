@@ -6,7 +6,7 @@ local function getNearbyVehicle(playerPed, coords)
 		return GetVehiclePedIsIn(playerPed, false)
 	end
 
-	local vehicle = ESX.Game.GetClosestVehicle(coords)
+	local vehicle = xLib.game.getClosestVehicle(coords)
 	if Mechanic.vehicleExists(vehicle) then
 		return vehicle
 	end

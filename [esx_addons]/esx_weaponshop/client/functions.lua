@@ -249,7 +249,7 @@ end
 ---@param weaponName string
 ---@param price number
 function DisplayBoughtScaleform(weaponName, price)
-	local scaleform = ESX.Scaleform.Utils.RequestScaleformMovie('MP_BIG_MESSAGE_FREEMODE')
+	local scaleform = xLib.scaleform.utils.requestScaleformMovie('MP_BIG_MESSAGE_FREEMODE')
 	local sec = 4
 
 	BeginScaleformMovieMethod(scaleform, 'SHOW_WEAPON_PURCHASED')

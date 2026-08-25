@@ -227,7 +227,7 @@ AddEventHandler('esx_policejob:putStockItems', function(itemName, count)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_policejob:getOtherPlayerData', function(source, cb, target, notify)
+xLib.callback.registerCompat('esx_policejob:getOtherPlayerData', function(source, cb, target, notify)
 	local xPlayer = ESX.Player(target)
 	local job = xPlayer.getJob()
 	if notify then
@@ -269,7 +269,7 @@ ESX.RegisterServerCallback('esx_policejob:getOtherPlayerData', function(source, 
 end)
 
 local fineList = {}
-ESX.RegisterServerCallback('esx_policejob:getFineList', function(source, cb, category)
+xLib.callback.registerCompat('esx_policejob:getFineList', function(source, cb, category)
 	if not fineList[category] then
 		MySQL.query('SELECT * FROM fine_types WHERE category = ?', {category},
 		function(fines)
@@ -283,7 +283,7 @@ ESX.RegisterServerCallback('esx_policejob:getFineList', function(source, cb, cat
 end)
 
 
-ESX.RegisterServerCallback('esx_policejob:getVehicleInfos', function(source, cb, plate)
+xLib.callback.registerCompat('esx_policejob:getVehicleInfos', function(source, cb, plate)
 	local retrivedInfo = {
 		plate = plate
 	}
@@ -309,7 +309,7 @@ ESX.RegisterServerCallback('esx_policejob:getVehicleInfos', function(source, cb,
 	end
 end)
 
-ESX.RegisterServerCallback('esx_policejob:getArmoryWeapons', function(source, cb)
+xLib.callback.registerCompat('esx_policejob:getArmoryWeapons', function(source, cb)
 	TriggerEvent('esx_datastore:getSharedDataStore', 'society_police', function(store)
 		local weapons = store.get('weapons')
 
@@ -321,7 +321,7 @@ ESX.RegisterServerCallback('esx_policejob:getArmoryWeapons', function(source, cb
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_policejob:addArmoryWeapon', function(source, cb, weaponName, removeWeapon)
+xLib.callback.registerCompat('esx_policejob:addArmoryWeapon', function(source, cb, weaponName, removeWeapon)
 	local xPlayer = ESX.Player(source)
 
 	if removeWeapon then
@@ -352,7 +352,7 @@ ESX.RegisterServerCallback('esx_policejob:addArmoryWeapon', function(source, cb,
 		end)
 end)
 
-ESX.RegisterServerCallback('esx_policejob:removeArmoryWeapon', function(source, cb, weaponName)
+xLib.callback.registerCompat('esx_policejob:removeArmoryWeapon', function(source, cb, weaponName)
 	local xPlayer = ESX.Player(source)
 	xPlayer.addWeapon(weaponName, 500)
 
@@ -381,7 +381,7 @@ ESX.RegisterServerCallback('esx_policejob:removeArmoryWeapon', function(source, 
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_policejob:buyWeapon', function(source, cb, weaponName, type, componentNum)
+xLib.callback.registerCompat('esx_policejob:buyWeapon', function(source, cb, weaponName, type, componentNum)
 	local xPlayer = ESX.Player(source)
 	local authorizedWeapons, selectedWeapon = Config.AuthorizedWeapons[xPlayer.getJob().grade_name]
 
@@ -430,7 +430,7 @@ ESX.RegisterServerCallback('esx_policejob:buyWeapon', function(source, cb, weapo
 	end
 end)
 
-ESX.RegisterServerCallback('esx_policejob:buyJobVehicle', function(source, cb, vehicleProps, type)
+xLib.callback.registerCompat('esx_policejob:buyJobVehicle', function(source, cb, vehicleProps, type)
 	local xPlayer = ESX.Player(source)
 	local job = xPlayer.getJob()
 	local price = getPriceFromHash(vehicleProps.model, job.grade_name, type)
@@ -453,7 +453,7 @@ ESX.RegisterServerCallback('esx_policejob:buyJobVehicle', function(source, cb, v
 	end
 end)
 
-ESX.RegisterServerCallback('esx_policejob:storeNearbyVehicle', function(source, cb, plates)
+xLib.callback.registerCompat('esx_policejob:storeNearbyVehicle', function(source, cb, plates)
 	local xPlayer = ESX.Player(source)
 	local job = xPlayer.getJob()
 	local identifier = xPlayer.getIdentifier()
@@ -486,13 +486,13 @@ function getPriceFromHash(vehicleHash, jobGrade, type)
 	return 0
 end
 
-ESX.RegisterServerCallback('esx_policejob:getStockItems', function(source, cb)
+xLib.callback.registerCompat('esx_policejob:getStockItems', function(source, cb)
 	TriggerEvent('esx_addoninventory:getSharedInventory', 'society_police', function(inventory)
 		cb(inventory.items)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_policejob:getPlayerInventory', function(source, cb)
+xLib.callback.registerCompat('esx_policejob:getPlayerInventory', function(source, cb)
 	local xPlayer = ESX.Player(source)
 	local items   = xPlayer.getInventory(false)
 

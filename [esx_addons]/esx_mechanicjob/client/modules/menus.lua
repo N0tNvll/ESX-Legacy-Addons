@@ -2,7 +2,7 @@ local Mechanic = ESXMechanicJob
 local State = Mechanic.State
 
 local function spawnServiceVehicle(model, heading, vehicleProps)
-	ESX.Game.SpawnVehicle(model, Config.Zones.VehicleSpawnPoint.Pos, heading or 90.0, function(vehicle)
+	xLib.game.spawnVehicle(model, Config.Zones.VehicleSpawnPoint.Pos, heading or 90.0, function(vehicle)
 		if vehicleProps then
 			xLib.game.setVehicleProperties(vehicle, vehicleProps)
 		end
@@ -16,7 +16,7 @@ local function openSocietyVehicleMenu()
 		{ unselectable = true, icon = "fas fa-car", title = TranslateCap('service_vehicle') }
 	}
 
-	ESX.TriggerServerCallback('esx_society:getVehiclesInGarage', function(vehicles)
+	xLib.callback('esx_society:getVehiclesInGarage', false, function(vehicles)
 		for i = 1, #vehicles do
 			elements[#elements + 1] = {
 				icon = 'fas fa-car',
@@ -66,7 +66,7 @@ local function openStaticVehicleMenu()
 			return
 		end
 
-		ESX.TriggerServerCallback('esx_service:enableService', function(canTakeService, maxInService, inServiceCount)
+		xLib.callback('esx_service:enableService', false, function(canTakeService, maxInService, inServiceCount)
 			if canTakeService then
 				ESX.CloseContext()
 				spawnServiceVehicle(element.value, 90.0)
@@ -104,7 +104,7 @@ function Mechanic.openActionsMenu()
 			end
 		elseif element.value == 'cloakroom' then
 			ESX.CloseContext()
-			ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin, jobSkin)
+			xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
 				if skin.sex == 0 then
 					TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_male)
 				else
@@ -113,7 +113,7 @@ function Mechanic.openActionsMenu()
 			end)
 		elseif element.value == 'cloakroom2' then
 			ESX.CloseContext()
-			ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin)
+			xLib.callback('esx_skin:getPlayerSkin', false, function(skin)
 				TriggerEvent('skinchanger:loadSkin', skin)
 			end)
 		elseif Config.OxInventory and (element.value == 'put_stock' or element.value == 'get_stock') then
@@ -186,7 +186,7 @@ function Mechanic.openCraftMenu()
 end
 
 function Mechanic.openGetStocksMenu()
-	ESX.TriggerServerCallback('esx_mechanicjob:getStockItems', function(items)
+	xLib.callback('esx_mechanicjob:getStockItems', false, function(items)
 		local elements = {
 			{ unselectable = true, icon = "fas fa-box", title = TranslateCap('mechanic_stock') }
 		}
@@ -229,7 +229,7 @@ function Mechanic.openGetStocksMenu()
 end
 
 function Mechanic.openPutStocksMenu()
-	ESX.TriggerServerCallback('esx_mechanicjob:getPlayerInventory', function(inventory)
+	xLib.callback('esx_mechanicjob:getPlayerInventory', false, function(inventory)
 		local items = (inventory and inventory.items) or {}
 		local elements = {
 			{ unselectable = true, icon = "fas fa-box", title = TranslateCap('inventory') }
@@ -292,7 +292,7 @@ local function openBillingMenu(title)
 			return
 		end
 
-		local closestPlayer, closestDistance = ESX.Game.GetClosestPlayer()
+		local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
 		if closestPlayer == -1 or closestDistance > 3.0 then
 			ESX.ShowNotification(TranslateCap('no_players_nearby'), "error")
 			return

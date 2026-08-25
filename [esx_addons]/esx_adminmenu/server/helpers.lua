@@ -109,7 +109,7 @@ function Helpers.isCallable(value)
 end
 
 function Helpers.registerCallback(name, handler)
-    ESX.RegisterServerCallback(name, function(source, cb, ...)
+    xLib.callback.registerCompat(name, function(source, cb, ...)
         local ok, result = pcall(handler, source, ...)
         if not ok then
             print(("[esx-adminmenu] Callback %s errored: %s"):format(name, tostring(result)))

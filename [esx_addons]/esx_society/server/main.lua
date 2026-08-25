@@ -172,7 +172,7 @@ AddEventHandler('esx_society:removeVehicleFromGarage', function(societyName, veh
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_society:getSocietyMoney', function(source, cb, societyName)
+xLib.callback.registerCompat('esx_society:getSocietyMoney', function(source, cb, societyName)
 	local society = GetSociety(societyName)
 	if not society then
 		print(('[^3WARNING^7] Player ^5%s^7 attempted to get money from non-existing society - ^5%s^7!'):format(source, societyName))
@@ -183,7 +183,7 @@ ESX.RegisterServerCallback('esx_society:getSocietyMoney', function(source, cb, s
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_society:getEmployees', function(source, cb, society)
+xLib.callback.registerCompat('esx_society:getEmployees', function(source, cb, society)
 	local employees = {}
 
 	local xPlayers = ESX.ExtendedPlayers('job', society)
@@ -255,7 +255,7 @@ ESX.RegisterServerCallback('esx_society:getEmployees', function(source, cb, soci
 
 end)
 
-ESX.RegisterServerCallback('esx_society:getJob', function(source, cb, society)
+xLib.callback.registerCompat('esx_society:getJob', function(source, cb, society)
 	if not Jobs[society] then
 		return cb(false)
 	end
@@ -276,7 +276,7 @@ ESX.RegisterServerCallback('esx_society:getJob', function(source, cb, society)
 	cb(job)
 end)
 
-ESX.RegisterServerCallback('esx_society:setJob', function(source, cb, identifier, job, grade, actionType)
+xLib.callback.registerCompat('esx_society:setJob', function(source, cb, identifier, job, grade, actionType)
 	local xPlayer = ESX.Player(source)
 	local isBoss = Config.BossGrades[xPlayer.getJob().grade_name]
 	local xTarget = ESX.Player(identifier)
@@ -311,7 +311,7 @@ ESX.RegisterServerCallback('esx_society:setJob', function(source, cb, identifier
 end)
 
 
-ESX.RegisterServerCallback('esx_society:setJobSalary', function(source, cb, job, grade, salary)
+xLib.callback.registerCompat('esx_society:setJobSalary', function(source, cb, job, grade, salary)
 	local xPlayer = ESX.Player(source)
 	local xPlayerJob = xPlayer.getJob()
 	if xPlayerJob.name == job and Config.BossGrades[xPlayerJob.grade_name] then
@@ -339,7 +339,7 @@ ESX.RegisterServerCallback('esx_society:setJobSalary', function(source, cb, job,
 	end
 end)
 
-ESX.RegisterServerCallback('esx_society:setJobLabel', function(source, cb, job, grade, label)
+xLib.callback.registerCompat('esx_society:setJobLabel', function(source, cb, job, grade, label)
 	local xPlayer = ESX.Player(source)
 	local xPlayerJob = xPlayer.getJob()
 	if xPlayerJob.name == job and Config.BossGrades[xPlayerJob.grade_name] then
@@ -363,7 +363,7 @@ ESX.RegisterServerCallback('esx_society:setJobLabel', function(source, cb, job, 
 end)
 
 local getOnlinePlayers, onlinePlayers = false, nil
-ESX.RegisterServerCallback('esx_society:getOnlinePlayers', function(source, cb)
+xLib.callback.registerCompat('esx_society:getOnlinePlayers', function(source, cb)
 	if getOnlinePlayers == false and onlinePlayers == nil then -- Prevent multiple xPlayer loops from running in quick succession
 		getOnlinePlayers, onlinePlayers = true, {}
 		
@@ -387,7 +387,7 @@ ESX.RegisterServerCallback('esx_society:getOnlinePlayers', function(source, cb)
 end)
 
 
-ESX.RegisterServerCallback('esx_society:getVehiclesInGarage', function(source, cb, societyName)
+xLib.callback.registerCompat('esx_society:getVehiclesInGarage', function(source, cb, societyName)
 	local society = GetSociety(societyName)
 	if not society then
 		print(('[^3WARNING^7] Attempting To get a non-existing society - %s!'):format(societyName))
@@ -399,7 +399,7 @@ ESX.RegisterServerCallback('esx_society:getVehiclesInGarage', function(source, c
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_society:isBoss', function(source, cb, job)
+xLib.callback.registerCompat('esx_society:isBoss', function(source, cb, job)
 	cb(isPlayerBoss(source, job))
 end)
 

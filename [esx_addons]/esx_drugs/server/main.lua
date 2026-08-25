@@ -58,7 +58,7 @@ AddEventHandler('esx_drugs:sellDrug', function(itemName, amount)
 	xPlayer.showNotification(TranslateCap('dealer_sold', amount, xItem.label, ESX.Math.GroupDigits(price)))
 end)
 
-ESX.RegisterServerCallback('esx_drugs:buyLicense', function(source, cb, licenseName)
+xLib.callback.registerCompat('esx_drugs:buyLicense', function(source, cb, licenseName)
 	local xPlayer = ESX.Player(source)
 	local license = Config.LicensePrices[licenseName]
 
@@ -94,7 +94,7 @@ AddEventHandler('esx_drugs:pickedUpCannabis', function()
 	end
 end)
 
-ESX.RegisterServerCallback('esx_drugs:canPickUp', function(source, cb, item)
+xLib.callback.registerCompat('esx_drugs:canPickUp', function(source, cb, item)
 	local xPlayer = ESX.Player(source)
 	cb(xPlayer.canCarryItem(item, 1))
 end)
@@ -104,7 +104,7 @@ AddEventHandler('esx_drugs:outofbound', function()
 	outofbound = true
 end)
 
-ESX.RegisterServerCallback('esx_drugs:cannabis_count', function(source, cb)
+xLib.callback.registerCompat('esx_drugs:cannabis_count', function(source, cb)
 	local xPlayer = ESX.Player(source)
 	local xCannabis = xPlayer.getInventoryItem('cannabis').count
 	cb(xCannabis)
@@ -122,7 +122,7 @@ AddEventHandler('esx_drugs:processCannabis', function()
 			if xCannabis.count >= 3 then
 				while outofbound == false and can do
 					if playersProcessingCannabis[source] == nil then
-						playersProcessingCannabis[source] = ESX.SetTimeout(Config.Delays.WeedProcessing , function()
+						playersProcessingCannabis[source] = xLib.timeout.setTimeout(Config.Delays.WeedProcessing , function()
 							if xCannabis.count >= 3 then
 								if xPlayer.canSwapItem('cannabis', 3, 'marijuana', 1) then
 									xPlayer.removeInventoryItem('cannabis', 3)
@@ -158,7 +158,7 @@ end)
 
 function CancelProcessing(playerId)
 	if playersProcessingCannabis[playerId] then
-		ESX.ClearTimeout(playersProcessingCannabis[playerId])
+		xLib.timeout.clearTimeout(playersProcessingCannabis[playerId])
 		playersProcessingCannabis[playerId] = nil
 	end
 end

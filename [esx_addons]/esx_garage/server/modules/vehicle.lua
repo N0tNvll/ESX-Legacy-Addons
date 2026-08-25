@@ -745,7 +745,7 @@ local function appendSearchCondition(scopeSql, params, search)
     return scopeSql .. " AND (`plate` LIKE ? ESCAPE '\\\\' OR `custom_name` LIKE ? ESCAPE '\\\\')"
 end
 
-ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, data)
+xLib.callback.registerCompat("esx_garage:getVehicles", function(source, cb, data)
     if rejectRateLimited(source, cb, "esx_garage:getVehicles") then
         return
     end
@@ -847,7 +847,7 @@ ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, data)
     })
 end)
 
-ESX.RegisterServerCallback("esx_garage:retrieveVehicle", function(source, cb, data)
+xLib.callback.registerCompat("esx_garage:retrieveVehicle", function(source, cb, data)
     if rejectRateLimited(source, cb, "esx_garage:retrieveVehicle") then
         return
     end
@@ -1009,7 +1009,7 @@ ESX.RegisterServerCallback("esx_garage:retrieveVehicle", function(source, cb, da
     cb(result)
 end)
 
-ESX.RegisterServerCallback("esx_garage:storeVehicle", function(source, cb, data)
+xLib.callback.registerCompat("esx_garage:storeVehicle", function(source, cb, data)
     if rejectRateLimited(source, cb, "esx_garage:storeVehicle") then
         return
     end
@@ -1154,7 +1154,7 @@ ESX.RegisterServerCallback("esx_garage:storeVehicle", function(source, cb, data)
     cb(result)
 end)
 
-ESX.RegisterServerCallback("esx_garage:toggleFavorite", function(source, cb, data)
+xLib.callback.registerCompat("esx_garage:toggleFavorite", function(source, cb, data)
     if rejectRateLimited(source, cb, "esx_garage:toggleFavorite") then
         return
     end
@@ -1197,7 +1197,7 @@ ESX.RegisterServerCallback("esx_garage:toggleFavorite", function(source, cb, dat
     cb({ success = true, data = data.isFavorite })
 end)
 
-ESX.RegisterServerCallback("esx_garage:renameVehicle", function(source, cb, data)
+xLib.callback.registerCompat("esx_garage:renameVehicle", function(source, cb, data)
     if rejectRateLimited(source, cb, "esx_garage:renameVehicle") then
         return
     end
@@ -1241,7 +1241,7 @@ ESX.RegisterServerCallback("esx_garage:renameVehicle", function(source, cb, data
     cb({ success = true, data = name })
 end)
 
-ESX.RegisterServerCallback("esx_garage:transferVehicle", function(source, cb, data)
+xLib.callback.registerCompat("esx_garage:transferVehicle", function(source, cb, data)
     if rejectRateLimited(source, cb, "esx_garage:transferVehicle") then
         return
     end
@@ -1321,7 +1321,7 @@ ESX.RegisterServerCallback("esx_garage:transferVehicle", function(source, cb, da
     cb(result)
 end)
 
-ESX.RegisterServerCallback("esx_garage:giveKeys", function(source, cb, data)
+xLib.callback.registerCompat("esx_garage:giveKeys", function(source, cb, data)
     if rejectRateLimited(source, cb, "esx_garage:giveKeys") then
         return
     end

@@ -19,7 +19,7 @@ AddEventHandler('esx_clotheshop:saveOutfit', function(label, skin)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_clotheshop:buyClothes', function(source, cb, newSkin, oldSkin)
+xLib.callback.registerCompat('esx_clotheshop:buyClothes', function(source, cb, newSkin, oldSkin)
 	local xPlayer = ESX.Player(source)
 	local purchaseCost = 0
 
@@ -42,7 +42,7 @@ ESX.RegisterServerCallback('esx_clotheshop:buyClothes', function(source, cb, new
 	end
 end)
 
-ESX.RegisterServerCallback('esx_clotheshop:checkPropertyDataStore', function(source, cb)
+xLib.callback.registerCompat('esx_clotheshop:checkPropertyDataStore', function(source, cb)
 	local xPlayer = ESX.Player(source)
 	local foundStore = false
 

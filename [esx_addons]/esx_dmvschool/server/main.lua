@@ -1,4 +1,4 @@
-ESX.RegisterServerCallback('esx_dmvschool:canYouPay', function(source, cb, type)
+xLib.callback.registerCompat('esx_dmvschool:canYouPay', function(source, cb, type)
 	local xPlayer = ESX.Player(source)
 
 	if xPlayer.getMoney() >= Config.Prices[type] then

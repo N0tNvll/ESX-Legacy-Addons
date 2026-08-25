@@ -164,7 +164,7 @@ RegisterNUICallback('buyWeapon', function(data, cb)
 
 	local shop = currentShop
 
-	ESX.TriggerServerCallback('esx_weaponshop:buyWeapon', function(bought)
+	xLib.callback('esx_weaponshop:buyWeapon', false, function(bought)
 		if bought then
 			local price = GetZoneWeaponPrice(shop, data.weaponName)
 			DisplayBoughtScaleform(data.weaponName, price)
@@ -190,7 +190,7 @@ RegisterNUICallback('buyUpgrade', function(data, cb)
 		return
 	end
 
-	ESX.TriggerServerCallback('esx_weaponshop:buyUpgrade', function(bought)
+	xLib.callback('esx_weaponshop:buyUpgrade', false, function(bought)
 		if bought then
 			PlaySoundFrontend(-1, 'WEAPON_PURCHASE', 'HUD_AMMO_SHOP_SOUNDSET', false)
 			ESX.ShowNotification(TranslateCap('upgrade_bought'))
@@ -205,7 +205,7 @@ end)
 
 -- License callback
 RegisterNUICallback('buyLicense', function(_, cb)
-	ESX.TriggerServerCallback('esx_weaponshop:buyLicense', function(bought)
+	xLib.callback('esx_weaponshop:buyLicense', false, function(bought)
 		cb({ ok = bought and true or false })
 
 		if bought and currentShop then

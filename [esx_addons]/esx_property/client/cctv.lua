@@ -21,7 +21,7 @@ function CCTV(PropertyID)
   local Property = Properties[PropertyID]
   local CamTakePic = true
   if Property.cctv.enabled then
-    ESX.TriggerServerCallback("esx_property:CCTV", function(CanCCTV)
+    xLib.callback("esx_property:CCTV", false, function(CanCCTV)
       if CanCCTV then
         InCCTV = true
         local NightVision = false
@@ -224,7 +224,7 @@ function CCTV(PropertyID)
               ShowButtons = false
               Wait(1)
               PlaySoundFrontend(-1, "Camera_Shoot", "Phone_Soundset_Franklin", 1)
-              ESX.TriggerServerCallback("esx_property:GetWebhook", function(hook)
+              xLib.callback("esx_property:GetWebhook", false, function(hook)
                 if hook then
                   exports['screenshot-basic']:requestScreenshotUpload(hook, "files[]", function(data)
                     local image = json.decode(data)
@@ -246,7 +246,7 @@ function CCTV(PropertyID)
 
           if IsDisabledControlPressed(1, Config.CCTV.Controls.Exit) then
             DoScreenFadeOut(1000)
-            ESX.TriggerServerCallback("esx_property:ExitCCTV", function(CanExit)
+            xLib.callback("esx_property:ExitCCTV", false, function(CanExit)
               if CanExit then
                 InCCTV = false
                 Wait(1000)

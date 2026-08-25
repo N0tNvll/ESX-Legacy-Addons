@@ -44,7 +44,7 @@ RegisterNetEvent('esx_taxijob:success', function()
     end
 end)
 
-ESX.RegisterServerCallback("esx_taxijob:SpawnVehicle", function(source, cb, model , props)
+xLib.callback.registerCompat("esx_taxijob:SpawnVehicle", function(source, cb, model , props)
     local xPlayer = ESX.Player(source)
 
     if xPlayer.getJob().name ~= "taxi" then 
@@ -90,7 +90,7 @@ RegisterNetEvent('esx_taxijob:getStockItem', function(itemName, count)
     end)
 end)
 
-ESX.RegisterServerCallback('esx_taxijob:getStockItems', function(source, cb)
+xLib.callback.registerCompat('esx_taxijob:getStockItems', function(source, cb)
     TriggerEvent('esx_addoninventory:getSharedInventory', 'society_taxi', function(inventory)
         cb(inventory.items)
     end)
@@ -118,7 +118,7 @@ RegisterNetEvent('esx_taxijob:putStockItems', function(itemName, count)
     end)
 end)
 
-ESX.RegisterServerCallback('esx_taxijob:getPlayerInventory', function(source, cb)
+xLib.callback.registerCompat('esx_taxijob:getPlayerInventory', function(source, cb)
     local xPlayer = ESX.Player(source)
     local items = xPlayer.getInventory(false)
     cb({

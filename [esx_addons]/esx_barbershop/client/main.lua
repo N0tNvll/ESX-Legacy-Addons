@@ -23,7 +23,7 @@ function OpenShopMenu()
 
 		ESX.OpenContext("right", elements, function(menu,element)
 			if element.value == "yes" then
-				ESX.TriggerServerCallback('esx_barbershop:checkMoney', function(hasEnoughMoney)
+				xLib.callback('esx_barbershop:checkMoney', false, function(hasEnoughMoney)
 					if hasEnoughMoney then
 						ESX.CloseContext()
 						TriggerEvent('skinchanger:getSkin', function(skin)
@@ -95,7 +95,7 @@ AddEventHandler('esx_barbershop:hasExitedMarker', function(zone)
 	ESX.HideUI()
 
 	if not hasPaid then
-		ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin)
+		xLib.callback('esx_skin:getPlayerSkin', false, function(skin)
 			TriggerEvent('skinchanger:loadSkin', skin)
 		end)
 	end

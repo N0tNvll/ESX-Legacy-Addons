@@ -4,7 +4,7 @@ function OpenBossMenu(society, close, options)
 		{unselectable = true, icon = "fas fa-user", title = TranslateCap('boss_menu')}
 	}
 
-	ESX.TriggerServerCallback('esx_society:isBoss', function(isBoss)
+	xLib.callback('esx_society:isBoss', false, function(isBoss)
 		if isBoss then
 			local defaultOptions = {
 				checkBal = true,
@@ -130,7 +130,7 @@ function OpenManageEmployeesMenu(society, options)
 end
 
 function OpenEmployeeList(society, options)
-	ESX.TriggerServerCallback('esx_society:getEmployees', function(employees)
+	xLib.callback('esx_society:getEmployees', false, function(employees)
 		local elements = {
 			{unselectable = true, icon = "fas fa-user", title = TranslateCap('employees_title')}
 		}
@@ -161,7 +161,7 @@ function OpenEmployeeList(society, options)
 					elseif element2.value == "fire" then
 						ESX.ShowNotification(TranslateCap('you_have_fired', employee.name))
 
-						ESX.TriggerServerCallback('esx_society:setJob', function()
+						xLib.callback('esx_society:setJob', false, function()
 							OpenEmployeeList(society, options)
 						end, employee.identifier, 'unemployed', 0, 'fire')
 					elseif element2.value == "return" then
@@ -174,7 +174,7 @@ function OpenEmployeeList(society, options)
 end
 
 function OpenRecruitMenu(society, options)
-	ESX.TriggerServerCallback('esx_society:getOnlinePlayers', function(players)
+	xLib.callback('esx_society:getOnlinePlayers', false, function(players)
 		local elements = {
 			{unselectable = true, icon = "fas fa-user", title = TranslateCap('recruiting')}
 		}
@@ -200,7 +200,7 @@ function OpenRecruitMenu(society, options)
 					if element2.value == "yes" then
 						ESX.ShowNotification(TranslateCap('you_have_hired', element.name))
 
-						ESX.TriggerServerCallback('esx_society:setJob', function()
+						xLib.callback('esx_society:setJob', false, function()
 							OpenRecruitMenu(society, options)
 						end, element.identifier, society, 0, 'hire')
 					end
@@ -211,7 +211,7 @@ function OpenRecruitMenu(society, options)
 end
 
 function OpenPromoteMenu(society, employee, options)
-	ESX.TriggerServerCallback('esx_society:getJob', function(job)
+	xLib.callback('esx_society:getJob', false, function(job)
 		if not job then
 			return
 		end
@@ -234,7 +234,7 @@ function OpenPromoteMenu(society, employee, options)
 			else
 				ESX.ShowNotification(TranslateCap('you_have_promoted', employee.name, element.title))
 
-				ESX.TriggerServerCallback('esx_society:setJob', function()
+				xLib.callback('esx_society:setJob', false, function()
 					OpenEmployeeList(society, options)
 				end, employee.identifier, society, element.value, 'promote')
 			end
@@ -245,7 +245,7 @@ function OpenPromoteMenu(society, employee, options)
 end
 
 function OpenManageSalaryMenu(society, options)
-	ESX.TriggerServerCallback('esx_society:getJob', function(job)
+	xLib.callback('esx_society:getJob', false, function(job)
 		if not job then
 			return
 		end
@@ -286,7 +286,7 @@ function OpenManageSalaryMenu(society, options)
 					OpenManageSalaryMenu(society, options)
 				else
 					ESX.CloseContext()
-					ESX.TriggerServerCallback('esx_society:setJobSalary', function()
+					xLib.callback('esx_society:setJobSalary', false, function()
 						OpenManageSalaryMenu(society, options)
 					end, society, menu.eles[1].value, amount)
 				end
@@ -298,7 +298,7 @@ function OpenManageSalaryMenu(society, options)
 end
 
 function OpenManageGradesMenu(society, options)
-	ESX.TriggerServerCallback('esx_society:getJob', function(job)
+	xLib.callback('esx_society:getJob', false, function(job)
 		if not job then
 			return
 		end
@@ -328,7 +328,7 @@ function OpenManageGradesMenu(society, options)
 				if menu.eles[2].inputValue then
 					local label = tostring(menu.eles[2].inputValue)
 
-					ESX.TriggerServerCallback('esx_society:setJobLabel', function()
+					xLib.callback('esx_society:setJobLabel', false, function()
 					OpenManageGradesMenu(society, options)
 				end, society, menu.eles[1].value, label)
 				else

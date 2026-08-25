@@ -28,7 +28,7 @@ end
 ---@param coords any
 ---@param snapToGround boolean?
 function Utils.SpawnFrozenPed(model, coords, snapToGround)
-    local model_hash = ESX.Streaming.RequestModel(model)
+    local model_hash = xLib.streaming.requestModel(model)
 
     if not model_hash then
         return

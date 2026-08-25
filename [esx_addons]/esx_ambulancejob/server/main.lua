@@ -164,7 +164,7 @@ AddEventHandler('esx_ambulancejob:putInVehicle', function(target)
 	end
 end)
 
-ESX.RegisterServerCallback('esx_ambulancejob:removeItemsAfterRPDeath', function(source, cb)
+xLib.callback.registerCompat('esx_ambulancejob:removeItemsAfterRPDeath', function(source, cb)
 	local xPlayer = ESX.GetPlayerFromId(source)
 	if not xPlayer then return cb() end
 
@@ -222,7 +222,7 @@ ESX.RegisterServerCallback('esx_ambulancejob:removeItemsAfterRPDeath', function(
 end)
 
 if Config.EarlyRespawnFine then
-	ESX.RegisterServerCallback('esx_ambulancejob:checkBalance', function(source, cb)
+	xLib.callback.registerCompat('esx_ambulancejob:checkBalance', function(source, cb)
 		local xPlayer = ESX.GetPlayerFromId(source)
 		local bankBalance = xPlayer.getAccount('bank').money
 
@@ -239,14 +239,14 @@ if Config.EarlyRespawnFine then
 	end)
 end
 
-ESX.RegisterServerCallback('esx_ambulancejob:getItemAmount', function(source, cb, item)
+xLib.callback.registerCompat('esx_ambulancejob:getItemAmount', function(source, cb, item)
 	local xPlayer = ESX.GetPlayerFromId(source)
 	local quantity = xPlayer.getInventoryItem(item).count
 
 	cb(quantity)
 end)
 
-ESX.RegisterServerCallback('esx_ambulancejob:buyJobVehicle', function(source, cb, vehicleProps, type)
+xLib.callback.registerCompat('esx_ambulancejob:buyJobVehicle', function(source, cb, vehicleProps, type)
 	local xPlayer = ESX.GetPlayerFromId(source)
 	local price = getPriceFromHash(vehicleProps.model, xPlayer.job.grade_name, type)
 
@@ -268,7 +268,7 @@ ESX.RegisterServerCallback('esx_ambulancejob:buyJobVehicle', function(source, cb
 	end
 end)
 
-ESX.RegisterServerCallback('esx_ambulancejob:storeNearbyVehicle', function(source, cb, plates)
+xLib.callback.registerCompat('esx_ambulancejob:storeNearbyVehicle', function(source, cb, plates)
 	local xPlayer = ESX.GetPlayerFromId(source)
 
 	local plate = MySQL.scalar.await('SELECT plate FROM owned_vehicles WHERE owner = ? AND plate IN (?) AND job = ?',
@@ -375,7 +375,7 @@ ESX.RegisterUsableItem('bandage', function(source)
 	end
 end)
 
-ESX.RegisterServerCallback('esx_ambulancejob:getDeadPlayers', function(source, cb)
+xLib.callback.registerCompat('esx_ambulancejob:getDeadPlayers', function(source, cb)
 	local xPlayer = ESX.GetPlayerFromId(source)
 	if xPlayer.job.name == "ambulance" then
 		cb(deadPlayers)

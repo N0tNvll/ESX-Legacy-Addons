@@ -7,6 +7,7 @@ lua54 'yes'
 version '1.0'
 legacyversion '1.14.1'
 
+shared_script '@esx_lib/imports.lua'
 server_scripts {
 	'@es_extended/imports.lua',
 	'@oxmysql/lib/MySQL.lua',

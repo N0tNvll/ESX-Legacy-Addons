@@ -24,7 +24,7 @@ AddEventHandler('esx_accessories:save', function(skin, accessory)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_accessories:get', function(source, cb, accessory)
+xLib.callback.registerCompat('esx_accessories:get', function(source, cb, accessory)
 	local xPlayer = ESX.Player(source)
 
 	TriggerEvent('esx_datastore:getDataStore', 'user_' .. string.lower(accessory), xPlayer.getIdentifier(), function(store)
@@ -36,7 +36,7 @@ ESX.RegisterServerCallback('esx_accessories:get', function(source, cb, accessory
 
 end)
 
-ESX.RegisterServerCallback('esx_accessories:checkMoney', function(source, cb)
+xLib.callback.registerCompat('esx_accessories:checkMoney', function(source, cb)
 	local xPlayer = ESX.Player(source)
 
 	cb(xPlayer.getMoney() >= Config.Price)

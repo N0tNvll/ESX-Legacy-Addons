@@ -832,7 +832,7 @@ RegisterNetEvent("esx_banking:doingType", function(typeData)
     end
 end)
 
-ESX.RegisterServerCallback("esx_banking:getPlayerData", function(source, cb, accessData)
+xLib.callback.registerCompat("esx_banking:getPlayerData", function(source, cb, accessData)
     local playerId = source
     local requestedType = type(accessData) == "table" and accessData.accessType or accessData
 
@@ -856,7 +856,7 @@ ESX.RegisterServerCallback("esx_banking:getPlayerData", function(source, cb, acc
     cb(BuildPlayerData(playerId, xPlayer, accessType) or {success = false})
 end)
 
-ESX.RegisterServerCallback("esx_banking:checkPincode", function(source, cb, inputPincode)
+xLib.callback.registerCompat("esx_banking:checkPincode", function(source, cb, inputPincode)
     local playerId = source
 
     if IsRateLimited(playerId, "pin", GetConfigNumber("PinAttemptCooldown", 1500)) then

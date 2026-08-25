@@ -70,13 +70,13 @@ function DeleteDisplayVehicleInsideShop()
 		end
 
 		if DoesEntityExist(currentDisplayVehicle) and NetworkHasControlOfEntity(currentDisplayVehicle) then
-			ESX.Game.DeleteVehicle(currentDisplayVehicle)
+			xLib.game.deleteVehicle(currentDisplayVehicle)
 		end
 	end
 end
 
 function ReturnVehicleProvider()
-	ESX.TriggerServerCallback('esx_vehicleshop:getCommercialVehicles', function(vehicles)
+	xLib.callback('esx_vehicleshop:getCommercialVehicles', false, function(vehicles)
 		local elements = {}
 
 		for k, v in ipairs(vehicles) do
@@ -182,7 +182,7 @@ function OpenShopMenu()
 		}, function(data2, menu2)
 			if data2.current.value == 'yes' then
 				if Config.EnablePlayerManagement then
-					ESX.TriggerServerCallback('esx_vehicleshop:buyCarDealerVehicle', function(success)
+					xLib.callback('esx_vehicleshop:buyCarDealerVehicle', false, function(success)
 						if success then
 							IsInShopMenu = false
 							DeleteDisplayVehicleInsideShop()
@@ -206,7 +206,7 @@ function OpenShopMenu()
 				else
 					local generatedPlate = GeneratePlate()
 
-					ESX.TriggerServerCallback('esx_vehicleshop:buyVehicle', function(success)
+					xLib.callback('esx_vehicleshop:buyVehicle', false, function(success)
 						if success then
 							IsInShopMenu = false
 							menu2.close()
@@ -245,7 +245,7 @@ function OpenShopMenu()
 
 		WaitForVehicleToLoad(vehicleData.model)
 
-		ESX.Game.SpawnLocalVehicle(vehicleData.model, Config.Zones.ShopInside.Pos, Config.Zones.ShopInside.Heading, function(vehicle)
+		xLib.game.spawnLocalVehicle(vehicleData.model, Config.Zones.ShopInside.Pos, Config.Zones.ShopInside.Heading, function(vehicle)
 			DeleteDisplayVehicleInsideShop()
 			currentDisplayVehicle = vehicle
 			TaskWarpPedIntoVehicle(playerPed, vehicle, -1)
@@ -256,7 +256,7 @@ function OpenShopMenu()
 
 	WaitForVehicleToLoad(firstVehicleData.model)
 
-	ESX.Game.SpawnLocalVehicle(firstVehicleData.model, Config.Zones.ShopInside.Pos, Config.Zones.ShopInside.Heading, function(vehicle)
+	xLib.game.spawnLocalVehicle(firstVehicleData.model, Config.Zones.ShopInside.Pos, Config.Zones.ShopInside.Heading, function(vehicle)
 		DeleteDisplayVehicleInsideShop()
 		currentDisplayVehicle = vehicle
 		TaskWarpPedIntoVehicle(playerPed, vehicle, -1)
@@ -324,7 +324,7 @@ function OpenResellerMenu()
 		elseif action == 'return_provider' then
 			ReturnVehicleProvider()
 		elseif action == 'create_bill' then
-			local closestPlayer, closestDistance = ESX.Game.GetClosestPlayer()
+			local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
 
 			if closestPlayer ~= -1 and closestDistance < 3 then
 				ESX.UI.Menu.Open('dialog', GetCurrentResourceName(), 'set_vehicle_owner_sell_amount', {
@@ -336,7 +336,7 @@ function OpenResellerMenu()
 						ESX.ShowNotification(TranslateCap('invalid_amount'))
 					else
 						menu2.close()
-						local closestPlayer, closestDistance = ESX.Game.GetClosestPlayer()
+						local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
 
 						if closestPlayer == -1 or closestDistance > 3.0 then
 							ESX.ShowNotification(TranslateCap('no_players'))
@@ -354,7 +354,7 @@ function OpenResellerMenu()
 			OpenRentedVehiclesMenu()
 		elseif action == 'set_vehicle_owner_sell' then
 			if currentDisplayVehicle then
-				local closestPlayer, closestDistance = ESX.Game.GetClosestPlayer()
+				local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
 
 				if closestPlayer ~= -1 and closestDistance < 3 then
 					local newPlate = GeneratePlate()
@@ -371,7 +371,7 @@ function OpenResellerMenu()
 			end
 		elseif action == 'set_vehicle_owner_rent' then
 			if currentDisplayVehicle then
-				local closestPlayer, closestDistance = ESX.Game.GetClosestPlayer()
+				local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
 
 				if closestPlayer ~= -1 and closestDistance < 3 then
 					ESX.UI.Menu.Open('dialog', GetCurrentResourceName(), 'set_vehicle_owner_rent_amount', {
@@ -383,7 +383,7 @@ function OpenResellerMenu()
 							ESX.ShowNotification(TranslateCap('invalid_amount'))
 						else
 							menu2.close()
-							local closestPlayer, closestDistance = ESX.Game.GetClosestPlayer()
+							local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
 
 							if closestPlayer ~= -1 and closestDistance < 3 then
 								local newPlate = 'RENT' .. string.upper(ESX.GetRandomString(4))
@@ -415,7 +415,7 @@ function OpenResellerMenu()
 end
 
 function OpenPopVehicleMenu()
-	ESX.TriggerServerCallback('esx_vehicleshop:getCommercialVehicles', function(vehicles)
+	xLib.callback('esx_vehicleshop:getCommercialVehicles', false, function(vehicles)
 		local elements = {}
 
 		for k, v in ipairs(vehicles) do
@@ -434,7 +434,7 @@ function OpenPopVehicleMenu()
 		}, function(data, menu)
 			local model = data.current.value
 
-			ESX.Game.SpawnVehicle(model, Config.Zones.ShopInside.Pos, Config.Zones.ShopInside.Heading, function(vehicle)
+			xLib.game.spawnVehicle(model, Config.Zones.ShopInside.Pos, Config.Zones.ShopInside.Heading, function(vehicle)
 				DeleteDisplayVehicleInsideShop()
 				currentDisplayVehicle = vehicle
 
@@ -452,7 +452,7 @@ function OpenPopVehicleMenu()
 end
 
 function OpenRentedVehiclesMenu()
-	ESX.TriggerServerCallback('esx_vehicleshop:getRentedVehicles', function(vehicles)
+	xLib.callback('esx_vehicleshop:getRentedVehicles', false, function(vehicles)
 		local elements = {}
 
 		for k, v in ipairs(vehicles) do
@@ -490,7 +490,7 @@ function OpenBossActionsMenu()
 				menu2.close()
 			end)
 		elseif data.current.value == 'sold_vehicles' then
-			ESX.TriggerServerCallback('esx_vehicleshop:getSoldVehicles', function(customers)
+			xLib.callback('esx_vehicleshop:getSoldVehicles', false, function(customers)
 				local elements = {
 					head = { TranslateCap('customer_client'), TranslateCap('customer_model'), TranslateCap('customer_plate'), TranslateCap('customer_soldby'), TranslateCap('customer_date') },
 					rows = {}
@@ -526,7 +526,7 @@ function OpenBossActionsMenu()
 end
 
 function OpenGetStocksMenu()
-	ESX.TriggerServerCallback('esx_vehicleshop:getStockItems', function(items)
+	xLib.callback('esx_vehicleshop:getStockItems', false, function(items)
 		local elements = {}
 
 		for i = 1, #items, 1 do
@@ -568,7 +568,7 @@ function OpenGetStocksMenu()
 end
 
 function OpenPutStocksMenu()
-	ESX.TriggerServerCallback('esx_vehicleshop:getPlayerInventory', function(inventory)
+	xLib.callback('esx_vehicleshop:getPlayerInventory', false, function(inventory)
 		local elements = {}
 
 		for i = 1, #inventory.items, 1 do
@@ -787,7 +787,7 @@ CreateThread(function()
 			if IsControlJustReleased(0, 38) then
 				if CurrentAction == 'shop_menu' then
 					if Config.LicenseEnable then
-						ESX.TriggerServerCallback('esx_license:checkLicense', function(hasDriversLicense)
+						xLib.callback('esx_license:checkLicense', false, function(hasDriversLicense)
 							if hasDriversLicense then
 								OpenShopMenu()
 							else
@@ -800,18 +800,18 @@ CreateThread(function()
 				elseif CurrentAction == 'reseller_menu' then
 					OpenResellerMenu()
 				elseif CurrentAction == 'give_back_vehicle' then
-					ESX.TriggerServerCallback('esx_vehicleshop:giveBackVehicle', function(isRentedVehicle)
+					xLib.callback('esx_vehicleshop:giveBackVehicle', false, function(isRentedVehicle)
 						if isRentedVehicle then
-							ESX.Game.DeleteVehicle(CurrentActionData.vehicle)
+							xLib.game.deleteVehicle(CurrentActionData.vehicle)
 							ESX.ShowNotification(TranslateCap('delivered'))
 						else
 							ESX.ShowNotification(TranslateCap('not_rental'))
 						end
 					end, ESX.Math.Trim(GetVehicleNumberPlateText(CurrentActionData.vehicle)))
 				elseif CurrentAction == 'resell_vehicle' then
-					ESX.TriggerServerCallback('esx_vehicleshop:resellVehicle', function(vehicleSold)
+					xLib.callback('esx_vehicleshop:resellVehicle', false, function(vehicleSold)
 						if vehicleSold then
-							ESX.Game.DeleteVehicle(CurrentActionData.vehicle)
+							xLib.game.deleteVehicle(CurrentActionData.vehicle)
 							ESX.ShowNotification(TranslateCap('vehicle_sold_for', CurrentActionData.label,
 								ESX.Math.GroupDigits(CurrentActionData.price)))
 						else

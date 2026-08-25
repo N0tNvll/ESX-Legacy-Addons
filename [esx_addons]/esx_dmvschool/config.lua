@@ -179,7 +179,7 @@ Config.CheckPoints = {
 	{
 		Pos = {x = 235.283, y = -1398.329, z = 28.921},
 		Action = function(playerPed, vehicle, setCurrentZoneType)
-			ESX.Game.DeleteVehicle(vehicle)
+			xLib.game.deleteVehicle(vehicle)
 		end
 	}
 

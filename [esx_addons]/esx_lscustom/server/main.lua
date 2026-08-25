@@ -108,7 +108,7 @@ RegisterNetEvent('esx_lscustom:refreshOwnedVehicle', function(vehicleProps, netI
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_lscustom:getVehiclesPrices', function(source, cb)
+xLib.callback.registerCompat('esx_lscustom:getVehiclesPrices', function(source, cb)
 	if not Vehicles then
 		Vehicles = MySQL.query.await('SELECT model, price FROM vehicles')
 	end

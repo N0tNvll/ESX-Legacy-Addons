@@ -44,7 +44,7 @@ AddEventHandler('esx_mechanicjob:getStockItem', function(itemName, count)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_mechanicjob:getStockItems', function(source, cb)
+xLib.callback.registerCompat('esx_mechanicjob:getStockItems', function(source, cb)
 	if MechanicJob.rejectRateLimited(source, 'esx_mechanicjob:getStockItems', 500) then
 		cb({})
 		return
@@ -108,7 +108,7 @@ AddEventHandler('esx_mechanicjob:putStockItems', function(itemName, count)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_mechanicjob:getPlayerInventory', function(source, cb)
+xLib.callback.registerCompat('esx_mechanicjob:getPlayerInventory', function(source, cb)
 	if MechanicJob.rejectRateLimited(source, 'esx_mechanicjob:getPlayerInventory', 500) then
 		cb({items = {}})
 		return
