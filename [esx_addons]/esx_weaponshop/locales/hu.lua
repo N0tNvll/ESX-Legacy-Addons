@@ -31,6 +31,7 @@ Locales ['hu'] = {
   ['price_per_round'] = 'Per round',
   ['total'] = 'Total',
   ['buy_ammo'] = 'Buy ammo',
+  ['ammo_full'] = 'You cannot carry more ammo for this weapon',
   ['requires_weapon'] = 'Buy this weapon first',
   ['no_ammo_available'] = 'Ammo is not available for this weapon',
   ['no_components_available'] = 'No attachments available',

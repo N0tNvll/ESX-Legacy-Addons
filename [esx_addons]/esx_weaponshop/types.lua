@@ -34,6 +34,7 @@
 ---@field minAmount number Minimum purchasable amount
 ---@field maxAmount number Maximum purchasable amount
 ---@field quickAmounts number[] Quick-select ammo amounts
+---@field maxAmmo number|nil Maximum ammo the weapon may hold after buying ammo
 
 ---@class WeaponShopComponentUpgrade
 ---@field name string ESX component name
@@ -84,6 +85,7 @@
 ---@field pricePerRound string
 ---@field total string
 ---@field buyAmmo string
+---@field ammoFull string
 ---@field components string
 ---@field tints string
 ---@field requiresWeapon string
@@ -96,6 +98,7 @@
 ---@field items WeaponShopNuiItem[] Available weapons
 ---@field categories WeaponShopCategory[] Item categories
 ---@field locales WeaponShopLocales Translated UI strings
+---@field fallbackImage string Configured fallback image for missing weapon pictures
 ---@field legal boolean Whether this is a legal shop
 ---@field mode "shop"|"license" Current NUI mode
 ---@field licensePrice number Weapon license price

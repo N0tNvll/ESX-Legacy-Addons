@@ -44,6 +44,11 @@ end
 ---@param weaponName string
 ---@return string
 function GetWeaponImage(weaponName)
+	local customImage = GetWeaponShopCustomImage(weaponName)
+	if customImage then
+		return customImage
+	end
+
 	if Config.OxInventory and GetResourceState('ox_inventory') == 'started' then
 		local oxItem = exports.ox_inventory:Items(weaponName)
 		if oxItem and oxItem.client and oxItem.client.image then
@@ -89,6 +94,7 @@ function GetShopLocales()
 		pricePerRound = TranslateCap('price_per_round'),
 		total = TranslateCap('total'),
 		buyAmmo = TranslateCap('buy_ammo'),
+		ammoFull = TranslateCap('ammo_full'),
 		components = TranslateCap('upgrade_components'),
 		tints = TranslateCap('upgrade_tints'),
 		requiresWeapon = TranslateCap('requires_weapon'),
@@ -97,6 +103,42 @@ function GetShopLocales()
 		noTintsAvailable = TranslateCap('no_tints_available')
 	}
 end
+
+local function NormalizeAmmoValue(value)
+	value = tonumber(value)
+
+	if not value or value ~= value or value == math.huge or value == -math.huge then
+		return nil
+	end
+
+	return math.max(math.floor(value), 0)
+end
+
+local function GetWeaponAmmoState(weaponName)
+	if type(weaponName) ~= 'string' or weaponName == '' then
+		return nil
+	end
+
+	local ped = PlayerPedId()
+	local weaponHash = joaat(weaponName)
+	local hasPedWeapon = HasPedGotWeapon(ped, weaponHash, false)
+
+	local currentAmmo = hasPedWeapon and NormalizeAmmoValue(GetAmmoInPedWeapon(ped, weaponHash)) or 0
+	local maxAmmo = GetWeaponShopAmmoLimit(weaponName)
+
+	if not currentAmmo or not maxAmmo then
+		return nil
+	end
+
+	return {
+		currentAmmo = currentAmmo,
+		maxAmmo = maxAmmo
+	}
+end
+
+RegisterNetEvent('esx_weaponshop:requestWeaponAmmoState', function(requestId, weaponName)
+	TriggerServerEvent('esx_weaponshop:receiveWeaponAmmoState', requestId, GetWeaponAmmoState(weaponName))
+end)
 
 local function BuildWeaponState(weaponName, upgrades)
 	local state = {

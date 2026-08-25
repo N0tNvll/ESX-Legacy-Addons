@@ -1,12 +1,102 @@
 local currentShop = nil
 local uiOpen = false
 
+local function NormalizeUiInteger(value)
+	value = tonumber(value)
+
+	if not value or value ~= value or value == math.huge or value == -math.huge then
+		return nil
+	end
+
+	return math.floor(value)
+end
+
+local function GetInitialWeaponAmmo()
+	return math.max(NormalizeUiInteger(Config.InitialWeaponAmmo) or 42, 0)
+end
+
+local function SyncBoughtWeaponToPed(weaponName)
+	if Config.OxInventory then
+		return
+	end
+
+	if type(weaponName) ~= 'string' or weaponName == '' then
+		return
+	end
+
+	if type(GiveWeaponToPed) ~= 'function' then
+		return
+	end
+
+	local ped = PlayerPedId()
+	if not ped or ped == 0 then
+		return
+	end
+
+	local weaponHash = joaat(weaponName)
+	local initialAmmo = GetInitialWeaponAmmo()
+
+	if HasPedGotWeapon(ped, weaponHash, false) then
+		local currentAmmo = NormalizeUiInteger(GetAmmoInPedWeapon(ped, weaponHash)) or 0
+
+		if currentAmmo < initialAmmo and type(SetPedAmmo) == 'function' then
+			SetPedAmmo(ped, weaponHash, initialAmmo)
+		end
+
+		return
+	end
+
+	GiveWeaponToPed(ped, weaponHash, initialAmmo, false, false)
+end
+
+local function BuildBoughtWeaponState(weaponName)
+	local ammo = GetInitialWeaponAmmo()
+	local ped = PlayerPedId()
+
+	if ped and ped ~= 0 then
+		local weaponHash = joaat(weaponName)
+
+		if HasPedGotWeapon(ped, weaponHash, false) then
+			ammo = math.max(NormalizeUiInteger(GetAmmoInPedWeapon(ped, weaponHash)) or 0, ammo)
+		end
+	end
+
+	return {
+		owned = true,
+		ammo = ammo,
+		tintIndex = 0,
+		components = {}
+	}
+end
+
+local function ApplyItemStateOverrides(items, stateOverrides)
+	if type(stateOverrides) ~= 'table' then
+		return
+	end
+
+	for i = 1, #items do
+		local item = items[i]
+		local override = item and stateOverrides[item.name]
+
+		if type(override) == 'table' then
+			item.state = {
+				owned = override.owned == true or item.state.owned == true,
+				ammo = math.max(NormalizeUiInteger(override.ammo) or NormalizeUiInteger(item.state.ammo) or 0, 0),
+				tintIndex = math.max(NormalizeUiInteger(override.tintIndex) or NormalizeUiInteger(item.state.tintIndex) or 0, 0),
+				components = type(override.components) == 'table' and override.components or item.state.components or {}
+			}
+		end
+	end
+end
+
 ---Opens weaponshop NUI
 ---@param zone string Shop zone name
 ---@param mode string NUI mode (`shop` or `license`)
 ---@param selectedName string|nil Weapon selected after refresh
-local function OpenNui(zone, mode, selectedName)
+---@param stateOverrides table|nil Item state overrides applied before sending data to NUI
+local function OpenNui(zone, mode, selectedName, stateOverrides)
 	local items = BuildShopItems(zone)
+	ApplyItemStateOverrides(items, stateOverrides)
 
 	currentShop = zone
 	uiOpen = true
@@ -20,6 +110,7 @@ local function OpenNui(zone, mode, selectedName)
 			items = items,
 			categories = BuildCategories(items),
 			locales = GetShopLocales(),
+			fallbackImage = GetWeaponShopFallbackImage(),
 			legal = Config.Zones[zone].Legal,
 			mode = mode,
 			licensePrice = Config.LicensePrice,
@@ -71,17 +162,25 @@ RegisterNUICallback('buyWeapon', function(data, cb)
 		return
 	end
 
+	local shop = currentShop
+
 	ESX.TriggerServerCallback('esx_weaponshop:buyWeapon', function(bought)
 		if bought then
-			local price = GetZoneWeaponPrice(currentShop, data.weaponName)
+			local price = GetZoneWeaponPrice(shop, data.weaponName)
 			DisplayBoughtScaleform(data.weaponName, price)
-			OpenNui(currentShop, 'shop', data.weaponName)
+			SyncBoughtWeaponToPed(data.weaponName)
+
+			if currentShop == shop then
+				OpenNui(shop, 'shop', data.weaponName, {
+					[data.weaponName] = BuildBoughtWeaponState(data.weaponName)
+				})
+			end
 		else
 			PlaySoundFrontend(-1, 'ERROR', 'HUD_AMMO_SHOP_SOUNDSET', false)
 		end
 
 		cb({ ok = bought and true or false })
-	end, data.weaponName, currentShop)
+	end, data.weaponName, shop)
 end)
 
 -- Upgrade purchase callback

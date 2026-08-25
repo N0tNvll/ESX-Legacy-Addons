@@ -23,7 +23,8 @@ const PISTOL_UPGRADES: WeaponUpgrades = {
     defaultAmount: 30,
     minAmount: 1,
     maxAmount: 250,
-    quickAmounts: [30, 60, 120, 250]
+    quickAmounts: [30, 60, 120, 250],
+    maxAmmo: 250
   },
   components: [
     { name: 'clip_extended', label: 'Extended Clip', price: 650 },
@@ -97,6 +98,7 @@ const DEFAULT_LOCALES: ShopLocales = {
   pricePerRound: 'Per round',
   total: 'Total',
   buyAmmo: 'Buy Ammo',
+  ammoFull: 'Ammo full',
   components: 'Attachments',
   tints: 'Tints',
   requiresWeapon: 'Buy this weapon first',
@@ -133,6 +135,9 @@ class ShopStore {
 
   /** Weapon license price */
   licensePrice: number = $state(5000);
+
+  /** Configured fallback image for missing weapon pictures */
+  fallbackImage: string = $state('');
 
   /** Localized UI strings */
   locales: ShopLocales = $state(DEFAULT_LOCALES);
@@ -183,6 +188,49 @@ class ShopStore {
   });
 
   /**
+   * Maximum ammo amount currently purchasable for the selected weapon.
+   */
+  ammoPurchaseLimit: number = $derived.by(() => {
+    const item = this.selectedItem;
+    const ammo = item?.upgrades.ammo;
+
+    if (!item || !ammo) {
+      return 0;
+    }
+
+    const configuredMax = this.getWeaponAmmoLimit(ammo);
+    if (configuredMax === null) {
+      return ammo.maxAmount;
+    }
+
+    const currentAmmo = item.state.owned ? item.state.ammo : 0;
+    const remainingAmmo = Math.max(configuredMax - currentAmmo, 0);
+
+    return Math.min(ammo.maxAmount, remainingAmmo);
+  });
+
+  /**
+   * Whether the selected ammo amount can be bought now.
+   */
+  canBuySelectedAmmo: boolean = $derived.by(() => {
+    const ammo = this.selectedItem?.upgrades.ammo;
+
+    return Boolean(
+      this.selectedItem?.state.owned &&
+      ammo &&
+      this.ammoPurchaseLimit >= ammo.minAmount &&
+      this.ammoAmount >= ammo.minAmount &&
+      this.ammoAmount <= this.ammoPurchaseLimit
+    );
+  });
+
+  private getWeaponAmmoLimit(ammo: NonNullable<ShopItem['upgrades']['ammo']>): number | null {
+    return typeof ammo.maxAmmo === 'number' && Number.isFinite(ammo.maxAmmo) && ammo.maxAmmo > 0
+      ? Math.floor(ammo.maxAmmo)
+      : null;
+  }
+
+  /**
    * Sets shop data from external source (NUI)
    * @param data - Shop configuration data
    */
@@ -193,6 +241,7 @@ class ShopStore {
     this.legal = data.legal;
     this.mode = data.mode;
     this.licensePrice = data.licensePrice;
+    this.fallbackImage = typeof data.fallbackImage === 'string' ? data.fallbackImage : '';
     this.locales = data.locales;
     this.activeCategory = 'all';
     this.searchQuery = '';
@@ -210,6 +259,7 @@ class ShopStore {
   loadMockData(): void {
     this.items = MOCK_ITEMS;
     this.categories = MOCK_CATEGORIES;
+    this.fallbackImage = '';
     this.selectedName = MOCK_ITEMS[0]?.name ?? null;
     this.syncAmmoAmount();
   }
@@ -260,12 +310,17 @@ class ShopStore {
       return;
     }
 
+    if (this.ammoPurchaseLimit < ammo.minAmount) {
+      this.ammoAmount = 0;
+      return;
+    }
+
     if (!Number.isFinite(amount)) {
       this.ammoAmount = ammo.minAmount;
       return;
     }
 
-    this.ammoAmount = Math.max(ammo.minAmount, Math.min(ammo.maxAmount, Math.floor(amount)));
+    this.ammoAmount = Math.max(ammo.minAmount, Math.min(this.ammoPurchaseLimit, Math.floor(amount)));
   }
 
   /**
@@ -273,7 +328,18 @@ class ShopStore {
    */
   syncAmmoAmount(): void {
     const ammo = this.selectedItem?.upgrades.ammo;
-    this.ammoAmount = ammo?.defaultAmount ?? 0;
+
+    if (!ammo) {
+      this.ammoAmount = 0;
+      return;
+    }
+
+    if (this.ammoPurchaseLimit < ammo.minAmount) {
+      this.ammoAmount = 0;
+      return;
+    }
+
+    this.ammoAmount = Math.max(ammo.minAmount, Math.min(this.ammoPurchaseLimit, ammo.defaultAmount));
   }
 
   /**
@@ -285,6 +351,7 @@ class ShopStore {
     this.selectedName = null;
     this.buying = false;
     this.mode = 'shop';
+    this.fallbackImage = '';
     this.activeDetailsTab = 'weapon';
     this.ammoAmount = 30;
   }

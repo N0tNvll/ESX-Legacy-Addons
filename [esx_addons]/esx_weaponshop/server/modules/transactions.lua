@@ -1,5 +1,7 @@
 local activeRequests = {}
 local requestCooldowns = {}
+local ammoStateRequests = {}
+local ammoStateRequestId = 0
 
 local function GetRequestKey(source, action)
 	return ('%s:%s'):format(source, action)
@@ -100,6 +102,44 @@ local function RefundUpgradePayment(xPlayer, isBlackMarket, price)
 	RefundWeaponPayment(xPlayer, isBlackMarket, price)
 end
 
+local function CompleteAmmoStateRequest(requestId, ammoState)
+	local request = ammoStateRequests[requestId]
+	if not request then
+		return
+	end
+
+	ammoStateRequests[requestId] = nil
+	request.cb(ammoState)
+end
+
+local function RequestClientWeaponAmmoState(source, weaponName, cb)
+	local timeout = tonumber(Config.ClientCallbackTimeout) or tonumber(Config.LicenseCallbackTimeout) or 5000
+	ammoStateRequestId = ammoStateRequestId + 1
+
+	if ammoStateRequestId > 1000000 then
+		ammoStateRequestId = 1
+	end
+
+	local requestId = ('%s:%s:%s'):format(source, GetGameTimer(), ammoStateRequestId)
+	ammoStateRequests[requestId] = {
+		source = source,
+		cb = cb
+	}
+
+	local triggered = pcall(function()
+		TriggerClientEvent('esx_weaponshop:requestWeaponAmmoState', source, requestId, weaponName)
+	end)
+
+	if not triggered then
+		CompleteAmmoStateRequest(requestId, nil)
+		return
+	end
+
+	SetTimeout(timeout, function()
+		CompleteAmmoStateRequest(requestId, nil)
+	end)
+end
+
 AddEventHandler('playerDropped', function()
 	local prefix = tostring(source) .. ':'
 
@@ -114,6 +154,21 @@ AddEventHandler('playerDropped', function()
 			requestCooldowns[key] = nil
 		end
 	end
+
+	for key, request in pairs(ammoStateRequests) do
+		if request.source == source then
+			ammoStateRequests[key] = nil
+		end
+	end
+end)
+
+RegisterNetEvent('esx_weaponshop:receiveWeaponAmmoState', function(requestId, ammoState)
+	local request = ammoStateRequests[requestId]
+	if not request or request.source ~= source then
+		return
+	end
+
+	CompleteAmmoStateRequest(requestId, ammoState)
 end)
 
 ---Handles weapon license purchase requests
@@ -316,40 +371,69 @@ function ProcessWeaponPurchase(source, weaponName, zone, cb)
 	end)
 end
 
-local function ProcessAmmoPurchase(source, xPlayer, weaponName, isBlackMarket, data)
+local function ProcessAmmoPurchase(source, xPlayer, weaponName, isBlackMarket, data, zone, identifier, cb)
 	local upgrades = BuildWeaponUpgrades(weaponName)
 	local ammo = upgrades.ammo
 	local amount = NormalizeAmmoAmount(data.amount)
 
 	if not ammo or not amount then
-		return false
+		cb(false)
+		return
 	end
 
 	local pricePerRound = NormalizeUpgradePrice(ammo.pricePerRound)
 	if not pricePerRound then
-		return false
+		cb(false)
+		return
 	end
 
 	local price = amount * pricePerRound
 
-	if not CanPayForUpgrade(xPlayer, isBlackMarket, price) then
-		return false
-	end
+	RequestClientWeaponAmmoState(source, weaponName, function(ammoState)
+		xPlayer = ValidateSamePlayer(source, identifier)
+		if not xPlayer then
+			cb(false)
+			return
+		end
 
-	if not TakeUpgradePayment(xPlayer, isBlackMarket, price) then
-		return false
-	end
+		if not ValidatePlayerNearZone(source, zone) then
+			cb(false)
+			return
+		end
 
-	if AddWeaponAmmo(xPlayer, weaponName, amount) then
-		return true
-	end
+		if not HasPlayerWeapon(xPlayer, weaponName) then
+			xPlayer.showNotification(TranslateCap('requires_weapon'))
+			cb(false)
+			return
+		end
 
-	xPlayer = ValidatePlayer(source)
-	if xPlayer then
-		RefundUpgradePayment(xPlayer, isBlackMarket, price)
-	end
+		if not CanAddWeaponAmmo(source, xPlayer, weaponName, amount, ammoState) then
+			cb(false)
+			return
+		end
 
-	return false
+		if not CanPayForUpgrade(xPlayer, isBlackMarket, price) then
+			cb(false)
+			return
+		end
+
+		if not TakeUpgradePayment(xPlayer, isBlackMarket, price) then
+			cb(false)
+			return
+		end
+
+		if AddWeaponAmmo(xPlayer, weaponName, amount) then
+			cb(true)
+			return
+		end
+
+		xPlayer = ValidatePlayer(source)
+		if xPlayer then
+			RefundUpgradePayment(xPlayer, isBlackMarket, price)
+		end
+
+		cb(false)
+	end)
 end
 
 local function ProcessComponentPurchase(source, xPlayer, weaponName, isBlackMarket, data)
@@ -539,7 +623,7 @@ function ProcessWeaponUpgradePurchase(source, data, zone, cb)
 		end
 
 		if action == 'ammo' then
-			finish(ProcessAmmoPurchase(source, xPlayer, weaponName, isBlackMarket, data))
+			ProcessAmmoPurchase(source, xPlayer, weaponName, isBlackMarket, data, zone, identifier, finish)
 			return
 		end
 

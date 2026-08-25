@@ -31,6 +31,7 @@ Locales ['es'] = {
   ['price_per_round'] = 'Por bala',
   ['total'] = 'Total',
   ['buy_ammo'] = 'Comprar balas',
+  ['ammo_full'] = 'No puedes llevar mas balas para esta arma',
   ['requires_weapon'] = 'Compra primero esta arma',
   ['no_ammo_available'] = 'Esta arma no tiene balas disponibles',
   ['no_components_available'] = 'No hay accesorios disponibles',

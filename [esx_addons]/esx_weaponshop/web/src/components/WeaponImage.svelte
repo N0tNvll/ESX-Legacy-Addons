@@ -21,12 +21,13 @@
   $effect(() => {
     const weaponName = name;
     const weaponImage = image;
+    const fallbackImage = shopStore.fallbackImage;
     loaded = false;
     missing = false;
     src = '';
     let cancelled = false;
 
-    void resolveWeaponImage(weaponName, weaponImage).then((url) => {
+    void resolveWeaponImage(weaponName, weaponImage, fallbackImage).then((url) => {
       if (cancelled) {
         return;
       }

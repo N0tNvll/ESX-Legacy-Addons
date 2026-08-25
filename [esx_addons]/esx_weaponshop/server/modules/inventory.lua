@@ -11,6 +11,16 @@ local function GetOxInventory()
 	return exports.ox_inventory
 end
 
+local function GetInitialWeaponAmmo()
+	local ammo = tonumber(Config.InitialWeaponAmmo)
+
+	if not ammo or ammo ~= ammo or ammo == math.huge or ammo == -math.huge then
+		return 42
+	end
+
+	return math.max(math.floor(ammo), 0)
+end
+
 ---Checks if player can receive the weapon
 ---@param source number Player source
 ---@param xPlayer table ESX player object
@@ -88,7 +98,7 @@ function AddWeapon(source, xPlayer, weaponName)
 	end
 
 	local added = pcall(function()
-		xPlayer.addWeapon(weaponName, 42)
+		xPlayer.addWeapon(weaponName, GetInitialWeaponAmmo())
 	end)
 
 	return added
@@ -112,6 +122,147 @@ function HasPlayerWeapon(xPlayer, weaponName)
 	end)
 
 	return checked and hasWeapon == true
+end
+
+local function GetPlayerServerPed(source)
+	if not source then
+		return nil
+	end
+
+	local ped = GetPlayerPed(source)
+
+	return ped and ped ~= 0 and ped or nil
+end
+
+local function GetPlayerWeaponEntry(xPlayer, weaponName)
+	if type(xPlayer.getWeapon) == 'function' then
+		local checked, first, second = pcall(function()
+			return xPlayer.getWeapon(weaponName)
+		end)
+
+		if checked then
+			if type(first) == 'table' then
+				return first
+			end
+
+			if type(second) == 'table' then
+				return second
+			end
+		end
+	end
+
+	if type(xPlayer.loadout) == 'table' then
+		for i = 1, #xPlayer.loadout do
+			local weapon = xPlayer.loadout[i]
+
+			if weapon and weapon.name == weaponName then
+				return weapon
+			end
+		end
+	end
+
+	return nil
+end
+
+local function NormalizeAmmoCount(value)
+	value = tonumber(value)
+
+	if not value or value ~= value or value == math.huge or value == -math.huge then
+		return nil
+	end
+
+	return math.max(math.floor(value), 0)
+end
+
+local function GetPedWeaponAmmo(source, weaponName)
+	if type(GetAmmoInPedWeapon) ~= 'function' or type(weaponName) ~= 'string' then
+		return nil
+	end
+
+	local ped = GetPlayerServerPed(source)
+	if not ped then
+		return nil
+	end
+
+	local checked, ammo = pcall(function()
+		return GetAmmoInPedWeapon(ped, joaat(weaponName))
+	end)
+
+	return checked and NormalizeAmmoCount(ammo) or nil
+end
+
+---Gets the current ammo count for an owned weapon.
+---@param source number Player source
+---@param xPlayer table ESX player object
+---@param weaponName string
+---@return number|nil ammo
+function GetPlayerWeaponAmmo(source, xPlayer, weaponName)
+	if Config.OxInventory then
+		return nil
+	end
+
+	local pedAmmo = GetPedWeaponAmmo(source, weaponName)
+	if pedAmmo then
+		return pedAmmo
+	end
+
+	local weapon = GetPlayerWeaponEntry(xPlayer, weaponName)
+	if not weapon then
+		return nil
+	end
+
+	return NormalizeAmmoCount(weapon.ammo) or 0
+end
+
+local function NormalizePositiveAmmoLimit(value)
+	value = NormalizeAmmoCount(value)
+
+	return value and value > 0 and value or nil
+end
+
+---Checks whether adding ammo would stay inside the client runtime weapon ammo limit.
+---@param source number Player source
+---@param xPlayer table ESX player object
+---@param weaponName string
+---@param amount number
+---@param ammoState table|nil Client ammo state with currentAmmo/maxAmmo
+---@return boolean canAdd
+function CanAddWeaponAmmo(source, xPlayer, weaponName, amount, ammoState)
+	amount = tonumber(amount)
+	if not amount or amount ~= amount or amount == math.huge or amount == -math.huge or amount <= 0 then
+		return false
+	end
+
+	amount = math.floor(amount)
+
+	if type(ammoState) ~= 'table' then
+		xPlayer.showNotification(TranslateCap('unavailable'))
+		return false
+	end
+
+	local maxAmmo = NormalizePositiveAmmoLimit(ammoState.maxAmmo)
+	if not maxAmmo then
+		xPlayer.showNotification(TranslateCap('unavailable'))
+		return false
+	end
+
+	local currentAmmo = NormalizeAmmoCount(ammoState.currentAmmo)
+	if not currentAmmo then
+		xPlayer.showNotification(TranslateCap('unavailable'))
+		return false
+	end
+
+	local serverAmmo = GetPlayerWeaponAmmo(source, xPlayer, weaponName)
+	if serverAmmo and serverAmmo > currentAmmo then
+		currentAmmo = serverAmmo
+	end
+
+	if currentAmmo >= maxAmmo or currentAmmo + amount > maxAmmo then
+		xPlayer.showNotification(TranslateCap('ammo_full'))
+		return false
+	end
+
+	return true
 end
 
 ---Adds ammo to an owned weapon.

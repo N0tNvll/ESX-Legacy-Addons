@@ -36,6 +36,145 @@ function AreWeaponShopUpgradesSupported()
 	return Config.WeaponShopUpgrades and Config.WeaponShopUpgrades.Enabled == true and not Config.OxInventory
 end
 
+local function NormalizePositiveInteger(value)
+	value = tonumber(value)
+
+	if not value or value ~= value or value == math.huge or value == -math.huge then
+		return nil
+	end
+
+	value = math.floor(value)
+	return value > 0 and value or nil
+end
+
+local function NormalizeInteger(value)
+	value = tonumber(value)
+
+	if not value or value ~= value or value == math.huge or value == -math.huge then
+		return nil
+	end
+
+	return math.floor(value)
+end
+
+local function NormalizeAmmoNativeResult(first, second)
+	local ammo = NormalizePositiveInteger(second)
+	if ammo then
+		return ammo
+	end
+
+	if first ~= true and first ~= false then
+		return NormalizePositiveInteger(first)
+	end
+
+	return nil
+end
+
+local function GetWeaponMaxAmmo(ped, weaponHash)
+	if type(GetMaxAmmo) ~= 'function' then
+		return nil
+	end
+
+	local checked, first, second = pcall(function()
+		return GetMaxAmmo(ped, weaponHash)
+	end)
+
+	if not checked then
+		return nil
+	end
+
+	return NormalizeAmmoNativeResult(first, second)
+end
+
+local function GetWeaponMaxAmmoByType(ped, weaponHash)
+	if type(GetPedAmmoTypeFromWeapon) ~= 'function' or type(GetMaxAmmoByType) ~= 'function' then
+		return nil
+	end
+
+	local typeChecked, ammoType = pcall(function()
+		return GetPedAmmoTypeFromWeapon(ped, weaponHash)
+	end)
+
+	ammoType = typeChecked and NormalizeInteger(ammoType) or nil
+	if not ammoType or ammoType == 0 then
+		return nil
+	end
+
+	local checked, first, second = pcall(function()
+		return GetMaxAmmoByType(ped, ammoType)
+	end)
+
+	if not checked then
+		return nil
+	end
+
+	return NormalizeAmmoNativeResult(first, second)
+end
+
+local function GetPedWeaponMaxAmmo(ped, weaponName)
+	if not ped or ped == 0 or type(weaponName) ~= 'string' then
+		return nil
+	end
+
+	local weaponHash = joaat(weaponName)
+
+	return GetWeaponMaxAmmo(ped, weaponHash) or GetWeaponMaxAmmoByType(ped, weaponHash)
+end
+
+---Gets the runtime ammo cap for a weapon from the current client ped when available.
+---@param weaponName string
+---@return number|nil maxAmmo
+function GetWeaponShopAmmoLimit(weaponName)
+	if IsDuplicityVersion() or type(PlayerPedId) ~= 'function' then
+		return nil
+	end
+
+	return GetPedWeaponMaxAmmo(PlayerPedId(), weaponName)
+end
+
+---Converts a configured image value into a browser-safe URL.
+---@param image string|nil
+---@return string imageUrl
+function GetWeaponShopImageUrl(image)
+	if type(image) ~= 'string' or image == '' then
+		return ''
+	end
+
+	local scheme = image:match('^(%a[%w+.-]*):')
+	if scheme then
+		scheme = scheme:lower()
+
+		if scheme == 'http' or scheme == 'https' or scheme == 'nui' or scheme == 'data' then
+			return image
+		end
+
+		return ''
+	end
+
+	image = image:gsub('^%./', ''):gsub('^/+', '')
+	return ('nui://%s/%s'):format(GetCurrentResourceName(), image)
+end
+
+---Gets a configured image override for a weapon.
+---@param weaponName string
+---@return string|nil imageUrl
+function GetWeaponShopCustomImage(weaponName)
+	if type(weaponName) ~= 'string' or type(Config.WeaponImages) ~= 'table' then
+		return nil
+	end
+
+	local image = Config.WeaponImages[weaponName] or Config.WeaponImages[weaponName:upper()]
+	local imageUrl = GetWeaponShopImageUrl(image)
+
+	return imageUrl ~= '' and imageUrl or nil
+end
+
+---Gets a browser-safe fallback image URL from config.
+---@return string fallbackImage
+function GetWeaponShopFallbackImage()
+	return GetWeaponShopImageUrl(Config.FallbackWeaponImage)
+end
+
 local function GetComponentPrice(componentName, weaponName)
 	local config = Config.WeaponShopUpgrades.Components or {}
 	local byWeapon = config.WeaponPrices and config.WeaponPrices[weaponName]
@@ -88,7 +227,8 @@ function BuildWeaponUpgrades(weaponName)
 			defaultAmount = tonumber(ammoConfig.DefaultAmount) or 30,
 			minAmount = tonumber(ammoConfig.MinAmount) or 1,
 			maxAmount = tonumber(ammoConfig.MaxAmount) or 250,
-			quickAmounts = ammoConfig.QuickAmounts or { 30, 60, 120 }
+			quickAmounts = ammoConfig.QuickAmounts or { 30, 60, 120 },
+			maxAmmo = GetWeaponShopAmmoLimit(weaponName)
 		}
 	end
 

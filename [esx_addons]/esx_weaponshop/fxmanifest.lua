@@ -11,6 +11,7 @@ shared_scripts {
 	'@es_extended/locale.lua',
 	'locales/*.lua',
 	'shared/config/main.lua',
+	'shared/config/weapon_images.lua',
 	'shared/config/shops.lua',
 	'shared/config/upgrades.lua',
 	'shared/functions.lua'

@@ -22,19 +22,48 @@ function canLoadImage(url: string): Promise<boolean> {
   });
 }
 
-/**
- * Resolves the best display URL for a weapon image
- * Prefers inventory images, otherwise falls back to FiveM docs images
- * @param weaponName - Weapon spawn name
- * @param image - Preferred image URL from Lua
- */
-export async function resolveWeaponImage(weaponName: string, image: string): Promise<string | null> {
-  const docsUrl = getDocsWeaponImage(weaponName);
-  const primary = image || docsUrl;
+function getUniqueImageCandidates(candidates: string[]): string[] {
+  const uniqueCandidates: string[] = [];
+  const seen = new Set<string>();
 
-  if (await canLoadImage(primary)) {
-    return primary;
+  for (const candidate of candidates) {
+    const url = candidate.trim();
+
+    if (!url || seen.has(url)) {
+      continue;
+    }
+
+    seen.add(url);
+    uniqueCandidates.push(url);
   }
 
-  return primary !== docsUrl && await canLoadImage(docsUrl) ? docsUrl : null;
+  return uniqueCandidates;
+}
+
+/**
+ * Resolves the best display URL for a weapon image
+ * Prefers inventory images, then FiveM docs images, then the configured fallback image
+ * @param weaponName - Weapon spawn name
+ * @param image - Preferred image URL from Lua
+ * @param fallbackImage - Configured fallback image URL/path
+ */
+export async function resolveWeaponImage(
+  weaponName: string,
+  image: string,
+  fallbackImage = ''
+): Promise<string | null> {
+  const docsUrl = getDocsWeaponImage(weaponName);
+  const candidates = getUniqueImageCandidates([
+    image,
+    docsUrl,
+    fallbackImage
+  ]);
+
+  for (const candidate of candidates) {
+    if (await canLoadImage(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
 }

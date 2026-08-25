@@ -8,6 +8,25 @@ Config = Config or {}
 Config.Locale = GetConvar('esx:locale', 'en')
 Config.OxInventory = ESX.GetConfig().OxInventory
 
+-- Image used by the NUI when the weapon image from inventory/FiveM docs cannot be loaded.
+-- Supports URLs, nui:// paths, data URLs, or local resource paths
+-- such as "web/dist/images/default-weapon.png".
+Config.FallbackWeaponImage = ''
+
+-- Optional image overrides per weapon. These take priority over ox_inventory/FiveM docs images.
+-- Supports URLs, nui:// paths, data URLs or local resource paths.
+--
+-- Examples:
+-- Config.WeaponImages = {
+-- 	WEAPON_PISTOL = 'nui://esx_weaponshop/web/dist/images/pistol.png',
+-- 	WEAPON_MICROSMG = 'https://example.com/microsmg.png',
+-- 	WEAPON_MACHETE = 'web/dist/images/machete.png'
+-- }
+Config.WeaponImages = {}
+
+-- Ammo loaded when a weapon is bought through the ESX loadout backend.
+Config.InitialWeaponAmmo = 42
+
 -- ════════════════════════════════════════════════════════════════
 -- LICENSE CONFIGURATION
 -- ════════════════════════════════════════════════════════════════
@@ -20,6 +39,7 @@ Config.LicensePrice = 5000
 Config.ServerDistanceBuffer = 3.0
 Config.PurchaseCooldown = 1500
 Config.LicenseCallbackTimeout = 5000
+Config.ClientCallbackTimeout = 5000
 
 -- ════════════════════════════════════════════════════════════════
 -- MARKER CONFIGURATION

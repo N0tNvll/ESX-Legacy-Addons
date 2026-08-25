@@ -25,6 +25,7 @@ export interface WeaponAmmoUpgrade {
   minAmount: number;
   maxAmount: number;
   quickAmounts: number[];
+  maxAmmo?: number | null;
 }
 
 export interface WeaponComponentUpgrade {
@@ -103,6 +104,7 @@ export interface ShopLocales {
   pricePerRound: string;
   total: string;
   buyAmmo: string;
+  ammoFull: string;
   components: string;
   tints: string;
   requiresWeapon: string;
@@ -128,6 +130,8 @@ export interface ShopData {
   categories: ShopCategory[];
   /** Localized UI strings */
   locales: ShopLocales;
+  /** Configured fallback image for missing weapon pictures */
+  fallbackImage?: string;
   /** Whether this is a legal shop */
   legal: boolean;
   /** Current view mode */

@@ -30,6 +30,17 @@
   let ammoTotal = $derived(
     item?.upgrades.ammo ? shopStore.ammoAmount * item.upgrades.ammo.pricePerRound : 0
   );
+  let ammoLimit = $derived(item?.upgrades.ammo?.maxAmmo ?? null);
+  let ammoDisplay = $derived(
+    item?.state.owned
+      ? (typeof ammoLimit === 'number' ? `${item.state.ammo}/${ammoLimit}` : item.state.ammo.toString())
+      : '-'
+  );
+  let ammoButtonLabel = $derived(
+    item?.state.owned
+      ? (shopStore.ammoPurchaseLimit > 0 ? shopStore.locales.buyAmmo : shopStore.locales.ammoFull)
+      : shopStore.locales.requiresWeapon
+  );
 
   function formatMoney(value: number): string {
     return `$${value.toLocaleString()}`;
@@ -108,7 +119,7 @@
         <div class="weapon-panel">
           <div class="stat-row">
             <span>{shopStore.locales.ammo}</span>
-            <strong>{item.state.owned ? item.state.ammo : '-'}</strong>
+            <strong>{ammoDisplay}</strong>
           </div>
           <div class="stat-row">
             <span>{shopStore.locales.components}</span>
@@ -126,20 +137,32 @@
               <strong>{formatMoney(item.upgrades.ammo.pricePerRound)}</strong>
             </div>
             <div class="ammo-stepper">
-              <button type="button" disabled={!item.state.owned} onclick={() => shopStore.setAmmoAmount(shopStore.ammoAmount - 1)}>-</button>
+              <button
+                type="button"
+                disabled={!item.state.owned || !shopStore.canBuySelectedAmmo || shopStore.ammoAmount <= item.upgrades.ammo.minAmount}
+                onclick={() => shopStore.setAmmoAmount(shopStore.ammoAmount - 1)}
+              >-</button>
               <input
                 type="number"
                 min={item.upgrades.ammo.minAmount}
-                max={item.upgrades.ammo.maxAmount}
+                max={shopStore.ammoPurchaseLimit}
                 value={shopStore.ammoAmount}
-                disabled={!item.state.owned}
+                disabled={!item.state.owned || shopStore.ammoPurchaseLimit <= 0}
                 oninput={setAmmoFromInput}
               />
-              <button type="button" disabled={!item.state.owned} onclick={() => shopStore.setAmmoAmount(shopStore.ammoAmount + 1)}>+</button>
+              <button
+                type="button"
+                disabled={!item.state.owned || shopStore.ammoPurchaseLimit <= 0 || shopStore.ammoAmount >= shopStore.ammoPurchaseLimit}
+                onclick={() => shopStore.setAmmoAmount(shopStore.ammoAmount + 1)}
+              >+</button>
             </div>
             <div class="quick-amounts">
               {#each item.upgrades.ammo.quickAmounts as amount (amount)}
-                <button type="button" disabled={!item.state.owned} onclick={() => shopStore.setAmmoAmount(amount)}>
+                <button
+                  type="button"
+                  disabled={!item.state.owned || shopStore.ammoPurchaseLimit <= 0 || amount > shopStore.ammoPurchaseLimit}
+                  onclick={() => shopStore.setAmmoAmount(amount)}
+                >
                   {amount}
                 </button>
               {/each}
@@ -150,10 +173,10 @@
             </div>
             <button
               class="primary-action"
-              disabled={shopStore.buying || !item.state.owned}
+              disabled={shopStore.buying || !shopStore.canBuySelectedAmmo}
               onclick={() => buyUpgrade({ action: 'ammo', amount: shopStore.ammoAmount })}
             >
-              {item.state.owned ? shopStore.locales.buyAmmo.toUpperCase() : shopStore.locales.requiresWeapon.toUpperCase()}
+              {ammoButtonLabel.toUpperCase()}
             </button>
           </div>
         {:else}
