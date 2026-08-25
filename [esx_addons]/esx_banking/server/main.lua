@@ -908,13 +908,3 @@ local function logTransaction(targetSource, label, key, amount)
 end
 
 exports("logTransaction", logTransaction)
-
-RegisterNetEvent("esx_banking:logTransaction", function(label, key, amount)
-    local playerId = source
-
-    if IsRateLimited(playerId, "externalLog", 1000) then
-        return
-    end
-
-    logTransaction(playerId, label, key, amount)
-end)
