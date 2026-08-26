@@ -6,6 +6,44 @@ end
 local RegisteredSocieties = {}
 local SocietiesByName = {}
 
+local function getValidAmount(amount)
+	amount = tonumber(amount)
+	if not amount then
+		return nil
+	end
+
+	amount = ESX.Math.Round(amount)
+	if amount <= 0 then
+		return nil
+	end
+
+	return amount
+end
+
+local function isBoss(xPlayer)
+	local job = xPlayer and xPlayer.getJob()
+	return job and Config.BossGrades[job.grade_name] and true or false
+end
+
+local function hasSocietyBossAccess(xPlayer, society)
+	local job = xPlayer and xPlayer.getJob()
+	return job and society and job.name == society.name and Config.BossGrades[job.grade_name] and true or false
+end
+
+local function getValidJobGrade(job, grade)
+	grade = tonumber(grade)
+	if not grade then
+		return nil
+	end
+
+	grade = ESX.Math.Round(grade)
+	if not Jobs[job] or not Jobs[job].grades[tostring(grade)] then
+		return nil
+	end
+
+	return grade
+end
+
 function GetSociety(name)
 	return SocietiesByName[name]
 end
@@ -64,8 +102,16 @@ AddEventHandler('esx_society:withdrawMoney', function(societyName, amount)
 		return
 	end
 	local xPlayer = ESX.Player(source)
-	amount = ESX.Math.Round(tonumber(amount))
-	if xPlayer.getJob().name ~= society.name then
+	if not xPlayer then
+		return
+	end
+
+	amount = getValidAmount(amount)
+	if not amount then
+		return xPlayer.showNotification(TranslateCap('invalid_amount'))
+	end
+
+	if not hasSocietyBossAccess(xPlayer, society) then
 		return print(('[^3WARNING^7] Player ^5%s^7 attempted to withdraw from society - ^5%s^7!'):format(source, society.name))
 	end
 
@@ -74,7 +120,7 @@ AddEventHandler('esx_society:withdrawMoney', function(societyName, amount)
 			return print(('[^3WARNING^7] Society ^5%s^7 has no shared account!'):format(society.name))
 		end
 
-		if amount > 0 and account.money >= amount then
+		if account.money >= amount then
 			account.removeMoney(amount)
 			xPlayer.addMoney(amount, TranslateCap('money_add_reason'))
 			xPlayer.showNotification(TranslateCap('have_withdrawn', ESX.Math.GroupDigits(amount)))
@@ -88,17 +134,24 @@ RegisterServerEvent('esx_society:depositMoney')
 AddEventHandler('esx_society:depositMoney', function(societyName, amount)
 	local source = source
 	local xPlayer = ESX.Player(source)
+	if not xPlayer then
+		return
+	end
+
 	local society = GetSociety(societyName)
 	if not society then
 		print(('[^3WARNING^7] Player ^5%s^7 attempted to deposit to non-existing society - ^5%s^7!'):format(source, societyName))
 		return
 	end
-	amount = ESX.Math.Round(tonumber(amount))
+	amount = getValidAmount(amount)
+	if not amount then
+		return xPlayer.showNotification(TranslateCap('invalid_amount'))
+	end
 
 	if xPlayer.getJob().name ~= society.name then
 		return print(('[^3WARNING^7] Player ^5%s^7 attempted to deposit to society - ^5%s^7!'):format(source, society.name))
 	end
-	if amount > 0 and xPlayer.getMoney() >= amount then
+	if xPlayer.getMoney() >= amount then
 		TriggerEvent('esx_addonaccount:getSharedAccount', society.account, function(account)
 			if not account then
 				return print(('[^3WARNING^7] Society ^5%s^7 has no shared account!'):format(society.name))
@@ -117,13 +170,22 @@ RegisterServerEvent('esx_society:washMoney')
 AddEventHandler('esx_society:washMoney', function(society, amount)
 	local source = source
 	local xPlayer = ESX.Player(source)
-	local account = xPlayer.getAccount('black_money')
-	amount = ESX.Math.Round(tonumber(amount))
+	if not xPlayer then
+		return
+	end
 
-	if xPlayer.getJob().name ~= society then
+	local account = xPlayer.getAccount('black_money')
+	amount = getValidAmount(amount)
+	local registeredSociety = GetSociety(society)
+
+	if not amount then
+		return xPlayer.showNotification(TranslateCap('invalid_amount'))
+	end
+
+	if not registeredSociety or not hasSocietyBossAccess(xPlayer, registeredSociety) then
 		return print(('[^3WARNING^7] Player ^5%s^7 attempted to wash money in society - ^5%s^7!'):format(source, society))
 	end
-	if amount and amount > 0 and account.money >= amount then
+	if account.money >= amount then
 		xPlayer.removeAccountMoney('black_money', amount, "Washing")
 
 		MySQL.insert('INSERT INTO society_moneywash (identifier, society, amount) VALUES (?, ?, ?)', {xPlayer.getIdentifier(), society, amount},
@@ -278,20 +340,56 @@ end)
 
 xLib.callback.registerCompat('esx_society:setJob', function(source, cb, identifier, job, grade, actionType)
 	local xPlayer = ESX.Player(source)
-	local isBoss = Config.BossGrades[xPlayer.getJob().grade_name]
+	local xPlayerJob = xPlayer and xPlayer.getJob()
 	local xTarget = ESX.Player(identifier)
 
-	if not isBoss then
-		print(('[^3WARNING^7] Player ^5%s^7 attempted to setJob for Player ^5%s^7!'):format(source, xTarget.src))
-		return cb()
+	if not xPlayerJob or not isBoss(xPlayer) then
+		print(('[^3WARNING^7] Player ^5%s^7 attempted to setJob without boss access!'):format(source))
+		return cb(false)
+	end
+
+	actionType = tostring(actionType or '')
+	if actionType ~= 'hire' and actionType ~= 'promote' and actionType ~= 'fire' then
+		print(('[^3WARNING^7] Player ^5%s^7 attempted invalid society action ^5%s^7!'):format(source, actionType))
+		return cb(false)
+	end
+
+	if actionType == 'fire' then
+		if job ~= 'unemployed' or tonumber(grade) ~= 0 then
+			print(('[^3WARNING^7] Player ^5%s^7 attempted invalid fire job assignment - ^5%s:%s^7!'):format(source, tostring(job), tostring(grade)))
+			return cb(false)
+		end
+		grade = 0
+	else
+		grade = getValidJobGrade(job, grade)
+		if job ~= xPlayerJob.name or not grade or grade > xPlayerJob.grade then
+			print(('[^3WARNING^7] Player ^5%s^7 attempted to set invalid society job - ^5%s:%s^7!'):format(source, tostring(job), tostring(grade)))
+			return cb(false)
+		end
 	end
 
 	if not xTarget then
-		MySQL.update('UPDATE users SET job = ?, job_grade = ? WHERE identifier = ?', {job, grade, identifier},
-		function()
-			cb()
+		if actionType == 'hire' then
+			print(('[^3WARNING^7] Player ^5%s^7 attempted to hire offline player ^5%s^7!'):format(source, tostring(identifier)))
+			return cb(false)
+		end
+
+		MySQL.single('SELECT job FROM users WHERE identifier = ?', {identifier}, function(result)
+			if not result or result.job ~= xPlayerJob.name then
+				print(('[^3WARNING^7] Player ^5%s^7 attempted to manage non-society offline player ^5%s^7!'):format(source, tostring(identifier)))
+				return cb(false)
+			end
+
+			MySQL.update('UPDATE users SET job = ?, job_grade = ? WHERE identifier = ?', {job, grade, identifier}, function()
+				cb(true)
+			end)
 		end)
 		return
+	end
+
+	if actionType ~= 'hire' and xTarget.getJob().name ~= xPlayerJob.name then
+		print(('[^3WARNING^7] Player ^5%s^7 attempted to manage non-society player ^5%s^7!'):format(source, xTarget.src))
+		return cb(false)
 	end
 
 	xTarget.setJob(job, grade)
@@ -307,7 +405,7 @@ xLib.callback.registerCompat('esx_society:setJob', function(source, cb, identifi
 		xPlayer.showNotification(TranslateCap("you_have_fired", xTargetName))
 	end
 
-	cb()
+	cb(true)
 end)
 
 

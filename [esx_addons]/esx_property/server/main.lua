@@ -28,6 +28,123 @@ end
 
 local PM = Config.PlayerManagement
 local Properties = {}
+local PropertyLocks = {}
+
+local function normalizePropertyId(propertyId)
+  local id = tonumber(propertyId)
+  if not id or id < 1 or id ~= math.floor(id) or not Properties[id] then
+    return nil
+  end
+
+  return id
+end
+
+local function normalizePlate(plate)
+  if type(plate) ~= "string" then
+    return nil
+  end
+
+  plate = plate:gsub("^%s+", ""):gsub("%s+$", "")
+  if plate == "" or #plate > 12 then
+    return nil
+  end
+
+  return plate
+end
+
+local function isNearCoords(source, coords, maxDistance)
+  if not coords or not coords.x or not coords.y or not coords.z then
+    return false
+  end
+
+  local ped = GetPlayerPed(source)
+  if not ped or ped == 0 then
+    return false
+  end
+
+  return #(GetEntityCoords(ped) - vector3(coords.x, coords.y, coords.z)) <= maxDistance
+end
+
+local function hasPropertyAccess(xPlayer, Property)
+  return xPlayer and Property and (Property.Owner == xPlayer.identifier or (Property.Keys and Property.Keys[xPlayer.identifier]))
+end
+
+local function canEnterProperty(xPlayer, Property)
+  if not xPlayer or not Property then
+    return false
+  end
+
+  if not Property.Owned then
+    return not Property.Locked
+  end
+
+  if Property.Locked then
+    return Config.OwnerCanAlwaysEnter and Property.Owner == xPlayer.identifier
+  end
+
+  return true
+end
+
+local function isRestoringLastProperty(xPlayer, PropertyId)
+  local lastProperty = xPlayer and xPlayer.get and xPlayer.get("lastProperty")
+  return lastProperty and tonumber(lastProperty.id) == PropertyId
+end
+
+local function isPlayerInsideProperty(player, Property)
+  if not Property or not Property.plysinside then
+    return false
+  end
+
+  for i = 1, #Property.plysinside do
+    if Property.plysinside[i] == player then
+      return true
+    end
+  end
+
+  return false
+end
+
+local function isNearPropertyGarage(source, Property)
+  return Property and Property.garage and Property.garage.pos and isNearCoords(source, Property.garage.pos, 12.0)
+end
+
+local function isVehicleAlreadyStored(Property, plate)
+  if not Property or not Property.garage or not Property.garage.StoredVehicles then
+    return false
+  end
+
+  for i = 1, #Property.garage.StoredVehicles do
+    local vehicle = Property.garage.StoredVehicles[i]
+    if vehicle.vehicle and normalizePlate(vehicle.vehicle.plate) == plate then
+      return true
+    end
+  end
+
+  return false
+end
+
+local function getPlayerVehicleForProps(source, vehicleProps)
+  local ped = GetPlayerPed(source)
+  if not ped or ped == 0 then
+    return nil
+  end
+
+  local vehicle = GetVehiclePedIsIn(ped, false)
+  if not vehicle or vehicle == 0 then
+    return nil
+  end
+
+  if normalizePlate(GetVehicleNumberPlateText(vehicle) or "") ~= vehicleProps.plate then
+    return nil
+  end
+
+  local model = tonumber(vehicleProps.model)
+  if not model or GetEntityModel(vehicle) ~= model then
+    return nil
+  end
+
+  return vehicle
+end
 
 function PropertiesRefresh()
   Properties = {}
@@ -183,38 +300,58 @@ end, false,{help = TranslateCap("admin_desc")})
 
 -- Buy Property
 xLib.callback.registerCompat("esx_property:buyProperty", function(source, cb, PropertyId)
-    local xPlayer = ESX.GetPlayerFromId(source)
-    local Price = Properties[PropertyId].Price
-    local canAfford = xPlayer.getAccount("bank").money >= Price
+  local xPlayer = ESX.GetPlayerFromId(source)
+  PropertyId = normalizePropertyId(PropertyId)
+  local Property = PropertyId and Properties[PropertyId]
 
-    if canAfford then
-        xPlayer.removeAccountMoney("bank", Price, "Bought Property")
-        Properties[PropertyId].Owner = xPlayer.identifier
-        Properties[PropertyId].OwnerName = xPlayer.getName()
-        Properties[PropertyId].Owned = true
+  if not xPlayer or not Property or PM.Enabled or Property.Owned or PropertyLocks[PropertyId] or not isNearCoords(source, Property.Entrance, 6.0) then
+    return cb(false)
+  end
 
-        Log("Property Bought", 65280, {{
-            name = "**Property Name**",
-            value = Properties[PropertyId].Name,
-            inline = true
-        }, {
-            name = "**Price**",
-            value = ESX.Math.GroupDigits(Price),
-            inline = true
-        }, {
-            name = "**Player**",
-            value = xPlayer.getName(),
-            inline = true
-        }}, 1)
+  local Price = tonumber(Property.Price)
+  if not Price or Price <= 0 then
+    return cb(false)
+  end
 
-        TriggerClientEvent("esx_property:syncProperties", -1, Properties)
+  local canAfford = xPlayer.getAccount("bank").money >= Price
+  if not canAfford then
+    return cb(false)
+  end
 
-        if Config.OxInventory then
-            exports.ox_inventory:RegisterStash("property-" .. PropertyId, Properties[PropertyId].Name, 15, 100000, xPlayer.identifier)
-        end
-    end
+  PropertyLocks[PropertyId] = true
+  if Property.Owned then
+    PropertyLocks[PropertyId] = nil
+    return cb(false)
+  end
 
-    cb(canAfford)
+  xPlayer.removeAccountMoney("bank", Price, "Bought Property")
+  Property.Owner = xPlayer.identifier
+  Property.OwnerName = xPlayer.getName()
+  Property.Owned = true
+  Property.Keys = Property.Keys or {}
+
+  Log("Property Bought", 65280, {{
+      name = "**Property Name**",
+      value = Property.Name,
+      inline = true
+  }, {
+      name = "**Price**",
+      value = ESX.Math.GroupDigits(Price),
+      inline = true
+  }, {
+      name = "**Player**",
+      value = xPlayer.getName(),
+      inline = true
+  }}, 1)
+
+  TriggerClientEvent("esx_property:syncProperties", -1, Properties)
+
+  if Config.OxInventory then
+      exports.ox_inventory:RegisterStash("property-" .. PropertyId, Property.Name, 15, 100000, xPlayer.identifier)
+  end
+
+  PropertyLocks[PropertyId] = nil
+  cb(true)
 end)
 
 xLib.callback.registerCompat("esx_property:attemptSellToPlayer", function(source, cb, PropertyId, PlayerId)
@@ -839,56 +976,85 @@ end)
 
 xLib.callback.registerCompat('esx_property:StoreVehicle', function(source, cb, PropertyId, VehicleProperties)
   local xPlayer = ESX.GetPlayerFromId(source)
+  PropertyId = normalizePropertyId(PropertyId)
   local Property = Properties[PropertyId]
 
-  if Property.Owner == xPlayer.identifier or Properties[PropertyId].Keys[xPlayer.identifier] then
-    if Property.garage.enabled then
-      if Config.Garage.OwnedVehiclesOnly then
-        MySQL.scalar("SELECT `owner` FROM `owned_vehicles` WHERE `plate` = ?", {VehicleProperties.plate}, function(result)
-          if result then
-            if result == xPlayer.identifier then
-              Properties[PropertyId].garage.StoredVehicles[#Properties[PropertyId].garage.StoredVehicles + 1] = {owner = xPlayer.identifier,
-                                                                                                                 vehicle = VehicleProperties}
-              cb(true)
-            elseif (Properties[PropertyId].Keys[result] or Property.Owner == result) then
-              Properties[PropertyId].garage.StoredVehicles[#Properties[PropertyId].garage.StoredVehicles + 1] = {owner = xPlayer.identifier,
-                                                                                                                 vehicle = VehicleProperties}
-              cb(true)
-            else
-              cb(false)
-            end
-          else
-            cb(false)
-          end
-        end)
-      else
-        Properties[PropertyId].garage.StoredVehicles[#Properties[PropertyId].garage.StoredVehicles + 1] = {owner = xPlayer.identifier,
-                                                                                                           vehicle = VehicleProperties}
-        cb(true)
-      end
-      MySQL.query(Config.Garage.MySQLquery, {1, VehicleProperties.plate}) -- Set vehicle as stored in MySQL
-    else
-      xPlayer.showNotification(TranslateCap("garage_not_enabled"), 'error')
-      cb(false)
-    end
-  else
-    xPlayer.showNotification(TranslateCap("cannot_access_property"), 'error')
-    cb(false)
+  if not xPlayer or not Property or type(VehicleProperties) ~= "table" then
+    return cb(false)
   end
-  Log("User Attempted To Store Vehicle", 3640511,
-    {{name = "**Property Name**", value = Property.Name, inline = true}, {name = "**Owner**", value = Property.OwnerName, inline = true},
-     {name = "**Player**", value = xPlayer.getName(), inline = true},
-     {name = "**Has Access**", value = (Property.Owner == xPlayer.identifier or Properties[PropertyId].Keys[xPlayer.identifier]) and "Yes" or "No",
-      inline = true}, {name = "**Garage Status**", value = Property.garage.enabled and "Enabled" or "Disabled", inline = true},
-     {name = "**Vehicle Name**", value = VehicleProperties.DisplayName, inline = true}}, 2)
+
+  VehicleProperties.plate = normalizePlate(VehicleProperties.plate)
+  if not VehicleProperties.plate or not VehicleProperties.model or not getPlayerVehicleForProps(source, VehicleProperties) then
+    return cb(false)
+  end
+
+  if not hasPropertyAccess(xPlayer, Property) then
+    xPlayer.showNotification(TranslateCap("cannot_access_property"), 'error')
+    return cb(false)
+  end
+
+  if not Property.garage or not Property.garage.enabled or not isNearPropertyGarage(source, Property) then
+    xPlayer.showNotification(TranslateCap("garage_not_enabled"), 'error')
+    return cb(false)
+  end
+
+  if isVehicleAlreadyStored(Property, VehicleProperties.plate) then
+    return cb(false)
+  end
+
+  local function finishStore(owner)
+    Properties[PropertyId].garage.StoredVehicles[#Properties[PropertyId].garage.StoredVehicles + 1] = {
+      owner = owner,
+      vehicle = VehicleProperties
+    }
+
+    TriggerClientEvent("esx_property:syncProperties", -1, Properties)
+    Log("User Attempted To Store Vehicle", 3640511,
+      {{name = "**Property Name**", value = Property.Name, inline = true}, {name = "**Owner**", value = Property.OwnerName, inline = true},
+       {name = "**Player**", value = xPlayer.getName(), inline = true},
+       {name = "**Has Access**", value = hasPropertyAccess(xPlayer, Property) and "Yes" or "No",
+        inline = true}, {name = "**Garage Status**", value = Property.garage.enabled and "Enabled" or "Disabled", inline = true},
+       {name = "**Vehicle Name**", value = VehicleProperties.DisplayName, inline = true}}, 2)
+  end
+
+  if Config.Garage.OwnedVehiclesOnly then
+    MySQL.single("SELECT `owner`, `vehicle` FROM `owned_vehicles` WHERE `plate` = ?", {VehicleProperties.plate}, function(result)
+      if not result or not (result.owner == xPlayer.identifier or result.owner == Property.Owner or (Property.Keys and Property.Keys[result.owner])) then
+        return cb(false)
+      end
+
+      local storedVehicle = result.vehicle and json.decode(result.vehicle)
+      if storedVehicle and tonumber(storedVehicle.model) and tonumber(storedVehicle.model) ~= tonumber(VehicleProperties.model) then
+        return cb(false)
+      end
+
+      MySQL.update("UPDATE `owned_vehicles` SET `stored` = ? WHERE `plate` = ? AND `owner` = ?", {1, VehicleProperties.plate, result.owner}, function(rowsChanged)
+        if rowsChanged and rowsChanged > 0 then
+          finishStore(result.owner)
+          return cb(true)
+        end
+
+        cb(false)
+      end)
+    end)
+  else
+    finishStore(xPlayer.identifier)
+    MySQL.query(Config.Garage.MySQLquery, {1, VehicleProperties.plate})
+    cb(true)
+  end
 end)
 
 xLib.callback.registerCompat('esx_property:AccessGarage', function(source, cb, PropertyId, VehicleProperties)
   local xPlayer = ESX.GetPlayerFromId(source)
+  PropertyId = normalizePropertyId(PropertyId)
   local Property = Properties[PropertyId]
 
-  if Property.Owner == xPlayer.identifier or Properties[PropertyId].Keys[xPlayer.identifier] then
-    if Property.garage.enabled then
+  if not xPlayer or not Property then
+    return cb(false)
+  end
+
+  if hasPropertyAccess(xPlayer, Property) then
+    if Property.garage and Property.garage.enabled and isNearPropertyGarage(source, Property) then
       cb(Property.garage.StoredVehicles)
     else
       xPlayer.showNotification(TranslateCap("garage_not_enabled"), 'error')
@@ -983,12 +1149,23 @@ RegisterNetEvent('esx_property:enter', function(PropertyId)
   local player = source
   local PlayerPed = GetPlayerPed(player)
   local xPlayer = ESX.GetPlayerFromId(player)
+  PropertyId = normalizePropertyId(PropertyId)
   local Property = Properties[PropertyId]
+  if not xPlayer or not Property or not canEnterProperty(xPlayer, Property) then
+    return
+  end
+
+  if not isRestoringLastProperty(xPlayer, PropertyId) and not isNearCoords(player, Property.Entrance, 6.0) then
+    return
+  end
+
   local Interior = GetInteriorValues(Property.Interior)
   if not Properties[PropertyId].plysinside then
     Properties[PropertyId].plysinside = {}
   end
-  table.insert(Properties[PropertyId].plysinside, player)
+  if not isPlayerInsideProperty(player, Property) then
+    table.insert(Properties[PropertyId].plysinside, player)
+  end
 
   local PropertyData = {id = PropertyId, coords = Property.Entrance} -- Save the property data to the table
   MySQL.query("UPDATE `users` SET `last_property` = ? WHERE `identifier` = ?", {json.encode(PropertyData), xPlayer.identifier}) -- Save the property data to the database
@@ -1008,12 +1185,18 @@ end)
 
 RegisterNetEvent('esx_property:leave', function(PropertyId)
   local player = source
+  PropertyId = normalizePropertyId(PropertyId)
   local Property = Properties[PropertyId]
   local xPlayer = ESX.GetPlayerFromId(player)
+  if not xPlayer or not Property or not isPlayerInsideProperty(player, Property) then
+    return
+  end
+
   MySQL.query("UPDATE `users` SET `last_property` = NULL WHERE `identifier` = ?", {xPlayer.identifier}) -- Remove Saved Data
   xPlayer.set("lastProperty", nil)
-  SetEntityCoords(player, vector3(Property.Entrance.x, Property.Entrance.y, Property.Entrance.z))
-  SetEntityHeading(player, 0.0)
+  local PlayerPed = GetPlayerPed(player)
+  SetEntityCoords(PlayerPed, vector3(Property.Entrance.x, Property.Entrance.y, Property.Entrance.z))
+  SetEntityHeading(PlayerPed, 0.0)
   SetPlayerRoutingBucket(player, 0)
   for i = 1, #(Properties[PropertyId].plysinside) do
     if Properties[PropertyId].plysinside[i] == player then
@@ -1028,10 +1211,37 @@ RegisterNetEvent('esx_property:leave', function(PropertyId)
 end)
 
 RegisterNetEvent('esx_property:SetVehicleOut', function(PropertyId, VehIndex)
-  local VehicleData = Properties[PropertyId].garage.StoredVehicles[VehIndex]
-  local plate = VehicleData.vehicle.plate
+  local player = source
+  local xPlayer = ESX.GetPlayerFromId(player)
+  PropertyId = normalizePropertyId(PropertyId)
+  VehIndex = tonumber(VehIndex)
+
+  if not xPlayer or not PropertyId or not VehIndex or VehIndex ~= math.floor(VehIndex) then
+    return
+  end
+
+  local Property = Properties[PropertyId]
+  if not hasPropertyAccess(xPlayer, Property) or not Property.garage or not Property.garage.enabled or not isNearPropertyGarage(player, Property) then
+    return
+  end
+
+  local VehicleData = Property.garage.StoredVehicles[VehIndex]
+  if not VehicleData or type(VehicleData.vehicle) ~= "table" then
+    return
+  end
+
+  local plate = normalizePlate(VehicleData.vehicle.plate)
+  if not plate then
+    return
+  end
+
   table.remove(Properties[PropertyId].garage.StoredVehicles, VehIndex)
-  MySQL.query(Config.Garage.MySQLquery, {0, plate}) -- Set vehicle as no longer stored
+  TriggerClientEvent("esx_property:syncProperties", -1, Properties)
+  if VehicleData.owner then
+    MySQL.update("UPDATE `owned_vehicles` SET `stored` = ? WHERE `plate` = ? AND `owner` = ?", {0, plate, VehicleData.owner})
+  else
+    MySQL.query(Config.Garage.MySQLquery, {0, plate}) -- Set vehicle as no longer stored
+  end
 end)
 
 

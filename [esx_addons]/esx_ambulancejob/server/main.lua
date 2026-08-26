@@ -1,4 +1,5 @@
 local playersHealing, deadPlayers = {}, {}
+local reviveCooldowns = {}
 
 if GetResourceState("esx_phone") ~= 'missing' then
 	TriggerEvent('esx_phone:registerNumber', 'ambulance', TranslateCap('alert_ambulance'), true, true)
@@ -29,15 +30,27 @@ local function persistDeathStatus(src, bool)
 	end
 end
 
+local function isNearPlayer(source, target, distance)
+	local sourcePed = GetPlayerPed(source)
+	local targetPed = GetPlayerPed(target)
+	if not sourcePed or sourcePed == 0 or not targetPed or targetPed == 0 then
+		return false
+	end
+
+	return #(GetEntityCoords(sourcePed) - GetEntityCoords(targetPed)) <= distance
+end
+
 RegisterNetEvent('esx_ambulancejob:revive')
 AddEventHandler('esx_ambulancejob:revive', function(playerId)
 	playerId = tonumber(playerId)
 	local xPlayer = source and ESX.GetPlayerFromId(source)
+	local now = os.clock()
 
-	if xPlayer and xPlayer.job.name == 'ambulance' then
+	if xPlayer and xPlayer.job.name == 'ambulance' and playerId and (not reviveCooldowns[source] or now - reviveCooldowns[source] > 8) then
 		local xTarget = ESX.GetPlayerFromId(playerId)
 		if xTarget then
-			if deadPlayers[playerId] then
+			if deadPlayers[playerId] and isNearPlayer(source, playerId, 8.0) then
+				reviveCooldowns[source] = now
 				if Config.ReviveReward > 0 then
 					xPlayer.showNotification(TranslateCap('revive_complete_award', xTarget.name, Config.ReviveReward))
 					xPlayer.addMoney(Config.ReviveReward, "Revive Reward")
@@ -133,6 +146,7 @@ AddEventHandler('esx:onPlayerSpawn', function()
 end)
 
 AddEventHandler('esx:playerDropped', function(playerId, reason)
+	reviveCooldowns[playerId] = nil
 	if deadPlayers[playerId] then
 		deadPlayers[playerId] = nil
 		isDeadState(playerId, false)

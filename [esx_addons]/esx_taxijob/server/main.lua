@@ -1,4 +1,5 @@
 local lastPlayerSuccess = {}
+local activeMissions = {}
 
 if Config.MaxInService ~= -1 then
     TriggerEvent('esx_service:activateService', 'taxi', Config.MaxInService)
@@ -9,17 +10,127 @@ TriggerEvent('esx_society:registerSociety', 'taxi', 'Taxi', 'society_taxi', 'soc
     type = 'public'
 })
 
+local function toVector3(coords)
+    if not coords or not coords.x or not coords.y or not coords.z then
+        return nil
+    end
+
+    return vector3(coords.x + 0.0, coords.y + 0.0, coords.z + 0.0)
+end
+
+local function isNear(source, coords, distance)
+    local ped = GetPlayerPed(source)
+    if not ped or ped == 0 then
+        return false
+    end
+
+    return #(GetEntityCoords(ped) - coords) <= distance
+end
+
+local function getDrivenVehicle(source)
+    local ped = GetPlayerPed(source)
+    if not ped or ped == 0 then
+        return nil
+    end
+
+    local vehicle = GetVehiclePedIsIn(ped, false)
+    if not vehicle or vehicle == 0 or GetPedInVehicleSeat(vehicle, -1) ~= ped then
+        return nil
+    end
+
+    return vehicle
+end
+
+local function isAuthorizedTaxiVehicle(source, xPlayer)
+    local vehicle = getDrivenVehicle(source)
+    if not vehicle then
+        return false
+    end
+
+    local job = xPlayer.getJob()
+    if job.grade >= 3 then
+        return true
+    end
+
+    local model = GetEntityModel(vehicle)
+    for i = 1, #Config.AuthorizedVehicles do
+        if model == joaat(Config.AuthorizedVehicles[i].model) then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function isConfiguredDropoff(coords)
+    for i = 1, #Config.JobLocations do
+        if #(coords - Config.JobLocations[i]) <= 5.0 then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function getValidCount(count)
+    count = tonumber(count)
+    if not count then
+        return nil
+    end
+
+    count = ESX.Math.Round(count)
+    if count <= 0 then
+        return nil
+    end
+
+    return count
+end
+
+local function isNearTaxiActions(source)
+    return isNear(source, vector3(Config.Zones.TaxiActions.Pos.x, Config.Zones.TaxiActions.Pos.y, Config.Zones.TaxiActions.Pos.z), 8.0)
+end
+
+RegisterNetEvent('esx_taxijob:startMission', function(pickupCoords, dropoffCoords)
+    local source = source
+    local xPlayer = ESX.Player(source)
+    if not xPlayer or xPlayer.getJob().name ~= 'taxi' or not isAuthorizedTaxiVehicle(source, xPlayer) then
+        return
+    end
+
+    local pickup = toVector3(pickupCoords)
+    local dropoff = toVector3(dropoffCoords)
+    if not pickup or not dropoff or not isConfiguredDropoff(dropoff) then
+        return
+    end
+
+    if not isNear(source, pickup, 80.0) or #(pickup - dropoff) < Config.MinimumDistance then
+        return
+    end
+
+    activeMissions[source] = {
+        dropoff = dropoff,
+        started = os.clock()
+    }
+end)
+
 RegisterNetEvent('esx_taxijob:success', function()
     local xPlayer = ESX.Player(source)
     local timeNow = os.clock()
-    local job = xPlayer.getJob()
-    if job.name ~= 'taxi' then
+    local job = xPlayer and xPlayer.getJob()
+    if not job or job.name ~= 'taxi' then
         print(('[^3WARNING^7] Player ^5%s^7 attempted to ^5esx_taxijob:success^7 (cheating)'):format(source))
         return
     end
 
-    if not lastPlayerSuccess[source] or timeNow - lastPlayerSuccess[source] > 5 then
+    local mission = activeMissions[source]
+    if not mission or not isAuthorizedTaxiVehicle(source, xPlayer) or not isNear(source, mission.dropoff, 18.0) then
+        print(('[^3WARNING^7] Player ^5%s^7 attempted invalid taxi payout!'):format(source))
+        return
+    end
+
+    if not lastPlayerSuccess[source] or timeNow - lastPlayerSuccess[source] > 10 then
         lastPlayerSuccess[source] = timeNow
+        activeMissions[source] = nil
 
         local total = math.random(Config.NPCJobEarnings.min, Config.NPCJobEarnings.max)
 
@@ -44,29 +155,57 @@ RegisterNetEvent('esx_taxijob:success', function()
     end
 end)
 
+AddEventHandler('playerDropped', function()
+    activeMissions[source] = nil
+    lastPlayerSuccess[source] = nil
+end)
+
 xLib.callback.registerCompat("esx_taxijob:SpawnVehicle", function(source, cb, model , props)
     local xPlayer = ESX.Player(source)
 
-    if xPlayer.getJob().name ~= "taxi" then 
+    if not xPlayer or xPlayer.getJob().name ~= "taxi" then 
         print(('[^3WARNING^7] Player ^5%s^7 attempted to Exploit Vehicle Spawing!!'):format(source))
-        return
+        return cb(false)
+    end
+
+    if not isNear(source, vector3(Config.Zones.VehicleSpawner.Pos.x, Config.Zones.VehicleSpawner.Pos.y, Config.Zones.VehicleSpawner.Pos.z), 15.0) then
+        return cb(false)
+    end
+
+    local modelHash = type(model) == 'number' and model or joaat(model)
+    local allowed = false
+    if Config.EnableSocietyOwnedVehicles then
+        allowed = props and props.plate and true or false
+    else
+        for i = 1, #Config.AuthorizedVehicles do
+            if modelHash == joaat(Config.AuthorizedVehicles[i].model) then
+                allowed = true
+                break
+            end
+        end
+    end
+
+    if not allowed then
+        print(('[^3WARNING^7] Player ^5%s^7 attempted to spawn invalid taxi model ^5%s^7!'):format(source, tostring(model)))
+        return cb(false)
     end
 
     local SpawnPoint = vector3(Config.Zones.VehicleSpawnPoint.Pos.x, Config.Zones.VehicleSpawnPoint.Pos.y, Config.Zones.VehicleSpawnPoint.Pos.z)
-    ESX.OneSync.SpawnVehicle(joaat(model), SpawnPoint, Config.Zones.VehicleSpawnPoint.Heading, props, function(vehicle)
+    ESX.OneSync.SpawnVehicle(modelHash, SpawnPoint, Config.Zones.VehicleSpawnPoint.Heading, props, function(vehicle)
         local vehicle = NetworkGetEntityFromNetworkId(vehicle)
-        while GetVehicleNumberPlateText(vehicle) ~= props.plate do
+        while props and props.plate and GetVehicleNumberPlateText(vehicle) ~= props.plate do
             Wait(0)
         end
         TaskWarpPedIntoVehicle(GetPlayerPed(source), vehicle, -1)
     end)
-    cb()
+    cb(true)
 end)
 
 RegisterNetEvent('esx_taxijob:getStockItem', function(itemName, count)
     local xPlayer = ESX.Player(source)
+    count = getValidCount(count)
     
-    if xPlayer.getJob().name ~= 'taxi' then
+    if not xPlayer or xPlayer.getJob().name ~= 'taxi' or not count or not isNearTaxiActions(source) then
         print(('[^3WARNING^7] Player ^5%s^7 attempted ^5esx_taxijob:getStockItem^7 (cheating)'):format(source))
         return
     end
@@ -79,7 +218,7 @@ RegisterNetEvent('esx_taxijob:getStockItem', function(itemName, count)
             return
         end
 
-        if count < 0 and item.count <= count then
+        if item.count < count then
             xPlayer.showNotification(TranslateCap('quantity_invalid'))
             return
         end
@@ -91,6 +230,11 @@ RegisterNetEvent('esx_taxijob:getStockItem', function(itemName, count)
 end)
 
 xLib.callback.registerCompat('esx_taxijob:getStockItems', function(source, cb)
+    local xPlayer = ESX.Player(source)
+    if not xPlayer or xPlayer.getJob().name ~= 'taxi' or not isNearTaxiActions(source) then
+        return cb({})
+    end
+
     TriggerEvent('esx_addoninventory:getSharedInventory', 'society_taxi', function(inventory)
         cb(inventory.items)
     end)
@@ -98,17 +242,18 @@ end)
 
 RegisterNetEvent('esx_taxijob:putStockItems', function(itemName, count)
     local xPlayer = ESX.Player(source)
-	local sourceItem = xPlayer.getInventoryItem(itemName)
-    
-    if xPlayer.getJob().name ~= 'taxi' then
+    count = getValidCount(count)
+    if not xPlayer or xPlayer.getJob().name ~= 'taxi' or not count or not isNearTaxiActions(source) then
         print(('[^3WARNING^7] Player ^5%s^7 attempted ^5esx_taxijob:putStockItems^7 (cheating)'):format(source))
         return
     end
 
+	local sourceItem = xPlayer.getInventoryItem(itemName)
+
     TriggerEvent('esx_addoninventory:getSharedInventory', 'society_taxi', function(inventory)
         local item = inventory.getItem(itemName)
         
-        if sourceItem.count < count or count < 0 then
+        if sourceItem.count < count then
             return xPlayer.showNotification(TranslateCap('quantity_invalid'))
         end
 
@@ -120,6 +265,10 @@ end)
 
 xLib.callback.registerCompat('esx_taxijob:getPlayerInventory', function(source, cb)
     local xPlayer = ESX.Player(source)
+    if not xPlayer or xPlayer.getJob().name ~= 'taxi' or not isNearTaxiActions(source) then
+        return cb({items = {}})
+    end
+
     local items = xPlayer.getInventory(false)
     cb({
         items = items

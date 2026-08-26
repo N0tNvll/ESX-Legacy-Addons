@@ -632,6 +632,7 @@ CreateThread(function()
                             EndTextCommandSetBlipName(DestinationBlip)
                             SetBlipRoute(DestinationBlip, true)
 
+                            TriggerServerEvent('esx_taxijob:startMission', customerCoords, targetCoords)
                             CustomerEnteredVehicle = true
                         end
                     else
