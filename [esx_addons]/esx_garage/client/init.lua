@@ -32,6 +32,8 @@ local INTERACTION_STYLES <const> = {
     impound = { locale = "access_Impound", color = DEFAULT_MARKER_COLOR },
 }
 
+xLib.points.startLoop()
+
 if not DecorIsRegisteredAsType(PED_DECOR, 2) then
     DecorRegister(PED_DECOR, 2)
 end
