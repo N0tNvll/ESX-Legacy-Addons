@@ -3,6 +3,29 @@ local HasAlreadyEnteredMarker, isDead, isHandcuffed, hasAlreadyJoined, playerInS
 local LastStation, LastPart, LastPartNum, LastEntity, CurrentAction, CurrentActionMsg
 dragStatus.isDragged, isInShopMenu = false, false
 
+local function vehicleExists(vehicle)
+	return vehicle and vehicle ~= 0 and DoesEntityExist(vehicle)
+end
+
+local function getPoliceActionVehicle()
+	local vehicle = xLib.game.getVehicleInDirection()
+
+	if vehicleExists(vehicle) then
+		return vehicle
+	end
+
+	local playerPed = PlayerPedId()
+	local coords = GetEntityCoords(playerPed)
+	local closestVehicle, closestDistance = xLib.game.getClosestVehicle(coords)
+	local maxDistance = Config.ActionVehicleDistance or 5.0
+
+	if vehicleExists(closestVehicle) and closestDistance ~= -1 and closestDistance <= maxDistance then
+		return closestVehicle
+	end
+
+	return 0
+end
+
 function cleanPlayer(playerPed)
 	SetPedArmour(playerPed, 0)
 	ClearPedBloodDamage(playerPed)
@@ -300,7 +323,7 @@ function OpenPoliceActionsMenu()
 				{unselectable = true, icon = "fas fa-car", title = element.title}
 			}
 			local playerPed = PlayerPedId()
-			local vehicle = xLib.game.getVehicleInDirection()
+			local vehicle = getPoliceActionVehicle()
 
 			if DoesEntityExist(vehicle) then
 				elements3[#elements3+1] = {icon = "fas fa-car", title = TranslateCap('vehicle_info'), value = 'vehicle_infos'}
@@ -317,7 +340,7 @@ function OpenPoliceActionsMenu()
 			ESX.OpenContext("right", elements3, function(menu3,element3)
 				local data2 = {current = element3}
 				local coords  = GetEntityCoords(playerPed)
-				vehicle = xLib.game.getVehicleInDirection()
+				vehicle = getPoliceActionVehicle()
 				action  = data2.current.value
 
 				if action == 'search_database' then
@@ -355,7 +378,7 @@ function OpenPoliceActionsMenu()
 							while currentTask.busy do
 								Wait(1000)
 
-								vehicle = GetClosestVehicle(coords.x, coords.y, coords.z, 3.0, 0, 71)
+								vehicle = GetClosestVehicle(coords.x, coords.y, coords.z, Config.ActionVehicleDistance or 5.0, 0, 71)
 								if not DoesEntityExist(vehicle) and currentTask.busy then
 									ESX.ShowNotification(TranslateCap('impound_canceled_moved'))
 									xLib.timeout.clearTimeout(currentTask.task)

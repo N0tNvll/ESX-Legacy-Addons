@@ -1,6 +1,7 @@
 Config                            = {}
 
 Config.DrawDistance               = 10.0 -- How close do you need to be for the markers to be drawn (in GTA units).
+Config.ActionVehicleDistance      = 2.0 -- How close a vehicle can be for police vehicle actions.
 Config.MarkerType                 = {Cloakrooms = 20, Armories = 21, BossActions = 22, Vehicles = 36, Helicopters = 34}
 Config.MarkerSize                 = {x = 1.5, y = 1.5, z = 0.5}
 Config.MarkerColor                = {r = 50, g = 50, b = 204}

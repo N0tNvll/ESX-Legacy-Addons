@@ -22,8 +22,7 @@ client_scripts {
 	'client/modules/menus.lua',
 	'client/modules/item_actions.lua',
 	'client/modules/markers.lua',
-	'client/modules/commands.lua',
-	'client/main.lua'
+	'client/modules/commands.lua'
 }
 
 server_scripts {

@@ -47,6 +47,15 @@ function Mechanic.getVehicleInDirection()
 		return vehicle
 	end
 
+	local playerPed = PlayerPedId()
+	local coords = GetEntityCoords(playerPed)
+	local closestVehicle, closestDistance = xLib.game.getClosestVehicle(coords)
+	local maxDistance = Config.ActionVehicleDistance or 5.0
+
+	if Mechanic.vehicleExists(closestVehicle) and closestDistance ~= -1 and closestDistance <= maxDistance then
+		return closestVehicle
+	end
+
 	return nil
 end
 
