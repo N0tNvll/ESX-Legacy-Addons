@@ -5,6 +5,7 @@ Locales['fi'] = {
   ['vehicle_list']              = 'ajoneuvo lista',
   ['work_wear']                 = 'työvaatteet',
   ['civ_wear']                  = 'siviilivaatteet',
+  ['no_outfit']                 = 'mekaanikon työasua ei ole määritetty',
   ['deposit_stock']             = 'talleta varastoon',
   ['withdraw_stock']            = 'ota varastosta',
   ['boss_actions']              = 'pomo toiminnot',

@@ -5,6 +5,7 @@ Locales['fr'] = {
   ['vehicle_list']              = 'sortir véhicule',
   ['work_wear']                 = 'tenue de travail',
   ['civ_wear']                  = 'Tenue civile',
+  ['no_outfit']                 = 'aucune tenue de mécano n\'est configurée',
   ['deposit_stock']             = 'Déposer Stock',
   ['withdraw_stock']            = 'Prendre Stock',
   ['boss_actions']              = 'action patron',

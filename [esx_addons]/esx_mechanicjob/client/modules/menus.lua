@@ -77,6 +77,24 @@ local function openStaticVehicleMenu()
 	end)
 end
 
+local function hasUniform(uniform)
+	return type(uniform) == 'table' and next(uniform) ~= nil
+end
+
+local function getWorkWear(skin, jobSkin)
+	if type(skin) ~= 'table' or type(jobSkin) ~= 'table' then
+		return nil
+	end
+
+	local jobUniform = skin.sex == 0 and jobSkin.skin_male or jobSkin.skin_female
+
+	if hasUniform(jobUniform) then
+		return jobUniform
+	end
+
+	return nil
+end
+
 function Mechanic.openActionsMenu()
 	local elements = {
 		{ unselectable = true,   icon = "fas fa-gear",  title = TranslateCap('mechanic') },
@@ -105,11 +123,14 @@ function Mechanic.openActionsMenu()
 		elseif element.value == 'cloakroom' then
 			ESX.CloseContext()
 			xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
-				if skin.sex == 0 then
-					TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_male)
-				else
-					TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_female)
+				local uniform = getWorkWear(skin, jobSkin)
+
+				if not uniform then
+					ESX.ShowNotification(TranslateCap('no_outfit'), "error")
+					return
 				end
+
+				TriggerEvent('skinchanger:loadClothes', skin, uniform)
 			end)
 		elseif element.value == 'cloakroom2' then
 			ESX.CloseContext()

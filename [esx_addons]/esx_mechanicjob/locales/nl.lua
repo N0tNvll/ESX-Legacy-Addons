@@ -5,6 +5,7 @@ Locales['nl'] = {
   ['vehicle_list']              = 'voertuigenlijst',
   ['work_wear']                 = 'werk kleding',
   ['civ_wear']                  = 'burger kleding',
+  ['no_outfit']                 = 'er is geen monteursuniform ingesteld',
   ['deposit_stock']             = 'vooraad wegleggen',
   ['withdraw_stock']            = 'vooraad opbergen',
   ['boss_actions']              = 'baas acties',
