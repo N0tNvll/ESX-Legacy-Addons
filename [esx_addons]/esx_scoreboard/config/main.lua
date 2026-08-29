@@ -3,8 +3,8 @@
 
 Config = {}
 
---- Key to open the scoreboard (default: Z - 20)
-Config.OpenKey = 20
+--- Key to open the scoreboard (default: Z )
+Config.OpenKey = "Z"
 
 --- Interval (ms) to refresh scoreboard data
 Config.UpdateInterval = 5000

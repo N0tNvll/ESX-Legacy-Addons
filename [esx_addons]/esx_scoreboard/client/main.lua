@@ -30,14 +30,11 @@ RegisterNUICallback("nuiReady", function(data, cb)
   SendThemeUpdate()
 end)
 
-CreateThread(function()
-  while true do
-    Wait(100)
-    if IsControlJustReleased(0, Config.OpenKey) then
-      ScoreboardModule.ToggleScoreboard()
-    end
-  end
-end)
+RegisterCommand("scoreboard", function()
+  ScoreboardModule.ToggleScoreboard()
+end, false)
+
+RegisterKeyMapping("scoreboard", "Open/Close Scoreboard", "keyboard", Config.OpenKey)
 
 -- Disable controls only when open
 CreateThread(function()
