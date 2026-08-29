@@ -3,6 +3,9 @@
 
 Config = {}
 
+--- Enable debug logging (default: false)
+Config.Debug = false 
+
 --- Key to open the scoreboard (default: Z )
 Config.OpenKey = "Z"
 
