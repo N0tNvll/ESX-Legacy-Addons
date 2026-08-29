@@ -1,10 +1,10 @@
 # ESX Scoreboard
 
-A modern, responsive scoreboard resource for **ESX Legacy** built with **Svelte** and **Vite**. Provides real-time player listings with job indicators, activity badges, and instant search.
+A high-performance, modern scoreboard resource for **ESX Legacy** built with **Svelte 5** and **Vite**. Features real-time player listings, incremental job counters, activity tracking, and instant search — optimized for servers up to 128 slots.
 
-![ESX Scoreboard](https://img.shields.io/badge/ESX-Legacy-orange)
-![Svelte](https://img.shields.io/badge/Svelte-4.0-ff3e00?logo=svelte)
-![Vite](https://img.shields.io/badge/Vite-5.0-646cff?logo=vite)
+![ESX Legacy](https://img.shields.io/badge/ESX-Legacy-orange)
+![Svelte](https://img.shields.io/badge/Svelte-5.0-ff3e00?logo=svelte)
+![Vite](https://img.shields.io/badge/Vite-7.0-646cff?logo=vite)
 
 ---
 
@@ -12,17 +12,11 @@ A modern, responsive scoreboard resource for **ESX Legacy** built with **Svelte*
 
 - **Modern UI** — Clean, responsive design with CSS variable theming
 - **Real-time Search** — Filter players by name, job, or server ID instantly
-- **Job Badges** — Visual indicators for player occupations
-- **Activity Tracking** — See what players are currently doing
-- **Lightweight** — Optimized Svelte build delivered via Vite
+- **Job Badges** — Visual indicators for player occupations with live counts
+- **Activity Tracking** — See ongoing events (robberies, heists, races, etc.)
+- **High Performance** — Incremental job counters via `ESX.GetJobs()`, throttled ping refresh, debounced cache invalidation, and split lightweight broadcasts
 - **Easy Theming** — Customize colors via CSS variables without touching components
 - **ESX Native** — Built specifically for ESX Legacy framework integration
-
----
-
-## Preview
-
-> *Add a screenshot or GIF showing the scoreboard UI in-game*
 
 ---
 
@@ -30,24 +24,27 @@ A modern, responsive scoreboard resource for **ESX Legacy** built with **Svelte*
 
 ### 1. Download & Extract
 
-Download the latest release and place the `esx_scoreboard` folder into your server's `resources/` directory.
+Place the `esx_scoreboard` folder into your server's `resources/` directory.
 
 ```
 server/
 └── resources/
     └── esx_scoreboard/
-        ├── build/
-        ├── src/
-        ├── fxmanifest.lua
-        └── ...
+        ├── client/
+        ├── config/
+        ├── server/
+        ├── web/
+        │   ├── dist/           # Compiled production build
+        │   └── src/            # Source files (development)
+        └── fxmanifest.lua
 ```
 
 ### 2. Build the UI (Development)
 
-If you're modifying the source, you'll need Node.js 18+:
+Requires **Node.js 18+**:
 
 ```bash
-cd esx_scoreboard/web/
+cd esx_scoreboard/web
 npm install
 npm run build
 ```
@@ -62,13 +59,50 @@ npm run dev
 
 ## Configuration
 
-### Keybind
+Edit `config/main.lua`:
 
-The scoreboard is toggled via a **configurable keybind** (default: `Z`).
+```lua
+Config = {}
 
-Players can rebind this in their FiveM settings under **Settings → Keybinds → FiveM**.
+--- Key to open the scoreboard (default: Z)
+Config.OpenKey = "Z"
 
-To change the default key, edit `config/main.lua`:
+--- Interval (ms) to refresh scoreboard data from the server
+Config.UpdateInterval = 5000
+
+--- Server display name shown in the scoreboard header
+Config.ServerName = "ESX Server"
+
+--- Max players displayed in the header (set to nil to use sv_maxclients convar)
+Config.MaxPlayers = 64
+
+--- Logo URL shown in the scoreboard header (set to "" to disable)
+Config.LogoUrl = ""
+
+--- Enable debug prints on resource start
+Config.Debug = false
+
+--- Job color overrides (labels are pulled from ESX.GetJobs() automatically)
+Config.Jobs = {
+  police    = { color = "#3B82F6" },
+  ambulance = { color = "#EF4444" },
+  mechanic  = { color = "#F59E0B" },
+  taxi      = { color = "#FBBF24" },
+  realtor   = { color = "#10B981" },
+  cardealer = { color = "#8B5CF6" },
+  banker    = { color = "#06B6D4" }
+}
+
+--- Activity types that can be shown in the scoreboard
+Config.ActivityTypes = {
+  robbery  = { label = "Robbery",  icon = "💰" },
+  heist    = { label = "Heist",    icon = "🏦" },
+  drug     = { label = "Drug Sale", icon = "💊" },
+  race     = { label = "Street Race", icon = "🏎️" },
+  hostage  = { label = "Hostage",  icon = "🚫" },
+  shootout = { label = "Shootout", icon = "🔫" }
+}
+```
 
 ---
 
@@ -76,7 +110,7 @@ To change the default key, edit `config/main.lua`:
 
 ### Opening the Scoreboard
 
-Press your bound key (default: `Z`) to toggle the scoreboard on/off.
+Press your bound key (default: `Z`) to toggle the scoreboard on/off. Players can rebind this in **Settings → Keybinds → FiveM**.
 
 ### Search
 
@@ -89,28 +123,22 @@ Type in the search bar to filter players by:
 
 ## API & Events
 
-### Client → NUI
+### Exports (Server)
 
-The scoreboard listens for the following NUI messages:
+Other resources can push activities to the scoreboard:
 
-| Action | Description | Payload |
-|--------|-------------|---------|
-| `toggleVisibility` | Show/hide the scoreboard | — |
-| `setPlayers` | Update the full player list | `{ players: Array<Player> }` |
-| `updatePlayer` | Update a single player's data | `{ player: Player }` |
-| `setJobCounts` | Update aggregated job statistics | `{ jobs: Record<string, number> }` |
+```lua
+-- Start a robbery activity
+local activityId = exports.esx_scoreboard:AddActivity("robbery", "Fleeca Bank", "Legion Square", { player1, player2 })
 
-#### Player Object Structure
+-- Update it
+exports.esx_scoreboard:UpdateActivity(activityId, { location = "Downtown" })
 
-```typescript
-interface Player {
-  id: number;        // Server ID
-  name: string;      // Character name
-  job: string;       // Job label
-  jobGrade: string;  // Job grade label
-  activity?: string; // Current activity (optional)
-  ping?: number;     // Network ping (optional)
-}
+-- Remove it
+exports.esx_scoreboard:RemoveActivity(activityId)
+
+-- Get all active activities
+local activities = exports.esx_scoreboard:GetActiveActivities()
 ```
 
 ---
@@ -119,34 +147,39 @@ interface Player {
 
 ```
 esx_scoreboard/
-├── web/
-    ├── build/                  # Compiled Svelte app (served by FiveM)
-    │   ├── index.html
-    │   └── assets/
-├── src/
-│   ├── components/         # Svelte UI components
-│   │   ├── Header.svelte
-│   │   ├── Footer.svelte
-│   │   ├── PlayerRow.svelte
-│   │   ├── ActivityBadge.svelte
-│   │   ├── JobBadge.svelte
-│   │   └── SearchBar.svelte
-│   ├── stores/
-│   │   └── scoreboard.js   # Svelte store for state management
-│   ├── styles/
-│   │   └── variables.css   # CSS custom properties
-│   ├── App.svelte
-│   └── main.js
-├── package.json
-├── vite.config.js
-├── svelte.config.js
 ├── client/
-├── ├── modules/  
-│   └── main.lua            # Client-side Lua logic
+│   ├── main.lua              # Entry point, threads, NUI callbacks
+│   └── module/
+│       ├── main.lua          # Scoreboard module (open/close/toggle)
+│       ├── class.lua         # Scoreboard class
+│       └── enum.lua          # Enums
+├── config/
+│   └── main.lua              # Configuration
 ├── server/
-│   └── main.lua            # Server-side Lua logic
-└── fxmanifest.lua          # FiveM resource manifest
-
+│   ├── main.lua              # Entry point
+│   └── module/
+│       └── main.lua          # Server logic, caches, exports
+├── web/
+│   ├── dist/                 # Production build (served by FiveM)
+│   ├── src/
+│   │   ├── components/       # Svelte UI components
+│   │   │   ├── Scoreboard.svelte
+│   │   │   ├── PlayerRow.svelte
+│   │   │   ├── JobBadge.svelte
+│   │   │   ├── ActivityBadge.svelte
+│   │   │   ├── SearchBar.svelte
+│   │   │   ├── Header.svelte
+│   │   │   └── Footer.svelte
+│   │   ├── stores/
+│   │   │   └── scoreboard.js   # Svelte store + derived filters
+│   │   ├── styles/
+│   │   │   └── variables.css   # CSS custom properties
+│   │   ├── App.svelte
+│   │   └── main.js
+│   ├── package.json
+│   ├── vite.config.js
+│   └── svelte.config.js
+└── fxmanifest.lua
 ```
 
 ---
@@ -161,13 +194,8 @@ esx_scoreboard/
 ### Setup
 
 ```bash
-# Clone into your resources directory
-cd resources/esx_scoreboard
-
-# Install dependencies
+cd [esx_addons]/esx_scoreboard/web
 npm install
-
-# Start development server
 npm run dev
 ```
 
@@ -177,23 +205,23 @@ npm run dev
 npm run build
 ```
 
-The compiled files will be output to `dist/` and served by FiveM via `fxmanifest.lua`.
+The compiled files are output to `web/dist/` and served by FiveM via `fxmanifest.lua`.
 
 ---
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feat/amazing-feature`)
+2. Create a feature branch: `git checkout -b feat/amazing-feature`
 3. Commit your changes using [Conventional Commits](https://www.conventionalcommits.org/)
-4. Push to the branch (`git push origin feat/amazing-feature`)
+4. Push to the branch: `git push origin feat/amazing-feature`
 5. Open a Pull Request
 
 ---
 
 ## License
 
-This project is licensed under the MIT License — see the ESX Framework repository for details.
+This project is licensed under the MIT License.
 
 ---
 
@@ -202,9 +230,3 @@ This project is licensed under the MIT License — see the ESX Framework reposit
 - Built for [ESX Legacy](https://github.com/esx-framework/esx-legacy)
 - UI powered by [Svelte](https://svelte.dev/) and [Vite](https://vitejs.dev/)
 - Original concept by the ESX community
-
----
-
-## Support
-
-For issues, questions, or contributions related specifically to this scoreboard resource, please open an issue in the [ESX-Legacy-Addons](https://github.com/esx-framework/ESX-Legacy-Addons) repository.
