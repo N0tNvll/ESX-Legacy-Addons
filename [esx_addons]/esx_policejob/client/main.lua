@@ -116,17 +116,11 @@ function OpenCloakroomMenu()
 					if isInService then
 						playerInService = false
 
-						local notification = {
-							title    = TranslateCap('service_anonunce'),
-							subject  = '',
-							msg      = TranslateCap('service_out_announce', GetPlayerName(PlayerId())),
-							iconType = 1
-						}
-
-						TriggerServerEvent('esx_service:notifyAllInService', notification, 'police')
-
-						TriggerServerEvent('esx_service:disableService', 'police')
-						ESX.ShowNotification(TranslateCap('service_out'))
+						xLib.callback('esx_service:disableService', false, function(disabled)
+							if disabled then
+								ESX.ShowNotification(TranslateCap('service_out'))
+							end
+						end, 'police')
 					end
 				end, 'police')
 			end
@@ -138,39 +132,16 @@ function OpenCloakroomMenu()
 			xLib.callback('esx_service:isInService', false, function(isInService)
 				if not isInService then
 
-					if Config.MaxInService ~= -1 then
-						xLib.callback('esx_service:enableService', false, function(canTakeService, maxInService, inServiceCount)
-							if not canTakeService then
-								ESX.ShowNotification(TranslateCap('service_max', inServiceCount, maxInService))
-							else
-								awaitService = true
-								playerInService = true
-
-								local notification = {
-									title    = TranslateCap('service_anonunce'),
-									subject  = '',
-									msg      = TranslateCap('service_in_announce', GetPlayerName(PlayerId())),
-									iconType = 1
-								}
-
-								TriggerServerEvent('esx_service:notifyAllInService', notification, 'police')
-								ESX.ShowNotification(TranslateCap('service_in'))
-							end
-						end, 'police')
-					else
-						awaitService = true
-						playerInService = true
-
-						local notification = {
-							title    = TranslateCap('service_anonunce'),
-							subject  = '',
-							msg      = TranslateCap('service_in_announce', GetPlayerName(PlayerId())),
-							iconType = 1
-						}
-
-						TriggerServerEvent('esx_service:notifyAllInService', notification, 'police')
-						ESX.ShowNotification(TranslateCap('service_in'))
-					end
+					xLib.callback('esx_service:enableService', false, function(canTakeService, maxInService, inServiceCount)
+						if not canTakeService then
+							awaitService = false
+							ESX.ShowNotification(TranslateCap('service_max', inServiceCount, maxInService))
+						else
+							awaitService = true
+							playerInService = true
+							ESX.ShowNotification(TranslateCap('service_in'))
+						end
+					end, 'police')
 
 				else
 					awaitService = true
@@ -567,7 +538,7 @@ function OpenFineCategoryMenu(player, category)
 		if Config.EnablePlayerManagement then
 			TriggerServerEvent('esx_billing:sendBill', GetPlayerServerId(player), 'society_police', TranslateCap('fine_total', data.current.fineLabel), data.current.amount)
 		else
-			TriggerServerEvent('esx_billing:sendBill', GetPlayerServerId(player), '', TranslateCap('fine_total', data.current.fineLabel), data.current.amount)
+			TriggerServerEvent('esx_billing:sendBill', GetPlayerServerId(player), 'society_police', TranslateCap('fine_total', data.current.fineLabel), data.current.amount)
 		end
 
 		xLib.timeout.setTimeout(300, function()
@@ -1559,7 +1530,7 @@ AddEventHandler('onResourceStop', function(resource)
 		TriggerEvent('esx_phone:removeSpecialContact', 'police')
 
 		if Config.EnableESXService then
-			TriggerServerEvent('esx_service:disableService', 'police')
+			xLib.callback('esx_service:disableService', false, function() end, 'police')
 		end
 
 		if Config.EnableHandcuffTimer and handcuffTimer.active then

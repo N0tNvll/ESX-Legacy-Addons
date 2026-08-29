@@ -201,9 +201,7 @@ function DeleteJobVehicle()
         if IsInAuthorizedVehicle() then
             xLib.game.deleteVehicle(CurrentActionData.vehicle)
 
-            if Config.MaxInService ~= -1 then
-                TriggerServerEvent('esx_service:disableService', 'taxi')
-            end
+            xLib.callback('esx_service:disableService', false, function() end, 'taxi')
         else
             ESX.ShowNotification(TranslateCap('only_taxi'))
         end

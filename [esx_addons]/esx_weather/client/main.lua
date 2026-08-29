@@ -1,3 +1,36 @@
+local function assertClientConfig()
+    if type(Config) ~= "table" then
+        error("[esx_weather] Config must be configured")
+    end
+
+    if type(Config.AdminGroups) ~= "table" then
+        error("[esx_weather] Config.AdminGroups must be configured")
+    end
+
+    if type(Config.Weather) ~= "table" then
+        error("[esx_weather] Config.Weather must be configured")
+    end
+
+    local transitionTimeSeconds = tonumber(Config.Weather.transitionTimeSeconds)
+    if not transitionTimeSeconds or transitionTimeSeconds < 0 then
+        error("[esx_weather] Config.Weather.transitionTimeSeconds must be a number greater than or equal to 0")
+    end
+
+    if type(Config.Time) ~= "table" then
+        error("[esx_weather] Config.Time must be configured")
+    end
+
+    local secondsPerGameMinute = tonumber(Config.Time.secondsPerGameMinute)
+    if not secondsPerGameMinute or secondsPerGameMinute <= 0 then
+        error("[esx_weather] Config.Time.secondsPerGameMinute must be a positive number")
+    end
+
+    Config.Weather.transitionTimeSeconds = transitionTimeSeconds
+    Config.Time.secondsPerGameMinute = secondsPerGameMinute
+end
+
+assertClientConfig()
+
 ---@param WeatherByZone table<Zone, WeatherType>
 RegisterNetEvent("esx_weather:client:weather:setZones", function(WeatherByZone)
     Modules.Weather.ByZone = WeatherByZone
@@ -35,7 +68,8 @@ Citizen.CreateThread(function()
 end)
 
 RegisterCommand(Config.panelCommand, function()
-    if (not Config.AdminGroups[ESX.PlayerData.group]) then
+    local playerGroup = ESX.PlayerData and ESX.PlayerData.group
+    if (not Config.AdminGroups[playerGroup]) then
         return
     end
 

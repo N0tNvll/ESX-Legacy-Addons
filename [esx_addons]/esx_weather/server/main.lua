@@ -1,6 +1,5 @@
 local EVENT_COOLDOWNS <const> = {
     ["esx_weather:server:setZoneWeather"] = 1000,
-    ["esx_weather:server:setZoneTime"]    = 1000,
 }
 
 ---@type table<integer, table<string, integer>>
@@ -77,24 +76,6 @@ RegisterNetEvent("esx_weather:server:setZoneWeather", function(zone, weatherType
     end
 
     Modules.Weather.setZone(zone, weatherType)
-end)
-
----@param zone Zone
-RegisterNetEvent("esx_weather:server:setZoneTime", function(zone)
-    local src = source --[[@as integer]]
-
-    if isRateLimited(src, "esx_weather:server:setZoneTime") then
-        return
-    end
-
-    local xPlayer = ESX.Player(src)
-    if (not xPlayer) then return end
-
-    if (not Config.AdminGroups[xPlayer.getGroup()]) then
-        return
-    end
-
-    Shared.Modules.Debug.print(("Time set requested for zone %s by player %s (not implemented)"):format(tostring(zone), tostring(src)))
 end)
 
 ---@param src integer

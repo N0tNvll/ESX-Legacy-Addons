@@ -118,6 +118,27 @@ RegisterNetEvent("esx_property:syncProperties", function(properties, lastPropert
   RefreshBlips()
 end)
 
+RegisterNetEvent("esx_property:receivePropertyOffer", function(token, sellerName, propertyName, price)
+  local Elements = {
+    {unselectable = true, title = propertyName, description = ("Offer from %s for $%s"):format(sellerName, ESX.Math.GroupDigits(ESX.Round(price)))},
+    {title = "Accept", icon = "fas fa-check", value = "accept"},
+    {title = "Decline", icon = "fas fa-times", value = "decline"}
+  }
+
+  ESX.OpenContext("right", Elements, function(menu, element)
+    if element.value == "accept" or element.value == "decline" then
+      ESX.CloseContext()
+      xLib.callback("esx_property:respondToSaleOffer", false, function(Success)
+        if Success then
+          ESX.ShowNotification("Property purchased.", "success")
+        elseif element.value == "accept" then
+          ESX.ShowNotification(TranslateCap("cannot_sell"), "error")
+        end
+      end, token, element.value == "accept")
+    end
+  end)
+end)
+
 RegisterNetEvent("esx_property:giveKeyAccess", function(Property)
   xLib.callback("esx_property:ShouldHaveKey", false, function(Should)
     if Should then
@@ -1522,4 +1543,3 @@ RegisterNetEvent("esx_property:AdminMenu", function()
     end
   end)
 end)
-

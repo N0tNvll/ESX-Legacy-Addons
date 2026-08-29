@@ -23,14 +23,13 @@ function OpenShopMenu()
 
 		ESX.OpenContext("right", elements, function(menu,element)
 			if element.value == "yes" then
-				xLib.callback('esx_barbershop:checkMoney', false, function(hasEnoughMoney)
-					if hasEnoughMoney then
+				xLib.callback('esx_barbershop:pay', false, function(paid)
+					if paid then
 						ESX.CloseContext()
 						TriggerEvent('skinchanger:getSkin', function(skin)
 							TriggerServerEvent('esx_skin:save', skin)
 						end)
 
-						TriggerServerEvent('esx_barbershop:pay')
 						hasPaid = true
 					else
 						ESX.CloseContext()

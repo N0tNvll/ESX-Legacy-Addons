@@ -15,6 +15,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
+local ClientSideScreenshotsEnabled = false
+
 function CCTV(PropertyID)
   DoScreenFadeOut(500)
   Wait(500)
@@ -43,7 +45,7 @@ function CCTV(PropertyID)
           PushScaleformMovieFunctionParameterInt(200)
           PopScaleformMovieFunctionVoid()
 
-          if Config.CCTV.PictureWebook ~= "" then
+          if ClientSideScreenshotsEnabled then
             PushScaleformMovieFunction(scaleform, "SET_DATA_SLOT")
             PushScaleformMovieFunctionParameterInt(1)
             ScaleformMovieMethodAddParamPlayerNameString(GetControlInstructionalButton(1, Config.CCTV.Controls.Screenshot, true))
@@ -219,7 +221,7 @@ function CCTV(PropertyID)
             SetTimecycleModifier("scanline_cam")
           end
 
-          if Config.CCTV.PictureWebook ~= "" and IsDisabledControlJustPressed(0, 201) then
+          if ClientSideScreenshotsEnabled and IsDisabledControlJustPressed(0, 201) then
             if CamTakePic then
               ShowButtons = false
               Wait(1)

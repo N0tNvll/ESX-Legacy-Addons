@@ -12,41 +12,158 @@ MySQL.ready(function()
 	ParkBoats()
 end)
 
-xLib.callback.registerCompat('esx_boat:buyBoat', function(source, cb, vehicleProps)
-	local xPlayer = ESX.Player(source)
-	local price   = getPriceFromModel(vehicleProps.model)
+local NumberCharset, Charset = {}, {}
+for i = 48, 57 do NumberCharset[#NumberCharset + 1] = string.char(i) end
+for i = 65, 90 do Charset[#Charset + 1] = string.char(i) end
 
-	-- vehicle model not found
-	if price == 0 then
-		print(('[^2INFO^7] Player ^5%s^7 Attempted To Exploit Shop'):format(xPlayer.src))
-		cb(false)
-	else
-		if xPlayer.getMoney() >= price then
-			xPlayer.removeMoney(price, "Boat Purchase")
+local function getRandomChunk(charset, length)
+	local value = ''
 
-			MySQL.update('INSERT INTO owned_vehicles (owner, plate, vehicle, type, `stored`) VALUES (@owner, @plate, @vehicle, @type, @stored)', {
-				['@owner']   = xPlayer.getIdentifier(),
-				['@plate']   = vehicleProps.plate,
-				['@vehicle'] = json.encode(vehicleProps),
-				['@type']    = 'boat',
-				['@stored']  = true
-			}, function(rowsChanged)
-				cb(true)
-			end)
-		else
-			cb(false)
+	for i = 1, length do
+		value = value .. charset[math.random(1, #charset)]
+	end
+
+	return value
+end
+
+local function normalizePlate(plate)
+	if type(plate) ~= 'string' then return nil end
+
+	plate = ESX.Math.Trim(plate):upper()
+	if plate == '' or #plate > 8 then return nil end
+
+	return plate
+end
+
+local function generateBoatPlate()
+	for i = 1, 30 do
+		local plate = ('BO%s%s'):format(getRandomChunk(Charset, 2), getRandomChunk(NumberCharset, 4))
+		local exists = MySQL.scalar.await('SELECT plate FROM owned_vehicles WHERE plate = ?', {plate})
+		if not exists then return plate end
+	end
+
+	return nil
+end
+
+local function getPlayerCoords(source)
+	local ped = GetPlayerPed(source)
+	if ped <= 0 then return nil end
+
+	return GetEntityCoords(ped)
+end
+
+local function isNearCoords(source, coords, distance)
+	local playerCoords = getPlayerCoords(source)
+	if not playerCoords or not coords then return false end
+
+	return #(playerCoords - vector3(coords.x, coords.y, coords.z)) <= distance
+end
+
+local function isNearBoatShop(source)
+	for i = 1, #(Config.Zones.BoatShops or {}) do
+		local shop = Config.Zones.BoatShops[i]
+		if isNearCoords(source, shop.Outside, 20.0) or isNearCoords(source, shop.Inside, 35.0) then
+			return true
 		end
 	end
+
+	return false
+end
+
+local function isNearGarage(source, key, distance)
+	for i = 1, #(Config.Zones.Garages or {}) do
+		local garage = Config.Zones.Garages[i]
+		if isNearCoords(source, garage[key], distance) then
+			return true
+		end
+	end
+
+	return false
+end
+
+local function isNearBoatWithPlate(source, plate, distance)
+	local ped = GetPlayerPed(source)
+	if ped <= 0 then return false end
+
+	local playerCoords = GetEntityCoords(ped)
+	local currentVehicle = GetVehiclePedIsIn(ped, false)
+	if currentVehicle ~= 0 and normalizePlate(GetVehicleNumberPlateText(currentVehicle)) == plate then
+		return true
+	end
+
+	for _, vehicle in ipairs(GetAllVehicles()) do
+		if DoesEntityExist(vehicle) and normalizePlate(GetVehicleNumberPlateText(vehicle)) == plate and #(GetEntityCoords(vehicle) - playerCoords) <= (distance or 15.0) then
+			return true
+		end
+	end
+
+	return false
+end
+
+local function getVehicleFromHash(model)
+	for k,v in ipairs(Config.Vehicles) do
+		if joaat(v.model) == model then
+			return v
+		end
+	end
+
+	return nil
+end
+
+xLib.callback.registerCompat('esx_boat:buyBoat', function(source, cb, vehicleProps)
+	local xPlayer = ESX.Player(source)
+	local model = type(vehicleProps) == 'table' and tonumber(vehicleProps.model)
+	local vehicleData = model and getVehicleFromHash(model)
+	local price = vehicleData and tonumber(vehicleData.price) or 0
+
+	-- vehicle model not found
+	if not xPlayer or price == 0 or not isNearBoatShop(source) then
+		print(('[^2INFO^7] Player ^5%s^7 Attempted To Exploit Shop'):format(source))
+		return cb(false)
+	end
+
+	if xPlayer.getMoney() < price then return cb(false) end
+
+	local plate = generateBoatPlate()
+	if not plate then return cb(false) end
+
+	local storedProps = {model = model, plate = plate}
+	if type(vehicleData.props) == 'table' then
+		for key, value in pairs(vehicleData.props) do
+			storedProps[key] = value
+		end
+	end
+
+	xPlayer.removeMoney(price, "Boat Purchase")
+
+	MySQL.insert('INSERT INTO owned_vehicles (owner, plate, vehicle, type, `stored`) VALUES (@owner, @plate, @vehicle, @type, @stored)', {
+		['@owner']   = xPlayer.getIdentifier(),
+		['@plate']   = plate,
+		['@vehicle'] = json.encode(storedProps),
+		['@type']    = 'boat',
+		['@stored']  = true
+	}, function(insertId)
+		if not insertId then
+			xPlayer.addMoney(price, "Boat Purchase Refund")
+			return cb(false)
+		end
+
+		cb(true)
+	end)
 end)
 
 RegisterServerEvent('esx_boat:takeOutVehicle')
 AddEventHandler('esx_boat:takeOutVehicle', function(plate)
 	local xPlayer = ESX.Player(source)
+	plate = normalizePlate(plate)
 
-	MySQL.update('UPDATE owned_vehicles SET `stored` = @stored WHERE owner = @owner AND plate = @plate', {
+	if not xPlayer or not plate or not isNearGarage(source, 'GaragePos', 20.0) then return end
+
+	MySQL.update('UPDATE owned_vehicles SET `stored` = @stored WHERE owner = @owner AND plate = @plate AND type = @type AND `stored` = true', {
 		['@stored'] = false,
 		['@owner']  = xPlayer.getIdentifier(),
-		['@plate']  = plate
+		['@plate']  = plate,
+		['@type']   = 'boat'
 	}, function(rowsChanged)
 		if rowsChanged == 0 then
 			print(('[^2INFO^7] Player ^5%s^7 Attempted To Exploit Garage'):format(xPlayer.src))
@@ -56,11 +173,17 @@ end)
 
 xLib.callback.registerCompat('esx_boat:storeVehicle', function (source, cb, plate)
 	local xPlayer = ESX.Player(source)
+	plate = normalizePlate(plate)
 
-	MySQL.update('UPDATE owned_vehicles SET `stored` = @stored WHERE owner = @owner AND plate = @plate', {
+	if not xPlayer or not plate or not isNearGarage(source, 'StorePos', 25.0) or not isNearBoatWithPlate(source, plate, 20.0) then
+		return cb(0)
+	end
+
+	MySQL.update('UPDATE owned_vehicles SET `stored` = @stored WHERE owner = @owner AND plate = @plate AND type = @type AND `stored` = false', {
 		['@stored'] = true,
 		['@owner']  = xPlayer.getIdentifier(),
-		['@plate']  = plate
+		['@plate']  = plate,
+		['@type']   = 'boat'
 	}, function(rowsChanged)
 		cb(rowsChanged)
 	end)
@@ -68,6 +191,7 @@ end)
 
 xLib.callback.registerCompat('esx_boat:getGarage', function(source, cb)
 	local xPlayer = ESX.Player(source)
+	if not xPlayer or not isNearGarage(source, 'GaragePos', 20.0) then return cb({}) end
 
 	MySQL.query('SELECT vehicle FROM owned_vehicles WHERE owner = @owner AND type = @type AND `stored` = @stored', {
 		['@owner']  = xPlayer.getIdentifier(),
@@ -87,15 +211,23 @@ end)
 xLib.callback.registerCompat('esx_boat:buyBoatLicense', function(source, cb)
 	local xPlayer = ESX.Player(source)
 
-	if xPlayer.getMoney() >= Config.LicensePrice then
-		xPlayer.removeMoney(Config.LicensePrice, "Boat License Purchase")
+	if not xPlayer or not isNearBoatShop(source) or xPlayer.getMoney() < Config.LicensePrice then
+		return cb(false)
+	end
 
-		TriggerEvent('esx_license:addLicense', source, 'boat', function()
+	TriggerEvent('esx_license:checkLicense', source, 'boat', function(hasLicense)
+		if hasLicense then return cb(false) end
+
+		xPlayer.removeMoney(Config.LicensePrice, "Boat License Purchase")
+		TriggerEvent('esx_license:addLicense', source, 'boat', function(result)
+			if result == false then
+				xPlayer.addMoney(Config.LicensePrice, "Boat License Refund")
+				return cb(false)
+			end
+
 			cb(true)
 		end)
-	else
-		cb(false)
-	end
+	end)
 end)
 
 function getPriceFromModel(model)

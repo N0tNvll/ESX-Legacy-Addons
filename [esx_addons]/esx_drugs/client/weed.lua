@@ -101,12 +101,13 @@ CreateThread(function()
 						ClearPedTasks(playerPed)
 						Wait(1500)
 		
+						local plantCoords = GetEntityCoords(nearbyObject)
 						xLib.game.deleteObject(nearbyObject)
 		
 						table.remove(weedPlants, nearbyID)
 						spawnedWeeds = spawnedWeeds - 1
 		
-						TriggerServerEvent('esx_drugs:pickedUpCannabis')
+						TriggerServerEvent('esx_drugs:pickedUpCannabis', plantCoords)
 					else
 						ESX.ShowNotification(TranslateCap('weed_inventoryfull'))
 					end

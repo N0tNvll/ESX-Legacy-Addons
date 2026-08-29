@@ -207,7 +207,7 @@ function OpenRecruitMenu(society, options)
 				end)
 			end
 		end)
-	end)
+	end, society)
 end
 
 function OpenPromoteMenu(society, employee, options)

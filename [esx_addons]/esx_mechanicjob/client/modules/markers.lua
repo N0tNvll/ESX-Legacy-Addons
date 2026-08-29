@@ -213,7 +213,7 @@ CreateThread(function()
 						local entityModel = GetEntityModel(vehicle)
 
 						if entityModel == `flatbed` or entityModel == `towtruck2` or entityModel == `slamvan3` then
-							TriggerServerEvent('esx_service:disableService', 'mechanic')
+							xLib.callback('esx_service:disableService', false, function() end, 'mechanic')
 						end
 					end
 

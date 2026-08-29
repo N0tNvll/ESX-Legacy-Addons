@@ -37,13 +37,6 @@ RegisterNUICallback("setZoneWeather", function(Data, cb)
     cb(true)
 end)
 
----@param Data {zoneName: Zone, time: Time}
----@param cb fun(success:boolean)
-RegisterNUICallback("setZoneTime", function(Data, cb)
-    TriggerServerEvent("esx_weather:server:setZoneTime", Data.zoneName)
-    cb(true)
-end)
-
 ---@param _ nil
 ---@param cb fun(success:boolean)
 RegisterNUICallback("close", function(_, cb)

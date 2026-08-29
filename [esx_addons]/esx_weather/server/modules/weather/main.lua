@@ -1,6 +1,35 @@
 Modules = Modules or {}
 Modules.Weather = {}
 
+local function assertWeatherConfig()
+    if type(Config) ~= "table" or type(Config.Zones) ~= "table" or next(Config.Zones) == nil then
+        error("[esx_weather] Config.Zones must contain at least one zone")
+    end
+
+    if type(Config.Weather) ~= "table" then
+        error("[esx_weather] Config.Weather must be configured")
+    end
+
+    if type(Config.Weather.ValidTypes) ~= "table" or #Config.Weather.ValidTypes == 0 then
+        error("[esx_weather] Config.Weather.ValidTypes must contain at least one weather type")
+    end
+
+    for index, weatherType in ipairs(Config.Weather.ValidTypes) do
+        if type(weatherType) ~= "string" or weatherType == "" then
+            error(("[esx_weather] Config.Weather.ValidTypes[%s] must be a non-empty string"):format(index))
+        end
+    end
+
+    local cycleTimeSeconds = tonumber(Config.Weather.cycleTimeSeconds)
+    if not cycleTimeSeconds or cycleTimeSeconds <= 0 then
+        error("[esx_weather] Config.Weather.cycleTimeSeconds must be a positive number")
+    end
+
+    Config.Weather.cycleTimeSeconds = cycleTimeSeconds
+end
+
+assertWeatherConfig()
+
 Modules.Weather.ByZone = table.clone(Config.Zones) --[[@as table<Zone, WeatherType>]]
 for zone, _ in pairs(Modules.Weather.ByZone) do
     Modules.Weather.ByZone[zone] = Config.Weather.ValidTypes[math.random(1, #Config.Weather.ValidTypes)]

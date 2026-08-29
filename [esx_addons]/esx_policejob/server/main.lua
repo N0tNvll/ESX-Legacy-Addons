@@ -8,6 +8,10 @@ TriggerEvent('esx_phone:registerNumber', 'police', TranslateCap('alert_police'),
 TriggerEvent('esx_society:registerSociety', 'police', TranslateCap('society_police'), 'society_police', 'society_police', 'society_police', {type = 'public'})
 
 local cuffedPlayers = {}
+local JobVehicleNumberCharset, JobVehicleCharset = {}, {}
+
+for i = 48, 57 do JobVehicleNumberCharset[#JobVehicleNumberCharset + 1] = string.char(i) end
+for i = 65, 90 do JobVehicleCharset[#JobVehicleCharset + 1] = string.char(i) end
 
 local function getValidCount(count)
 	count = tonumber(count)
@@ -25,6 +29,31 @@ end
 
 local function isPolice(xPlayer)
 	return xPlayer and xPlayer.getJob().name == 'police'
+end
+
+local function isPoliceOnDuty(xPlayer)
+	local job = xPlayer and xPlayer.getJob()
+	return job and job.name == 'police' and job.onDuty ~= false
+end
+
+local function getRandomPlateChunk(charset, length)
+	local value = ''
+
+	for i = 1, length do
+		value = value .. charset[math.random(1, #charset)]
+	end
+
+	return value
+end
+
+local function generateJobVehiclePlate()
+	for i = 1, 30 do
+		local plate = ('POL%s%s'):format(getRandomPlateChunk(JobVehicleCharset, 2), getRandomPlateChunk(JobVehicleNumberCharset, 3))
+		local exists = MySQL.scalar.await('SELECT plate FROM owned_vehicles WHERE plate = ?', {plate})
+		if not exists then return plate end
+	end
+
+	return nil
 end
 
 local function isNearPlayer(source, target, distance)
@@ -103,6 +132,38 @@ local function isNearImpoundVehicle(source, plate)
 	end
 
 	return false
+end
+
+local function isNearPoliceVehicleShop(source, type)
+	local ped = GetPlayerPed(source)
+	if not ped or ped == 0 then return false end
+
+	local coords = GetEntityCoords(ped)
+	local shopKey = type == 'helicopter' and 'Helicopters' or 'Vehicles'
+
+	for _, station in pairs(Config.PoliceStations) do
+		for i = 1, #(station[shopKey] or {}) do
+			local shopCoords = station[shopKey][i].InsideShop or station[shopKey][i].Spawner
+			if shopCoords and #(coords - vector3(shopCoords.x, shopCoords.y, shopCoords.z)) <= 35.0 then
+				return true
+			end
+		end
+	end
+
+	return false
+end
+
+local function getAuthorizedVehicle(vehicleHash, jobGrade, type)
+	local vehicles = Config.AuthorizedVehicles[type]?[jobGrade] or {}
+
+	for i = 1, #vehicles do
+		local vehicle = vehicles[i]
+		if GetHashKey(vehicle.model) == vehicleHash then
+			return vehicle
+		end
+	end
+
+	return nil
 end
 
 RegisterNetEvent('esx_policejob:impoundOwnedVehicle')
@@ -372,6 +433,13 @@ end)
 
 
 xLib.callback.registerCompat('esx_policejob:getVehicleInfos', function(source, cb, plate)
+	local xPlayer = ESX.Player(source)
+	plate = normalizeImpoundPlate(plate)
+
+	if not isPoliceOnDuty(xPlayer) or not plate or (not isNearImpoundVehicle(source, plate) and not isNearPoliceArmory(source)) then
+		return cb({plate = plate})
+	end
+
 	local retrivedInfo = {
 		plate = plate
 	}
@@ -535,29 +603,46 @@ end)
 
 xLib.callback.registerCompat('esx_policejob:buyJobVehicle', function(source, cb, vehicleProps, type)
 	local xPlayer = ESX.Player(source)
-	local job = xPlayer.getJob()
-	local price = getPriceFromHash(vehicleProps.model, job.grade_name, type)
+	local job = xPlayer and xPlayer.getJob()
+	local model = _G.type(vehicleProps) == 'table' and tonumber(vehicleProps.model)
+	local authorizedVehicle = job and model and getAuthorizedVehicle(model, job.grade_name, type)
+	local price = authorizedVehicle and tonumber(authorizedVehicle.price) or 0
 
 	-- vehicle model not found
-	if price == 0 then
-		print(('[^3WARNING^7] Player ^5%s^7 Attempted To Buy Invalid Vehicle - ^5%s^7!'):format(source, vehicleProps.model))
-		cb(false)
-	else
-		if xPlayer.getMoney() >= price then
-			xPlayer.removeMoney(price, "Job Vehicle Bought")
+	if not isPoliceOnDuty(xPlayer) or price == 0 or not isNearPoliceVehicleShop(source, type) then
+		print(('[^3WARNING^7] Player ^5%s^7 Attempted To Buy Invalid Vehicle - ^5%s^7!'):format(source, tostring(model)))
+		return cb(false)
+	end
 
-			MySQL.insert('INSERT INTO owned_vehicles (owner, vehicle, plate, type, job, `stored`) VALUES (?, ?, ?, ?, ?, ?)', { xPlayer.getIdentifier(), json.encode(vehicleProps), vehicleProps.plate, type, job.name, true},
-			function (rowsChanged)
-				cb(true)
-			end)
-		else
-			cb(false)
+	if xPlayer.getMoney() < price then return cb(false) end
+
+	local plate = generateJobVehiclePlate()
+	if not plate then return cb(false) end
+
+	local storedProps = {model = model, plate = plate}
+	if _G.type(authorizedVehicle.props) == 'table' then
+		for key, value in pairs(authorizedVehicle.props) do
+			storedProps[key] = value
 		end
 	end
+
+	xPlayer.removeMoney(price, "Job Vehicle Bought")
+
+	MySQL.insert('INSERT INTO owned_vehicles (owner, vehicle, plate, type, job, `stored`) VALUES (?, ?, ?, ?, ?, ?)', { xPlayer.getIdentifier(), json.encode(storedProps), plate, type, job.name, true},
+	function (insertId)
+		if not insertId then
+			xPlayer.addMoney(price, "Job Vehicle Refund")
+			return cb(false)
+		end
+
+		cb(true)
+	end)
 end)
 
 xLib.callback.registerCompat('esx_policejob:storeNearbyVehicle', function(source, cb, plates)
 	local xPlayer = ESX.Player(source)
+	if not isPoliceOnDuty(xPlayer) or type(plates) ~= 'table' or #plates == 0 then return cb(false) end
+
 	local job = xPlayer.getJob()
 	local identifier = xPlayer.getIdentifier()
 	local plate = MySQL.scalar.await('SELECT plate FROM owned_vehicles WHERE owner = ? AND plate IN (?) AND job = ?', {identifier, plates, job.name})

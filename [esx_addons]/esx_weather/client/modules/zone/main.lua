@@ -5,6 +5,14 @@ Modules.Zone.current = false ---@type Zone | false
 Modules.Zone.lastCheck = 0 ---@type integer
 Modules.Zone.checkIntervalMs = 500 ---@type integer
 
+local function getFallbackZone()
+    if Modules.Zone.current then
+        return Modules.Zone.current
+    end
+
+    return next(Config.Zones)
+end
+
 ---@return Zone
 function Modules.Zone.getClosest()
     local now = GetGameTimer()
@@ -13,7 +21,12 @@ function Modules.Zone.getClosest()
         return Modules.Zone.current
     end
 
-    local playerCoords = GetEntityCoords(ESX.PlayerData.ped).xy
+    local playerPed = PlayerPedId()
+    if not playerPed or playerPed == 0 or not DoesEntityExist(playerPed) then
+        return getFallbackZone()
+    end
+
+    local playerCoords = GetEntityCoords(playerPed).xy
 
     local closestZone, closestZoneDistance = nil, nil
     for zone, zoneCoords in pairs(Config.Zones) do
