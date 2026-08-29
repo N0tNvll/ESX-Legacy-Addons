@@ -1,6 +1,6 @@
 # ESX Scoreboard
 
-A high-performance, modern scoreboard resource for **ESX Legacy** built with **Svelte 5** and **Vite**. Features real-time player listings, incremental job counters, activity tracking, and instant search — optimized for servers up to 128 slots.
+A high-performance, modern scoreboard resource for **ESX Legacy**.
 
 ![ESX Legacy](https://img.shields.io/badge/ESX-Legacy-orange)
 ![Svelte](https://img.shields.io/badge/Svelte-5.0-ff3e00?logo=svelte)
@@ -14,7 +14,6 @@ A high-performance, modern scoreboard resource for **ESX Legacy** built with **S
 - **Real-time Search** — Filter players by name, job, or server ID instantly
 - **Job Badges** — Visual indicators for player occupations with live counts
 - **Activity Tracking** — See ongoing events (robberies, heists, races, etc.)
-- **High Performance** — Incremental job counters via `ESX.GetJobs()`, throttled ping refresh, debounced cache invalidation, and split lightweight broadcasts
 - **Easy Theming** — Customize colors via CSS variables without touching components
 - **ESX Native** — Built specifically for ESX Legacy framework integration
 
