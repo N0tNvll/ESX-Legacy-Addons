@@ -13,7 +13,8 @@ function OpenBossMenu(society, close, options)
 				wash = true,
 				employees = true,
 				salary = true,
-				grades = true
+				grades = true,
+				uniforms = true
 			}
 
 			for k,v in pairs(defaultOptions) do
@@ -42,6 +43,9 @@ function OpenBossMenu(society, close, options)
 			end
 			if options.grades then
 				elements[#elements+1] = {icon = "fas fa-scroll", title = TranslateCap('grade_management'), value = "manage_grades"}
+			end
+			if options.uniforms then
+				elements[#elements+1] = {icon = "fas fa-shirt", title = TranslateCap('uniform_management'), value = "manage_uniforms"}
 			end
 
 			ESX.OpenContext("right", elements, function(menu,element)
@@ -101,6 +105,8 @@ function OpenBossMenu(society, close, options)
 					OpenManageSalaryMenu(society, options)
 				elseif element.value == "manage_grades" then
 					OpenManageGradesMenu(society, options)
+				elseif element.value == "manage_uniforms" then
+					OpenManageUniformsMenu(society, options)
 				elseif element.value == "return" then
 					OpenBossMenu(society, nil, options)
 				end
@@ -337,6 +343,70 @@ function OpenManageGradesMenu(society, options)
 				end
 			elseif element.value == "return" then
 				OpenBossMenu(society, nil, options)
+			end
+		end)
+	end, society)
+end
+
+local function getWornUniform(skin)
+	if type(skin) ~= 'table' or (skin.sex ~= 0 and skin.sex ~= 1) then
+		return nil
+	end
+
+	local uniform = {sex = skin.sex}
+
+	for i = 1, #Config.UniformComponents do
+		local component = Config.UniformComponents[i]
+		uniform[component] = skin[component]
+	end
+
+	return uniform
+end
+
+function OpenManageUniformsMenu(society, options)
+	xLib.callback('esx_society:getJob', false, function(job)
+		if not job then
+			return
+		end
+
+		local elements = {
+			{unselectable = true, icon = "fas fa-shirt", title = TranslateCap('uniform_management')},
+			{icon = "fas fa-shirt", title = TranslateCap('uniform_all_grades'), value = -1}
+		}
+
+		for i=1, #job.grades, 1 do
+			local gradeLabel = (job.grades[i].label == '' and job.label or job.grades[i].label)
+
+			elements[#elements+1] = {icon = "fas fa-shirt", title = gradeLabel, value = job.grades[i].grade}
+		end
+
+		elements[#elements+1] = {icon = "fas fa-arrow-left", title = TranslateCap('return'), value = "return"}
+
+		ESX.OpenContext("right", elements, function(menu,element)
+			if element.value == "return" then
+				OpenBossMenu(society, nil, options)
+			elseif element.value == "confirm" then
+				ESX.CloseContext()
+				xLib.callback('esx_society:setJobUniform', false, function()
+					OpenManageUniformsMenu(society, options)
+				end, society, menu.eles[1].value, menu.eles[1].uniform)
+			else
+				TriggerEvent('skinchanger:getSkin', function(skin)
+					local uniform = getWornUniform(skin)
+
+					if not uniform then
+						ESX.ShowNotification(TranslateCap('uniform_failed'))
+						return
+					end
+
+					local sexLabel = uniform.sex == 0 and TranslateCap('uniform_male') or TranslateCap('uniform_female')
+
+					ESX.RefreshContext({
+						{unselectable = true, icon = "fas fa-shirt", title = element.title, description = TranslateCap('uniform_confirm_description', sexLabel, element.title), value = element.value, uniform = uniform},
+						{icon = "fas fa-check", title = TranslateCap('confirm'), value = "confirm"},
+						{icon = "fas fa-arrow-left", title = TranslateCap('return'), value = "return"}
+					})
+				end)
 			end
 		end)
 	end, society)

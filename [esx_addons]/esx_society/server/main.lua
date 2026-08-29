@@ -502,25 +502,20 @@ xLib.callback.registerCompat('esx_society:setJobSalary', function(source, cb, jo
 		salary = math.floor(salary)
 	end
 
-	if not xPlayerJob or xPlayerJob.name ~= job or not Config.BossGrades[xPlayerJob.grade_name] or not grade or not salary or salary < 0 or salary > Config.MaxSalary then
+	if not xPlayerJob or xPlayerJob.name ~= job or not Config.BossGrades[xPlayerJob.grade_name] or not grade then
 		print(('[^3WARNING^7] Player ^5%s^7 attempted to setJobSalary for ^5%s^7!'):format(source, job))
-		cb()
-		return
+		return cb()
 	end
 
-	MySQL.update('UPDATE job_grades SET salary = ? WHERE job_name = ? AND grade = ?', {salary, job, grade},
-	function(rowsChanged)
+	if not salary or salary < 0 or salary > Config.MaxSalary then
+		print(('[^3WARNING^7] Player ^5%s^7 attempted to setJobSalary over the config limit for ^5%s^7!'):format(source, job))
+		return cb()
+	end
+
+	MySQL.update('UPDATE job_grades SET salary = ? WHERE job_name = ? AND grade = ?', {salary, job, grade}, function(rowsChanged)
 		if rowsChanged ~= 1 then return cb() end
 
-		Jobs[job].grades[tostring(grade)].salary = salary
-		ESX.RefreshJobs()
-		Wait(1)
-		local xPlayers = ESX.ExtendedPlayers('job', job)
-		for _, xTarget in pairs(xPlayers) do
-			if xTarget.getJob().grade == grade then
-				xTarget.setJob(job, grade)
-			end
-		end
+		ESX.RefreshJob(job)
 		cb()
 	end)
 end)
@@ -529,28 +524,172 @@ xLib.callback.registerCompat('esx_society:setJobLabel', function(source, cb, job
 	local xPlayer = ESX.Player(source)
 	local xPlayerJob = xPlayer and xPlayer.getJob()
 	grade = getValidJobGrade(job, grade)
-	label = tostring(label or ''):gsub('[%c]', ' '):sub(1, Config.MaxJobGradeLabelLength or 40)
+	label = type(label) == 'string' and label:gsub('[%c]', ' '):sub(1, Config.MaxJobGradeLabelLength or 40) or ''
 
-	if xPlayerJob and xPlayerJob.name == job and Config.BossGrades[xPlayerJob.grade_name] and grade and label ~= '' then
-			MySQL.update('UPDATE job_grades SET label = ? WHERE job_name = ? AND grade = ?', {label, job, grade},
-			function(rowsChanged)
-				if rowsChanged ~= 1 then return cb() end
-
-				Jobs[job].grades[tostring(grade)].label = label
-				ESX.RefreshJobs()
-				Wait(1)
-				local xPlayers = ESX.ExtendedPlayers('job', job)
-				for _, xTarget in pairs(xPlayers) do
-					if xTarget.getJob().grade == grade then
-						xTarget.setJob(job, grade)
-					end
-				end
-				cb()
-			end)
-	else
+	if not xPlayerJob or xPlayerJob.name ~= job or not Config.BossGrades[xPlayerJob.grade_name] or not grade or label == '' then
 		print(('[^3WARNING^7] Player ^5%s^7 attempted to setJobLabel for ^5%s^7!'):format(source, job))
-		cb()
+		return cb()
 	end
+
+	MySQL.update('UPDATE job_grades SET label = ? WHERE job_name = ? AND grade = ?', {label, job, grade}, function(rowsChanged)
+		if rowsChanged ~= 1 then return cb() end
+
+		ESX.RefreshJob(job)
+		cb()
+	end)
+end)
+
+local ALL_GRADES <const> = -1
+local UNIFORM_COMPONENT_MIN <const> = -1
+local UNIFORM_COMPONENT_MAX <const> = 2000
+local UNIFORM_COLUMNS <const> = {
+	[0] = 'skin_male',
+	[1] = 'skin_female'
+}
+
+local lastUniformSaveAt = {}
+
+---@param skin any
+---@return table?
+local function getValidUniform(skin)
+	if type(skin) ~= 'table' then
+		return nil
+	end
+
+	local uniform = {}
+	local hasComponent = false
+
+	for i = 1, #Config.UniformComponents do
+		local component = Config.UniformComponents[i]
+		local value = skin[component]
+
+		if value ~= nil then
+			if type(value) ~= 'number' or value ~= math.floor(value)
+				or value < UNIFORM_COMPONENT_MIN or value > UNIFORM_COMPONENT_MAX then
+				return nil
+			end
+
+			uniform[component] = math.floor(value)
+			hasComponent = true
+		end
+	end
+
+	if not hasComponent then
+		return nil
+	end
+
+	return uniform
+end
+
+---@param storedUniform string|table|nil
+---@param uniform table
+---@return boolean
+local function isSameUniform(storedUniform, uniform)
+	if type(storedUniform) == 'string' then
+		storedUniform = json.decode(storedUniform)
+	end
+
+	if type(storedUniform) ~= 'table' then
+		return false
+	end
+
+	for i = 1, #Config.UniformComponents do
+		local component = Config.UniformComponents[i]
+
+		if storedUniform[component] ~= uniform[component] then
+			return false
+		end
+	end
+
+	return true
+end
+
+xLib.callback.registerCompat('esx_society:setJobUniform', function(source, cb, job, grade, skin)
+	local xPlayer = ESX.Player(source)
+	local xPlayerJob = xPlayer and xPlayer.getJob()
+
+	if not xPlayerJob or xPlayerJob.name ~= job or not Config.BossGrades[xPlayerJob.grade_name] then
+		print(('[^3WARNING^7] Player ^5%s^7 attempted to setJobUniform for ^5%s^7!'):format(source, tostring(job)))
+		return cb(false)
+	end
+
+	local now = GetGameTimer()
+	local cooldownLeft = Config.UniformSaveCooldown - (now - (lastUniformSaveAt[job] or 0))
+
+	if cooldownLeft > 0 then
+		xPlayer.showNotification(TranslateCap('uniform_cooldown', math.ceil(cooldownLeft / 1000)))
+		return cb(false)
+	end
+
+	local column = type(skin) == 'table' and UNIFORM_COLUMNS[skin.sex] or nil
+	local uniform = getValidUniform(skin)
+
+	if not column or not uniform then
+		xPlayer.showNotification(TranslateCap('uniform_failed'))
+		return cb(false)
+	end
+
+	local jobObject = Jobs[job]
+	if not jobObject then
+		return cb(false)
+	end
+
+	local targetGrades = {}
+	local gradeLabel
+
+	if tonumber(grade) == ALL_GRADES then
+		grade = ALL_GRADES
+
+		for _, gradeObject in pairs(jobObject.grades) do
+			targetGrades[#targetGrades + 1] = gradeObject
+		end
+
+		gradeLabel = TranslateCap('uniform_all_grades')
+	else
+		grade = getValidJobGrade(job, grade)
+		if not grade then
+			return cb(false)
+		end
+
+		local gradeObject = jobObject.grades[tostring(grade)]
+		targetGrades[1] = gradeObject
+		gradeLabel = gradeObject.label ~= '' and gradeObject.label or jobObject.label
+	end
+
+	local changed = false
+
+	for i = 1, #targetGrades do
+		if not isSameUniform(targetGrades[i][column], uniform) then
+			changed = true
+			break
+		end
+	end
+
+	if not changed then
+		xPlayer.showNotification(TranslateCap('uniform_unchanged', gradeLabel))
+		return cb(false)
+	end
+
+	local query = ('UPDATE job_grades SET %s = ? WHERE job_name = ?'):format(column)
+	local parameters = {json.encode(uniform), job}
+
+	if grade ~= ALL_GRADES then
+		query = query .. ' AND grade = ?'
+		parameters[#parameters + 1] = grade
+	end
+
+	lastUniformSaveAt[job] = now
+
+	MySQL.update(query, parameters, function(affectedRows)
+		if not affectedRows or affectedRows == 0 then
+			xPlayer.showNotification(TranslateCap('uniform_failed'))
+			return cb(false)
+		end
+
+		ESX.RefreshJob(job)
+		xPlayer.showNotification(TranslateCap('uniform_saved', gradeLabel))
+		cb(true)
+	end)
 end)
 
 local getOnlinePlayers, onlinePlayers = false, nil

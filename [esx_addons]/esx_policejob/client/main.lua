@@ -63,7 +63,7 @@ function OpenCloakroomMenu()
 		{icon = "fas fa-shirt", title = TranslateCap('citizen_wear'), value = 'citizen_wear'},
 		{icon = "fas fa-shirt", title = TranslateCap('bullet_wear'), uniform = 'bullet_wear'},
 		{icon = "fas fa-shirt", title = TranslateCap('gilet_wear'), uniform = 'gilet_wear'},
-		{icon = "fas fa-shirt", title = TranslateCap('police_wear'), uniform = grade}
+		{icon = "fas fa-shirt", title = TranslateCap('police_wear'), value = 'police_wear'}
 	}
 
 	if Config.EnableCustomPeds then
@@ -160,6 +160,16 @@ function OpenCloakroomMenu()
 
 		if data.current.uniform then
 			setUniform(data.current.uniform, playerPed)
+		elseif data.current.value == 'police_wear' then
+			xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
+				local uniform = jobSkin and (skin.sex == 0 and jobSkin.skin_male or jobSkin.skin_female)
+
+				if type(uniform) == 'table' and next(uniform) then
+					TriggerEvent('skinchanger:loadClothes', skin, uniform)
+				else
+					setUniform(grade, playerPed)
+				end
+			end)
 		elseif data.current.value == 'freemode_ped' then
 			local modelHash
 

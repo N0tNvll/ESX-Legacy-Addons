@@ -49,6 +49,11 @@ TriggerEvent('esx_society:openBossMenu', society, function (menu)
 end, {wash = false}) -- set custom options, e.g disable washing
 ```
 
+## Uniform management
+- Boss grades (`Config.BossGrades`) get a `uniform management` entry in the boss menu: pick one grade or all grades and the outfit currently worn is saved as the uniform of that grade in `job_grades.skin_male` / `skin_female`, depending on the sex of the ped
+- Only the components listed in `Config.UniformComponents` are stored; `Config.UniformSaveCooldown` limits how often the uniforms of a job can be saved
+- Pass `uniforms = false` in the `options` of `esx_society:openBossMenu` to hide the entry
+
 # Legal
 ### License
 esx_society - societies for ESX
