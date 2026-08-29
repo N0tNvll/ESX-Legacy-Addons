@@ -1,18 +1,28 @@
 <script>
-  import { setSearchQuery } from "../stores/scoreboard.js"
+  import { setPageSize, setSearchQuery } from "../stores/scoreboard.js"
 
-  let { jobs } = $props()
+  let { jobs, pageSize = 50, maxPageSize = 100, onRequestPage = () => {} } = $props()
 
   let searchValue = $state("")
+  let searchTimer = 0
 
   function handleInput(e) {
-    searchValue = e.target.value
+    searchValue = e.target.value.slice(0, 48)
     setSearchQuery(searchValue)
+    clearTimeout(searchTimer)
+    searchTimer = setTimeout(() => onRequestPage({ page: 1, search: searchValue }), 350)
   }
 
   function clearSearch() {
     searchValue = ""
     setSearchQuery("")
+    onRequestPage({ page: 1, search: "" })
+  }
+
+  function handlePageSize(e) {
+    const nextSize = Number(e.target.value)
+    setPageSize(nextSize)
+    onRequestPage({ page: 1, pageSize: nextSize })
   }
 </script>
 
@@ -26,6 +36,7 @@
       type="text"
       class="search-input"
       placeholder="Search players by name, job, or ID..."
+      maxlength="48"
       value={searchValue}
       oninput={handleInput}
     />
@@ -38,6 +49,12 @@
       </button>
     {/if}
   </div>
+
+  <select class="page-size" value={pageSize} onchange={handlePageSize}>
+    {#each [25, 50, 100].filter((size) => size <= maxPageSize) as size}
+      <option value={size}>{size} rows</option>
+    {/each}
+  </select>
 
   <div class="job-filters">
     {#each jobs.slice(0, 6) as job}
@@ -53,6 +70,9 @@
     padding: 14px 28px;
     background: var(--darkest-color);
     border-bottom: 1px solid var(--mid-color);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
   }
 
   .search-input-wrapper {
@@ -75,10 +95,22 @@
     border: 1px solid var(--mid-color);
     border-radius: 8px;
     color: var(--lightest-color);
-    font-family: "Poppins", sans-serif;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 14px;
     outline: none;
     transition: border-color 0.2s ease;
+  }
+
+  .page-size {
+    width: 108px;
+    height: 40px;
+    padding: 0 8px;
+    background: var(--dark-color);
+    border: 1px solid var(--mid-color);
+    border-radius: 8px;
+    color: var(--lightest-color);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 13px;
   }
 
   .search-input::placeholder {
@@ -113,6 +145,7 @@
     flex-wrap: wrap;
     gap: 8px;
     margin-top: 10px;
+    grid-column: 1 / -1;
   }
 
   .job-pill {

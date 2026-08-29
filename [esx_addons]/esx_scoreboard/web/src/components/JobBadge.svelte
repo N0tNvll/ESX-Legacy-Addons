@@ -1,5 +1,5 @@
 <script>
-  let { job, jobGrade = "" } = $props()
+  let { job = "unemployed", jobLabel = "", jobGrade = "" } = $props()
 
   const jobColors = {
     police: "#3B82F6",
@@ -14,8 +14,9 @@
     offambulance: "#991B1B"
   }
 
-  const displayName = $derived(job.charAt(0).toUpperCase() + job.slice(1))
-  const color = $derived(jobColors[job.toLowerCase()] || "#FB9B04")
+  const safeJob = $derived(String(job || "unemployed").toLowerCase())
+  const displayName = $derived(jobLabel || safeJob.charAt(0).toUpperCase() + safeJob.slice(1))
+  const color = $derived(jobColors[safeJob] || "#FB9B04")
 </script>
 
 <span class="job-badge" style="background-color: {color}20; color: {color}; border: 1px solid {color}40;">

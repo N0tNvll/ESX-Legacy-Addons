@@ -1,5 +1,5 @@
 <script>
-  let { type, label = "", location = "" } = $props()
+  let { type = "activity", label = "", location = "" } = $props()
 
   const activityConfig = {
     robbery: { icon: "💰", color: "#EF4444", defaultLabel: "Robbery" },
@@ -10,7 +10,8 @@
     shootout: { icon: "🔫", color: "#DC2626", defaultLabel: "Shootout" }
   }
 
-  const config = $derived(activityConfig[type.toLowerCase()] || { icon: "⚡", color: "#FB9B04", defaultLabel: type })
+  const safeType = $derived(String(type || "activity").toLowerCase())
+  const config = $derived(activityConfig[safeType] || { icon: "⚡", color: "#FB9B04", defaultLabel: safeType })
   const displayLabel = $derived(label || config.defaultLabel)
 </script>
 

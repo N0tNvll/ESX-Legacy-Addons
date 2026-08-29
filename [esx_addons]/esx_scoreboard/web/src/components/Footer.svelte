@@ -1,5 +1,5 @@
 <script>
-  let { activities } = $props()
+  let { activities = [] } = $props()
 
   function getActivityIcon(type) {
     const icons = {
@@ -10,7 +10,7 @@
       hostage: "🚫",
       shootout: "🔫"
     }
-    return icons[type.toLowerCase()] || "⚡"
+    return icons[String(type || "").toLowerCase()] || "⚡"
   }
 </script>
 
@@ -35,27 +35,11 @@
       </div>
     {/if}
   </div>
-
-  <div class="footer-right">
-    <div class="key-hint">
-      <kbd>ESC</kbd>
-      <span>Close</span>
-    </div>
-    <div class="key-hint">
-      <kbd>↑↓</kbd>
-      <span>Scroll</span>
-    </div>
-    <div class="key-hint">
-      <kbd>Click</kbd>
-      <span>Sort</span>
-    </div>
-  </div>
 </footer>
 
 <style>
   .scoreboard-footer {
-    display: grid;
-    grid-template-columns: 1fr auto;
+    display: block;
     align-items: center;
     gap: 16px;
     padding: 12px 24px;
@@ -150,38 +134,6 @@
     color: var(--light-color);
     font-size: 11px;
   }
-
-  .footer-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-shrink: 0;
-  }
-
-  .key-hint {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  .key-hint kbd {
-    padding: 2px 7px;
-    background: var(--mid-color);
-    border: 1px solid var(--light-color);
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--lightest-color);
-    font-family: "Poppins", sans-serif;
-    white-space: nowrap;
-  }
-
-  .key-hint span {
-    font-size: 10px;
-    color: var(--light-color);
-    white-space: nowrap;
-  }
-
   @keyframes slideIn {
     from {
       opacity: 0;

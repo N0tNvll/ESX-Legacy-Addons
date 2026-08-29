@@ -5,6 +5,8 @@
   import PlayerRow from "./PlayerRow.svelte"
   import Footer from "./Footer.svelte"
 
+  let { onRequestPage = () => {} } = $props()
+
   const columns = [
     { key: "serverId", label: "ID" },
     { key: "name", label: "Name" },
@@ -14,11 +16,12 @@
 
   function handleSort(key) {
     setSortBy(key)
+    onRequestPage({ page: 1 })
   }
 
   function getSortIndicator(currentSortBy, currentSortAsc, key) {
-    if (currentSortBy !== key) return "↕"
-    return currentSortAsc ? "↑" : "↓"
+    if (currentSortBy !== key) return ""
+    return currentSortAsc ? "ASC" : "DESC"
   }
 </script>
 
@@ -31,7 +34,12 @@
         uptime={$scoreboardStore.uptime}
         logoUrl={$scoreboardStore.logoUrl}
       />
-      <SearchBar jobs={$scoreboardStore.jobs} />
+      <SearchBar
+        jobs={$scoreboardStore.jobs}
+        pageSize={$scoreboardStore.pageSize}
+        maxPageSize={$scoreboardStore.paging.maxPageSize}
+        onRequestPage={onRequestPage}
+      />
 
       <div class="table-header">
         {#each columns as col}
@@ -53,7 +61,7 @@
               <circle cx="11" cy="11" r="8"></circle>
               <path d="m21 21-4.3-4.3"></path>
             </svg>
-            <p>No players found</p>
+            <p>{$scoreboardStore.loading ? "Loading players..." : "No players found"}</p>
           </div>
         {:else}
           {#each $filteredPlayers as player, index (player.serverId)}
@@ -61,13 +69,25 @@
               serverId={player.serverId}
               name={player.name}
               job={player.job}
+              jobLabel={player.jobLabel}
               jobGrade={player.jobGrade}
-              group={player.group}
               ping={player.ping}
               {index}
             />
           {/each}
         {/if}
+      </div>
+
+      <div class="pager">
+        <button class="pager-btn" disabled={$scoreboardStore.page <= 1} onclick={() => onRequestPage({ page: $scoreboardStore.page - 1 })}>
+          Prev
+        </button>
+        <span class="pager-text">
+          Page {$scoreboardStore.page}/{$scoreboardStore.totalPages} - {$scoreboardStore.total} results
+        </span>
+        <button class="pager-btn" disabled={$scoreboardStore.page >= $scoreboardStore.totalPages} onclick={() => onRequestPage({ page: $scoreboardStore.page + 1 })}>
+          Next
+        </button>
       </div>
 
       <Footer activities={$scoreboardStore.activities} />
@@ -91,7 +111,7 @@
   }
 
   .scoreboard-container {
-    width: 860px;
+    width: 980px;
     max-width: 95vw;
     max-height: 85vh;
     display: flex;
@@ -119,7 +139,7 @@
     background: none;
     border: none;
     color: var(--light-color);
-    font-family: "Poppins", sans-serif;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
@@ -140,6 +160,7 @@
   .sort-icon {
     font-size: 10px;
     opacity: 0.6;
+    min-width: 30px;
   }
 
   .col-header.active .sort-icon {
@@ -151,6 +172,39 @@
     overflow-y: auto;
     max-height: 50vh;
     min-height: 200px;
+  }
+
+  .pager {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 8px 20px;
+    background: var(--darkest-color);
+    border-top: 1px solid var(--mid-color);
+  }
+
+  .pager-btn {
+    min-width: 68px;
+    height: 30px;
+    border: 1px solid var(--mid-color);
+    border-radius: 8px;
+    color: var(--lightest-color);
+    background: var(--dark-color);
+    cursor: pointer;
+  }
+
+  .pager-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .pager-text {
+    min-width: 180px;
+    color: var(--light-color);
+    font-size: 12px;
+    text-align: center;
   }
 
   .empty-state {

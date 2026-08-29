@@ -8,7 +8,6 @@ local RESOURCE_NAME <const> = GetCurrentResourceName()
 --- Register NUI callback to close scoreboard from UI
 RegisterNUICallback("closeScoreboard", function(data, cb)
   ScoreboardModule.CloseScoreboard()
-  TriggerServerEvent("esx_scoreboard:server:close")
   cb({})
 end)
 
@@ -30,6 +29,12 @@ RegisterNUICallback("nuiReady", function(data, cb)
   SendThemeUpdate()
 end)
 
+--- Register NUI callback for paged player requests
+RegisterNUICallback("requestPlayersPage", function(data, cb)
+  ScoreboardModule.RequestPage(data)
+  cb({ ok = true })
+end)
+
 RegisterCommand("scoreboard", function()
   ScoreboardModule.ToggleScoreboard()
 end, false)
@@ -39,8 +44,8 @@ RegisterKeyMapping("scoreboard", "Open/Close Scoreboard", "keyboard", Config.Ope
 -- Disable controls only when open
 CreateThread(function()
   while true do
-    Wait(0)
     if ScoreboardModule.IsOpen() then
+      Wait(0)
       DisableControlAction(0, 1, true)   -- look left/right
       DisableControlAction(0, 2, true)   -- look up/down
       DisableControlAction(0, 142, true) -- melee attack
@@ -50,17 +55,8 @@ CreateThread(function()
       if IsDisabledControlJustReleased(0, 322) then
         ScoreboardModule.CloseScoreboard()
       end
-    end
-  end
-end)
-
---- Thread to periodically refresh scoreboard data
-CreateThread(function()
-  while true do
-    Wait(Config.UpdateInterval)
-
-    if ScoreboardModule.IsOpen() then
-      ScoreboardModule.RefreshData()
+    else
+      Wait(250)
     end
   end
 end)

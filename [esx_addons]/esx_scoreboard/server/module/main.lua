@@ -4,10 +4,21 @@
 local ScoreboardModule = {}
 
 local RESOURCE_NAME <const> = GetCurrentResourceName()
-local PING_REFRESH_INTERVAL <const> = 10000  
-local REQUEST_COOLDOWN <const> = 2            
-local BROADCAST_DEFER_MS <const> = 500      
-local INVALIDATE_DEBOUNCE_MS <const> = 1000   
+local DEFAULT_JOB <const> = "unemployed"
+local DEFAULT_SORT <const> = "serverId"
+
+local VALID_SORT_COLUMNS <const> = {
+  serverId = true,
+  name = true,
+  job = true,
+  ping = true
+}
+
+local MAX_NAME_LEN <const> = 64
+local MAX_JOB_LEN <const> = 40
+local MAX_GRADE_LEN <const> = 64
+local MAX_SERVER_NAME_LEN <const> = 80
+local MAX_LOGO_URL_LEN <const> = 256
 local MAX_ACTIVITY_TYPE_LEN <const> = 50
 local MAX_ACTIVITY_LABEL_LEN <const> = 100
 local MAX_ACTIVITY_LOCATION_LEN <const> = 100
@@ -21,94 +32,209 @@ local nextActivityId = 1
 --- @type number Server start timestamp (seconds).
 local serverStartTime = os.time()
 
---- @type table<number, number> Last request timestamp per client source.
-local lastRequest = {}
-
 --- @type table<number, boolean> Clients with scoreboard currently open.
 local activeClients = {}
 
---- @type table<number, string> Maps player source -> current job name for fast decrement on drop.
+--- @type table<number, table> Per-client request state and selected page.
+local requestState = {}
+
+--- @type table<number, table> Public player records keyed by source.
+local playersById = {}
+
+--- @type table<number, string> Maps player source -> current job name for fast decrement on drop/job change.
 local playerJobMap = {}
 
 --- @type table<string, table> Incremental job counters: [jobName] = { name, label, count, color }
 local jobCounters = {}
 
---- @type table|nil Cached player array.
-local playerCache = nil
+--- @type table|nil Cached summary payload.
+local summaryCache = nil
 
---- @type number Cached player count for cache validation.
-local cachedPlayerCount = 0
+--- @type boolean True when summary cache needs rebuild.
+local summaryDirty = true
 
---- @type boolean True when player cache needs rebuild.
-local cacheDirty = true
+--- @type number Monotonic revisions used to avoid unnecessary client updates.
+local playersRevision = 0
+local activitiesRevision = 0
+local pingRevision = 0
 
 --- @type number Last time pings were refreshed (GetGameTimer).
 local lastPingUpdate = 0
 
+--- @type table<string, table> Per-query page cache.
+local pageCache = {}
+
+--- @type string[] Page cache insertion order for bounded memory.
+local pageCacheOrder = {}
+
 --- @type boolean Prevents stacked activity broadcasts.
 local activityBroadcastPending = false
 
---- @type boolean Prevents stacked cache invalidations.
-local invalidatePending = false
-
-
-local function InvalidateCache()
-  if invalidatePending then return end
-  invalidatePending = true
-  CreateThread(function()
-    Wait(INVALIDATE_DEBOUNCE_MS)
-    invalidatePending = false
-    cacheDirty = true
-  end)
+local function nowMs()
+  return GetGameTimer()
 end
 
-local function DeferredBroadcastActivities()
-  if activityBroadcastPending then return end
-  activityBroadcastPending = true
-  CreateThread(function()
-    Wait(BROADCAST_DEFER_MS)
-    activityBroadcastPending = false
-    ScoreboardModule.BroadcastActivities()
-  end)
+local function cfgNumber(name, fallback, minValue, maxValue)
+  local value = tonumber(Config[name])
+  if not value then
+    value = fallback
+  end
+
+  value = math.floor(value)
+
+  if minValue and value < minValue then
+    value = minValue
+  end
+
+  if maxValue and value > maxValue then
+    value = maxValue
+  end
+
+  return value
 end
 
-
---- Initialize job counters from the ESX job registry.
---- @return boolean success
-local function InitJobCounters()
-  local jobs = ESX.GetJobs()
-  if type(jobs) ~= "table" then
-    return false
-  end
-
-  jobCounters = {}
-  for name, jobData in pairs(jobs) do
-    jobCounters[name] = {
-      name = name,
-      label = jobData.label or name,
-      count = 0,
-      color = ScoreboardModule.GetJobColor(name)
-    }
-  end
-  return true
+local function getMaxPageSize()
+  return cfgNumber("MaxPageSize", 100, 10, 100)
 end
 
---- Atomically increment a job counter.
---- @param jobName string
-local function IncrementJob(jobName)
-  local job = jobCounters[jobName]
-  if job then
-    job.count = job.count + 1
-  end
+local function getDefaultPageSize()
+  return cfgNumber("DefaultPageSize", 50, 10, getMaxPageSize())
 end
 
---- Atomically decrement a job counter, clamped at 0.
---- @param jobName string
-local function DecrementJob(jobName)
-  local job = jobCounters[jobName]
-  if job then
-    job.count = math.max(0, job.count - 1)
+local function getSummaryInterval()
+  return cfgNumber("SummaryInterval", 10000, 5000, 60000)
+end
+
+local function getPageRefreshInterval()
+  return cfgNumber("PageRefreshInterval", 15000, 5000, 60000)
+end
+
+local function getFullReconcileInterval()
+  return cfgNumber("FullReconcileInterval", 60000, 30000, 300000)
+end
+
+local function getPingRefreshInterval()
+  return cfgNumber("PingRefreshInterval", 30000, 10000, 120000)
+end
+
+local function getActivityDebounce()
+  return cfgNumber("ActivityDebounce", 1000, 250, 10000)
+end
+
+local function getOpenCooldown()
+  return cfgNumber("OpenCooldown", 2000, 500, 10000)
+end
+
+local function getPageRequestCooldown()
+  return cfgNumber("PageRequestCooldown", 1500, 250, 10000)
+end
+
+local function getMaxSearchLength()
+  return cfgNumber("MaxSearchLength", 48, 0, 80)
+end
+
+local function getMaxActivities()
+  return cfgNumber("MaxActivities", 64, 1, 256)
+end
+
+local function getMaxActivityPlayers()
+  return cfgNumber("MaxActivityPlayers", 16, 0, 64)
+end
+
+local function getMaxPageCacheEntries()
+  return cfgNumber("MaxPageCacheEntries", 256, 32, 1024)
+end
+
+local function clearPageCache()
+  pageCache = {}
+  pageCacheOrder = {}
+end
+
+local function sanitizeString(value, maxLen, fallback)
+  if type(value) ~= "string" then
+    return fallback or ""
   end
+
+  value = value:gsub("[%z\1-\31\127]", ""):match("^%s*(.-)%s*$") or ""
+  if maxLen and #value > maxLen then
+    value = value:sub(1, maxLen)
+  end
+
+  if value == "" then
+    return fallback or ""
+  end
+
+  return value
+end
+
+local function sanitizeKey(value, maxLen, fallback)
+  value = sanitizeString(value, maxLen, fallback)
+  value = value:gsub("[^%w_%-]", "")
+  if value == "" then
+    return fallback or DEFAULT_JOB
+  end
+  return value
+end
+
+local function sanitizeColor(value, fallback)
+  if type(value) == "string" and value:match("^#%x%x%x%x%x%x$") then
+    return value
+  end
+  return fallback or "#6B7280"
+end
+
+local function sanitizeLogoUrl(value)
+  value = sanitizeString(value, MAX_LOGO_URL_LEN, "")
+  if value == "" then return "" end
+  if value:match("^https://") then
+    return value
+  end
+  return ""
+end
+
+local function markPlayersDirty()
+  playersRevision = playersRevision + 1
+  summaryDirty = true
+  clearPageCache()
+end
+
+local function markActivitiesDirty()
+  activitiesRevision = activitiesRevision + 1
+  summaryDirty = true
+end
+
+local function isRateLimited(src, key, cooldownMs)
+  if type(src) ~= "number" or src <= 0 then
+    return true
+  end
+
+  local state = requestState[src]
+  if not state then
+    state = {}
+    requestState[src] = state
+  end
+
+  local now = nowMs()
+  local previous = state[key] or 0
+  if previous > 0 and now - previous < cooldownMs then
+    return true
+  end
+
+  state[key] = now
+  return false
+end
+
+local function getPlayer(src)
+  if type(src) ~= "number" or src <= 0 then
+    return nil
+  end
+
+  local xPlayer = ESX.GetPlayerFromId(src)
+  if not xPlayer then
+    return nil
+  end
+
+  return xPlayer
 end
 
 --- Get current server uptime in seconds.
@@ -120,8 +246,9 @@ end
 --- Get configured max players.
 --- @return number
 function ScoreboardModule.GetMaxPlayers()
-  if Config.MaxPlayers and Config.MaxPlayers > 0 then
-    return Config.MaxPlayers
+  local configured = tonumber(Config.MaxPlayers)
+  if configured and configured > 0 then
+    return math.floor(configured)
   end
   return GetConvarInt("sv_maxclients", 128)
 end
@@ -129,13 +256,13 @@ end
 --- Get configured server name.
 --- @return string
 function ScoreboardModule.GetServerName()
-  return Config.ServerName or "ESX Server"
+  return sanitizeString(Config.ServerName, MAX_SERVER_NAME_LEN, "ESX Server")
 end
 
 --- Get configured logo URL.
 --- @return string
 function ScoreboardModule.GetLogoUrl()
-  return Config.LogoUrl or ""
+  return sanitizeLogoUrl(Config.LogoUrl)
 end
 
 --- Build server info object for NUI.
@@ -149,13 +276,15 @@ function ScoreboardModule.GetServerInfo()
   }
 end
 
---- Get color for a job. 
+--- Get color for a job.
 --- @param jobName string
 --- @return string Hex color code
 function ScoreboardModule.GetJobColor(jobName)
-  if Config.Jobs and Config.Jobs[jobName] and Config.Jobs[jobName].color then
-    return Config.Jobs[jobName].color
+  local safeJobName = sanitizeKey(jobName, MAX_JOB_LEN, DEFAULT_JOB)
+  if Config.Jobs and Config.Jobs[safeJobName] then
+    return sanitizeColor(Config.Jobs[safeJobName].color)
   end
+
   local colors = {
     police = "#3B82F6",
     ambulance = "#EF4444",
@@ -166,7 +295,74 @@ function ScoreboardModule.GetJobColor(jobName)
     banker = "#06B6D4",
     unemployed = "#6B7280"
   }
-  return colors[jobName] or "#FB9B04"
+  return colors[safeJobName] or "#FB9B04"
+end
+
+local function getJobLabel(jobName, fallback)
+  local safeJobName = sanitizeKey(jobName, MAX_JOB_LEN, DEFAULT_JOB)
+  if jobCounters[safeJobName] and jobCounters[safeJobName].label then
+    return jobCounters[safeJobName].label
+  end
+
+  if Config.Jobs and Config.Jobs[safeJobName] and Config.Jobs[safeJobName].label then
+    return sanitizeString(Config.Jobs[safeJobName].label, MAX_GRADE_LEN, fallback or safeJobName)
+  end
+
+  local jobs = ESX.GetJobs()
+  if type(jobs) == "table" and jobs[safeJobName] and jobs[safeJobName].label then
+    return sanitizeString(jobs[safeJobName].label, MAX_GRADE_LEN, fallback or safeJobName)
+  end
+
+  return sanitizeString(fallback or safeJobName, MAX_GRADE_LEN, safeJobName)
+end
+
+local function ensureJobCounter(jobName, label)
+  local safeJobName = sanitizeKey(jobName, MAX_JOB_LEN, DEFAULT_JOB)
+  if not jobCounters[safeJobName] then
+    jobCounters[safeJobName] = {
+      name = safeJobName,
+      label = getJobLabel(safeJobName, label),
+      count = 0,
+      color = ScoreboardModule.GetJobColor(safeJobName)
+    }
+  end
+  return jobCounters[safeJobName]
+end
+
+local function incrementJob(jobName, label)
+  local counter = ensureJobCounter(jobName, label)
+  counter.count = counter.count + 1
+  summaryDirty = true
+end
+
+local function decrementJob(jobName)
+  local safeJobName = sanitizeKey(jobName, MAX_JOB_LEN, DEFAULT_JOB)
+  local counter = jobCounters[safeJobName]
+  if counter then
+    counter.count = math.max(0, counter.count - 1)
+    summaryDirty = true
+  end
+end
+
+local function initJobCounters()
+  local jobs = ESX.GetJobs()
+  if type(jobs) ~= "table" then
+    return false
+  end
+
+  jobCounters = {}
+  for name, jobData in pairs(jobs) do
+    local safeJobName = sanitizeKey(name, MAX_JOB_LEN, DEFAULT_JOB)
+    jobCounters[safeJobName] = {
+      name = safeJobName,
+      label = sanitizeString(jobData.label, MAX_GRADE_LEN, safeJobName),
+      count = 0,
+      color = ScoreboardModule.GetJobColor(safeJobName)
+    }
+  end
+
+  ensureJobCounter(DEFAULT_JOB, "Civilian")
+  return true
 end
 
 --- Get player activity.
@@ -176,56 +372,119 @@ function ScoreboardModule.GetPlayerActivity(source)
   return nil
 end
 
---- Get active activities.
---- @return table
-function ScoreboardModule.GetActiveActivities()
-  return cachedActivities
+local function createPlayerRecord(src, xPlayer)
+  if not xPlayer or not xPlayer.job then
+    return nil
+  end
+
+  local jobName = sanitizeKey(xPlayer.job.name, MAX_JOB_LEN, DEFAULT_JOB)
+  local jobGrade = sanitizeString(xPlayer.job.grade_label or xPlayer.job.grade_name, MAX_GRADE_LEN, "")
+  local playerName = GetPlayerName(src)
+
+  if type(xPlayer.getName) == "function" then
+    playerName = xPlayer.getName() or playerName
+  end
+
+  return {
+    serverId = src,
+    name = sanitizeString(playerName, MAX_NAME_LEN, "Unknown"),
+    job = jobName,
+    jobLabel = getJobLabel(jobName, jobName),
+    jobGrade = jobGrade,
+    ping = GetPlayerPing(src) or 0,
+    activity = ScoreboardModule.GetPlayerActivity(src)
+  }
 end
 
---- Get all connected players data.
---- @param table|nil preFetchedIds Optional pre-fetched GetPlayers() result.
---- @return table Array of player data.
-function ScoreboardModule.GetAllPlayers(preFetchedIds)
-  local allPlayerIds = preFetchedIds or GetPlayers()
-  local currentCount = #allPlayerIds
-  local now = GetGameTimer()
+local function upsertPlayer(src, xPlayer)
+  xPlayer = xPlayer or getPlayer(src)
+  if not xPlayer then
+    return false
+  end
 
-  if not cacheDirty and playerCache and cachedPlayerCount == currentCount then
-    if (now - lastPingUpdate) >= PING_REFRESH_INTERVAL then
-      lastPingUpdate = now
-      for _, player in ipairs(playerCache) do
-        player.ping = GetPlayerPing(player.serverId) or 0
-      end
-    end
-    return playerCache
+  local record = createPlayerRecord(src, xPlayer)
+  if not record then
+    return false
+  end
+
+  local previousJob = playerJobMap[src]
+  if previousJob and previousJob ~= record.job then
+    decrementJob(previousJob)
+  end
+
+  if not previousJob or previousJob ~= record.job then
+    incrementJob(record.job, record.jobLabel)
+    playerJobMap[src] = record.job
+  end
+
+  playersById[src] = record
+  markPlayersDirty()
+  return true
+end
+
+local function removePlayer(src)
+  local previousJob = playerJobMap[src]
+  if previousJob then
+    decrementJob(previousJob)
+    playerJobMap[src] = nil
+  end
+
+  if playersById[src] then
+    playersById[src] = nil
+    markPlayersDirty()
+  end
+end
+
+local function refreshPings()
+  local now = nowMs()
+  if now - lastPingUpdate < getPingRefreshInterval() then
+    return
   end
 
   lastPingUpdate = now
-  local players = {}
+  for src, record in pairs(playersById) do
+    if GetPlayerName(src) then
+      record.ping = GetPlayerPing(src) or 0
+    end
+  end
 
-  for _, playerId in ipairs(allPlayerIds) do
-    local sourceNum = tonumber(playerId)
-    if sourceNum then
-      local xPlayer = ESX.GetPlayerFromId(sourceNum)
-      if xPlayer then
-        local charName = xPlayer.getName() or GetPlayerName(sourceNum) or "Unknown"
-        table.insert(players, {
-          serverId = sourceNum,
-          name = charName,
-          job = xPlayer.job.name,
-          jobGrade = xPlayer.job.grade_label or xPlayer.job.grade_name,
-          group = xPlayer.getGroup(),
-          ping = GetPlayerPing(sourceNum) or 0,
-          activity = ScoreboardModule.GetPlayerActivity(sourceNum)
-        })
+  pingRevision = pingRevision + 1
+  clearPageCache()
+end
+
+local function copyActivity(activity)
+  local players = {}
+  if type(activity.players) == "table" then
+    for i = 1, math.min(#activity.players, getMaxActivityPlayers()) do
+      local value = activity.players[i]
+      if type(value) == "number" or type(value) == "string" then
+        players[#players + 1] = value
       end
     end
   end
 
-  playerCache = players
-  cachedPlayerCount = currentCount
-  cacheDirty = false
-  return players
+  return {
+    id = activity.id,
+    type = activity.type,
+    label = activity.label,
+    location = activity.location,
+    startTime = activity.startTime,
+    players = players
+  }
+end
+
+local function getPublicActivities()
+  local result = {}
+  for i = 1, #cachedActivities do
+    result[i] = copyActivity(cachedActivities[i])
+  end
+  return result
+end
+
+--- Get active activities.
+--- @return table
+function ScoreboardModule.GetActiveActivities()
+  return getPublicActivities()
 end
 
 --- Get job counts.
@@ -234,10 +493,66 @@ function ScoreboardModule.GetJobCounts()
   local result = {}
   for _, data in pairs(jobCounters) do
     if data.count > 0 then
-      table.insert(result, data)
+      result[#result + 1] = {
+        name = data.name,
+        label = data.label,
+        count = data.count,
+        color = data.color
+      }
     end
   end
-  table.sort(result, function(a, b) return a.count > b.count end)
+  table.sort(result, function(a, b)
+    if a.count == b.count then
+      return a.label < b.label
+    end
+    return a.count > b.count
+  end)
+  return result
+end
+
+function ScoreboardModule.GetSummary()
+  if not summaryDirty and summaryCache then
+    summaryCache.info.uptime = ScoreboardModule.GetUptime()
+    return summaryCache
+  end
+
+  local totalPlayers = 0
+  for _ in pairs(playersById) do
+    totalPlayers = totalPlayers + 1
+  end
+
+  summaryCache = {
+    totalPlayers = totalPlayers,
+    jobs = ScoreboardModule.GetJobCounts(),
+    activities = getPublicActivities(),
+    info = ScoreboardModule.GetServerInfo(),
+    paging = {
+      defaultPageSize = getDefaultPageSize(),
+      maxPageSize = getMaxPageSize()
+    },
+    revisions = {
+      players = playersRevision,
+      activities = activitiesRevision
+    }
+  }
+
+  summaryDirty = false
+  return summaryCache
+end
+
+local function sanitizePlayers(players)
+  local result = {}
+  if type(players) ~= "table" then
+    return result
+  end
+
+  for i = 1, math.min(#players, getMaxActivityPlayers()) do
+    local player = players[i]
+    if type(player) == "number" or type(player) == "string" then
+      result[#result + 1] = player
+    end
+  end
+
   return result
 end
 
@@ -248,36 +563,31 @@ end
 --- @param players table|nil
 --- @return number activityId
 function ScoreboardModule.AddActivity(activityType, label, location, players)
-  if type(activityType) ~= "string" or #activityType == 0 or #activityType > MAX_ACTIVITY_TYPE_LEN then
-    print("[^3esx_scoreboard^7] Warning: Invalid activityType rejected")
+  local safeType = sanitizeString(activityType, MAX_ACTIVITY_TYPE_LEN, ""):gsub("[^%w_%-]", "")
+  if safeType == "" then
+    print("[^3esx_scoreboard^7] Warning: invalid activityType rejected")
     return -1
   end
 
-  if label and type(label) == "string" and #label > MAX_ACTIVITY_LABEL_LEN then
-    label = label:sub(1, MAX_ACTIVITY_LABEL_LEN)
-  end
-
-  if location and type(location) == "string" and #location > MAX_ACTIVITY_LOCATION_LEN then
-    location = location:sub(1, MAX_ACTIVITY_LOCATION_LEN)
-  end
-
-  if players and type(players) ~= "table" then
-    players = {}
-  end
-
-  local configType = Config.ActivityTypes and Config.ActivityTypes[activityType]
+  local configType = Config.ActivityTypes and Config.ActivityTypes[safeType]
   local activity = {
     id = nextActivityId,
-    type = activityType,
-    label = label or (configType and configType.label) or activityType,
-    location = location,
+    type = safeType,
+    label = sanitizeString(label or (configType and configType.label), MAX_ACTIVITY_LABEL_LEN, safeType),
+    location = sanitizeString(location, MAX_ACTIVITY_LOCATION_LEN, ""),
     startTime = os.time(),
-    players = players or {}
+    players = sanitizePlayers(players)
   }
 
   nextActivityId = nextActivityId + 1
-  table.insert(cachedActivities, activity)
-  DeferredBroadcastActivities()
+  cachedActivities[#cachedActivities + 1] = activity
+
+  while #cachedActivities > getMaxActivities() do
+    table.remove(cachedActivities, 1)
+  end
+
+  markActivitiesDirty()
+  ScoreboardModule.BroadcastActivities()
 
   return activity.id
 end
@@ -286,12 +596,14 @@ end
 --- @param activityId number
 --- @return boolean success
 function ScoreboardModule.RemoveActivity(activityId)
-  if type(activityId) ~= "number" then return false end
+  activityId = tonumber(activityId)
+  if not activityId then return false end
 
   for i, activity in ipairs(cachedActivities) do
     if activity.id == activityId then
       table.remove(cachedActivities, i)
-      DeferredBroadcastActivities()
+      markActivitiesDirty()
+      ScoreboardModule.BroadcastActivities()
       return true
     end
   end
@@ -303,64 +615,266 @@ end
 --- @param data table
 --- @return boolean success
 function ScoreboardModule.UpdateActivity(activityId, data)
-  if type(activityId) ~= "number" or type(data) ~= "table" then return false end
+  activityId = tonumber(activityId)
+  if not activityId or type(data) ~= "table" then return false end
 
   for _, activity in ipairs(cachedActivities) do
     if activity.id == activityId then
-      for key, value in pairs(data) do
-        activity[key] = value
+      if data.label ~= nil then
+        activity.label = sanitizeString(data.label, MAX_ACTIVITY_LABEL_LEN, activity.label)
       end
-      DeferredBroadcastActivities()
+      if data.location ~= nil then
+        activity.location = sanitizeString(data.location, MAX_ACTIVITY_LOCATION_LEN, "")
+      end
+      if data.players ~= nil then
+        activity.players = sanitizePlayers(data.players)
+      end
+
+      markActivitiesDirty()
+      ScoreboardModule.BroadcastActivities()
       return true
     end
   end
   return false
 end
 
---- Send full data payload to a specific client.
---- @param source number
-function ScoreboardModule.SendToClient(source)
-  local allIds = GetPlayers()
-  local players = ScoreboardModule.GetAllPlayers(allIds)
-  local jobs = ScoreboardModule.GetJobCounts()
-  local info = ScoreboardModule.GetServerInfo()
+local function normalizePageRequest(data)
+  data = type(data) == "table" and data or {}
 
-  TriggerClientEvent("esx_scoreboard:client:receiveData", source,
-    players, jobs, cachedActivities, info)
+  local maxPageSize = getMaxPageSize()
+  local pageSize = tonumber(data.pageSize) or getDefaultPageSize()
+  pageSize = math.floor(pageSize)
+  pageSize = math.max(10, math.min(pageSize, maxPageSize))
+
+  local page = tonumber(data.page) or 1
+  page = math.max(1, math.floor(page))
+
+  local search = sanitizeString(data.search, getMaxSearchLength(), ""):lower()
+  local sortBy = sanitizeKey(data.sortBy, 24, DEFAULT_SORT)
+  if not VALID_SORT_COLUMNS[sortBy] then
+    sortBy = DEFAULT_SORT
+  end
+
+  local sortAsc = data.sortAsc == true
+  return page, pageSize, search, sortBy, sortAsc
 end
 
---- Broadcast full update to all clients with scoreboard open.
-function ScoreboardModule.BroadcastUpdate()
-  local allIds = GetPlayers()
-  local players = ScoreboardModule.GetAllPlayers(allIds)
-  local jobs = ScoreboardModule.GetJobCounts()
-  local info = ScoreboardModule.GetServerInfo()
+local function matchesSearch(record, search)
+  if search == "" then
+    return true
+  end
 
-  for clientId, _ in pairs(activeClients) do
-    TriggerClientEvent("esx_scoreboard:client:receiveData", clientId,
-      players, jobs, cachedActivities, info)
+  return tostring(record.serverId):find(search, 1, true)
+    or record.name:lower():find(search, 1, true)
+    or record.job:lower():find(search, 1, true)
+    or record.jobLabel:lower():find(search, 1, true)
+end
+
+local function sortPlayers(players, sortBy, sortAsc)
+  table.sort(players, function(a, b)
+    local av = a[sortBy]
+    local bv = b[sortBy]
+
+    if sortBy == "name" or sortBy == "job" then
+      av = tostring(av or ""):lower()
+      bv = tostring(bv or ""):lower()
+    else
+      av = tonumber(av) or 0
+      bv = tonumber(bv) or 0
+    end
+
+    if av == bv then
+      return a.serverId < b.serverId
+    end
+
+    if sortAsc then
+      return av < bv
+    end
+
+    return av > bv
+  end)
+end
+
+function ScoreboardModule.BuildPlayerPage(data)
+  refreshPings()
+
+  local page, pageSize, search, sortBy, sortAsc = normalizePageRequest(data)
+  local cacheKey = ("%s:%s:%s:%s:%s:%s:%s"):format(playersRevision, pingRevision, #search, search, page, pageSize, sortBy .. tostring(sortAsc))
+  local cached = pageCache[cacheKey]
+  if cached then
+    return cached
+  end
+
+  local filtered = {}
+  for _, record in pairs(playersById) do
+    if matchesSearch(record, search) then
+      filtered[#filtered + 1] = record
+    end
+  end
+
+  sortPlayers(filtered, sortBy, sortAsc)
+
+  local total = #filtered
+  local totalPages = math.max(1, math.ceil(total / pageSize))
+  if page > totalPages then
+    page = totalPages
+  end
+
+  local startIndex = ((page - 1) * pageSize) + 1
+  local endIndex = math.min(startIndex + pageSize - 1, total)
+  local rows = {}
+
+  for i = startIndex, endIndex do
+    local player = filtered[i]
+    if player then
+      rows[#rows + 1] = {
+        serverId = player.serverId,
+        name = player.name,
+        job = player.job,
+        jobLabel = player.jobLabel,
+        jobGrade = player.jobGrade,
+        ping = player.ping,
+        activity = player.activity
+      }
+    end
+  end
+
+  local pageData = {
+    players = rows,
+    page = page,
+    pageSize = pageSize,
+    total = total,
+    totalPages = totalPages,
+    search = search,
+    sortBy = sortBy,
+    sortAsc = sortAsc,
+    revisions = {
+      players = playersRevision,
+      pings = pingRevision
+    }
+  }
+
+  pageCache[cacheKey] = pageData
+  pageCacheOrder[#pageCacheOrder + 1] = cacheKey
+
+  while #pageCacheOrder > getMaxPageCacheEntries() do
+    pageCache[table.remove(pageCacheOrder, 1)] = nil
+  end
+
+  return pageData
+end
+
+function ScoreboardModule.SendSummary(src)
+  TriggerClientEvent("esx_scoreboard:client:receiveSummary", src, ScoreboardModule.GetSummary())
+end
+
+function ScoreboardModule.SendPage(src, request)
+  local page = ScoreboardModule.BuildPlayerPage(request)
+  TriggerClientEvent("esx_scoreboard:client:receivePage", src, page)
+
+  local state = requestState[src] or {}
+  requestState[src] = state
+  state.pageRequest = {
+    page = page.page,
+    pageSize = page.pageSize,
+    search = page.search,
+    sortBy = page.sortBy,
+    sortAsc = page.sortAsc
+  }
+  state.pageRevision = playersRevision
+  state.pingRevision = pingRevision
+end
+
+--- Send initial payload to a specific client.
+--- @param source number
+function ScoreboardModule.SendToClient(source)
+  ScoreboardModule.SendSummary(source)
+  ScoreboardModule.SendPage(source, requestState[source] and requestState[source].pageRequest or nil)
+end
+
+--- Broadcast summary only to clients with scoreboard open.
+function ScoreboardModule.BroadcastUpdate()
+  local summary = ScoreboardModule.GetSummary()
+  for clientId in pairs(activeClients) do
+    TriggerClientEvent("esx_scoreboard:client:receiveSummary", clientId, summary)
   end
 end
 
 --- Broadcast only activities to all clients with scoreboard open.
 function ScoreboardModule.BroadcastActivities()
-  for clientId, _ in pairs(activeClients) do
-    TriggerClientEvent("esx_scoreboard:client:receiveActivities", clientId, cachedActivities)
-  end
+  if activityBroadcastPending then return end
+  activityBroadcastPending = true
+
+  CreateThread(function()
+    Wait(getActivityDebounce())
+    activityBroadcastPending = false
+
+    local activities = getPublicActivities()
+    for clientId in pairs(activeClients) do
+      TriggerClientEvent("esx_scoreboard:client:receiveActivities", clientId, activities)
+    end
+  end)
 end
 
-RegisterNetEvent("esx_scoreboard:server:requestData", function()
-  local src = source
-  if type(src) ~= "number" or src <= 0 then return end
-
-  local now = os.time()
-  if lastRequest[src] and (now - lastRequest[src]) < REQUEST_COOLDOWN then
+local function reconcilePlayers()
+  if not initJobCounters() then
     return
   end
-  lastRequest[src] = now
+
+  local nextPlayersById = {}
+  local nextPlayerJobMap = {}
+
+  for _, playerId in ipairs(GetPlayers()) do
+    local src = tonumber(playerId)
+    if src then
+      local xPlayer = getPlayer(src)
+      local record = xPlayer and createPlayerRecord(src, xPlayer)
+      if record then
+        local counter = ensureJobCounter(record.job, record.jobLabel)
+        counter.count = counter.count + 1
+        nextPlayersById[src] = record
+        nextPlayerJobMap[src] = record.job
+      end
+    end
+  end
+
+  playersById = nextPlayersById
+  playerJobMap = nextPlayerJobMap
+  markPlayersDirty()
+end
+
+local function openScoreboard(src)
+  if isRateLimited(src, "open", getOpenCooldown()) then
+    return
+  end
+
+  if not playersById[src] then
+    upsertPlayer(src)
+  end
 
   activeClients[src] = true
   ScoreboardModule.SendToClient(src)
+end
+
+RegisterNetEvent("esx_scoreboard:server:open", function()
+  openScoreboard(source)
+end)
+
+RegisterNetEvent("esx_scoreboard:server:requestData", function()
+  openScoreboard(source)
+end)
+
+RegisterNetEvent("esx_scoreboard:server:requestPage", function(data)
+  local src = source
+  if not activeClients[src] then
+    return
+  end
+
+  if isRateLimited(src, "page", getPageRequestCooldown()) then
+    return
+  end
+
+  ScoreboardModule.SendPage(src, data)
 end)
 
 RegisterNetEvent("esx_scoreboard:server:close", function()
@@ -371,45 +885,26 @@ RegisterNetEvent("esx_scoreboard:server:close", function()
 end)
 
 AddEventHandler("esx:playerLoaded", function(playerId, xPlayer)
-  if not xPlayer or not xPlayer.job then return end
-
-  local jobName = xPlayer.job.name
-  IncrementJob(jobName)
-  playerJobMap[playerId] = jobName
-
-  InvalidateCache()
+  if type(playerId) ~= "number" then return end
+  upsertPlayer(playerId, xPlayer)
 end)
 
-AddEventHandler("playerDropped", function(reason)
+AddEventHandler("playerDropped", function()
   local src = source
   if type(src) ~= "number" then return end
-  local jobName = playerJobMap[src]
-  if jobName then
-    DecrementJob(jobName)
-    playerJobMap[src] = nil
-  end
 
+  removePlayer(src)
   activeClients[src] = nil
-  lastRequest[src] = nil
-  InvalidateCache()
+  requestState[src] = nil
 end)
 
-AddEventHandler("esx:setJob", function(source, newJob, lastJob)
+AddEventHandler("esx:setJob", function(source)
   if type(source) ~= "number" then return end
-
-  if lastJob and lastJob.name then
-    DecrementJob(lastJob.name)
-  end
-  if newJob and newJob.name then
-    IncrementJob(newJob.name)
-    playerJobMap[source] = newJob.name
-  end
-
-  InvalidateCache()
+  upsertPlayer(source)
 end)
 
 AddEventHandler("playerConnecting", function()
-  InvalidateCache()
+  markPlayersDirty()
 end)
 
 AddEventHandler("onResourceStart", function(resourceName)
@@ -417,35 +912,53 @@ AddEventHandler("onResourceStart", function(resourceName)
 
   CreateThread(function()
     local attempts = 0
-    while not InitJobCounters() and attempts < 10 do
+    while not initJobCounters() and attempts < 10 do
       Wait(1000)
       attempts = attempts + 1
     end
 
     if attempts >= 10 then
-      if Config.Debug then
-        print("[^1esx_scoreboard^7] Critical: ESX.GetJobs() unavailable after 10 attempts")
-      end
+      print("[^1esx_scoreboard^7] Critical: ESX.GetJobs() unavailable after 10 attempts")
       return
     end
 
-    if Config.Debug then
-      print("[^2esx_scoreboard^7] Job counters initialized. Syncing existing players...")
-    end
-
-    for _, pid in ipairs(GetPlayers()) do
-      local src = tonumber(pid)
-      local xPlayer = src and ESX.GetPlayerFromId(src)
-      if xPlayer and xPlayer.job then
-        IncrementJob(xPlayer.job.name)
-        playerJobMap[src] = xPlayer.job.name
-      end
-    end
+    reconcilePlayers()
 
     if Config.Debug then
-      print("[^2esx_scoreboard^7] Scoreboard ready " .. #GetPlayers() .. " players")
+      print(("[^2esx_scoreboard^7] Scoreboard ready for %s players"):format(#GetPlayers()))
     end
   end)
+end)
+
+CreateThread(function()
+  while true do
+    Wait(getSummaryInterval())
+    if next(activeClients) then
+      ScoreboardModule.BroadcastUpdate()
+    end
+  end
+end)
+
+CreateThread(function()
+  while true do
+    Wait(getPageRefreshInterval())
+    if next(activeClients) then
+      refreshPings()
+      for src in pairs(activeClients) do
+        local state = requestState[src]
+        if state and state.pageRequest and (state.pageRevision ~= playersRevision or state.pingRevision ~= pingRevision) then
+          ScoreboardModule.SendPage(src, state.pageRequest)
+        end
+      end
+    end
+  end
+end)
+
+CreateThread(function()
+  while true do
+    Wait(getFullReconcileInterval())
+    reconcilePlayers()
+  end
 end)
 
 exports("AddActivity", ScoreboardModule.AddActivity)

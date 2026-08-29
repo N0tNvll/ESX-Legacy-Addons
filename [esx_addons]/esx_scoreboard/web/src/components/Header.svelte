@@ -13,7 +13,7 @@
 
 <header class="scoreboard-header">
   <div class="header-left">
-    {#if logoUrl && /^https?:\/\//.test(logoUrl)}
+    {#if logoUrl && /^https:\/\//.test(logoUrl)}
       <img src={logoUrl} alt="Server Logo" class="server-logo" />
     {:else}
       <div class="logo-placeholder">
