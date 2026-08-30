@@ -401,7 +401,7 @@ local function ProcessAmmoPurchase(source, xPlayer, weaponName, isBlackMarket, d
 			return
 		end
 
-		if not HasPlayerWeapon(xPlayer, weaponName) then
+		if not HasPlayerWeapon(source, xPlayer, weaponName) then
 			xPlayer.showNotification(TranslateCap('requires_weapon'))
 			cb(false)
 			return
@@ -422,7 +422,7 @@ local function ProcessAmmoPurchase(source, xPlayer, weaponName, isBlackMarket, d
 			return
 		end
 
-		if AddWeaponAmmo(xPlayer, weaponName, amount) then
+		if AddWeaponAmmo(source, xPlayer, weaponName, amount) then
 			cb(true)
 			return
 		end
@@ -451,7 +451,7 @@ local function ProcessComponentPurchase(source, xPlayer, weaponName, isBlackMark
 		return false
 	end
 
-	if HasWeaponComponent(xPlayer, weaponName, component.name) then
+	if HasWeaponComponent(source, xPlayer, weaponName, component.name) then
 		xPlayer.showNotification(TranslateCap('already_owned'))
 		return false
 	end
@@ -469,7 +469,7 @@ local function ProcessComponentPurchase(source, xPlayer, weaponName, isBlackMark
 		return false
 	end
 
-	if AddWeaponComponent(xPlayer, weaponName, component.name) and HasWeaponComponent(xPlayer, weaponName, component.name) then
+	if AddWeaponComponent(source, xPlayer, weaponName, component.name) and HasWeaponComponent(source, xPlayer, weaponName, component.name) then
 		return true
 	end
 
@@ -498,7 +498,7 @@ local function ProcessTintPurchase(source, xPlayer, weaponName, isBlackMarket, d
 		return false
 	end
 
-	if GetWeaponTint(xPlayer, weaponName) == tint.index then
+	if GetWeaponTint(source, xPlayer, weaponName) == tint.index then
 		xPlayer.showNotification(TranslateCap('equipped'))
 		return false
 	end
@@ -516,7 +516,7 @@ local function ProcessTintPurchase(source, xPlayer, weaponName, isBlackMarket, d
 		return false
 	end
 
-	if SetWeaponTint(xPlayer, weaponName, tint.index) and GetWeaponTint(xPlayer, weaponName) == tint.index then
+	if SetWeaponTint(source, xPlayer, weaponName, tint.index) and GetWeaponTint(source, xPlayer, weaponName) == tint.index then
 		return true
 	end
 
@@ -616,7 +616,7 @@ function ProcessWeaponUpgradePurchase(source, data, zone, cb)
 			return
 		end
 
-		if not HasPlayerWeapon(xPlayer, weaponName) then
+		if not HasPlayerWeapon(source, xPlayer, weaponName) then
 			xPlayer.showNotification(TranslateCap('requires_weapon'))
 			finish(false)
 			return

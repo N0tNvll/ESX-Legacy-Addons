@@ -21,6 +21,96 @@ local function GetInitialWeaponAmmo()
 	return math.max(math.floor(ammo), 0)
 end
 
+local function BuildOxWeaponMetadata(weaponName)
+	local metadata = {
+		components = {},
+		tint = 0
+	}
+
+	if WeaponShopWeaponUsesAmmo(weaponName) then
+		metadata.ammo = GetInitialWeaponAmmo()
+	end
+
+	return metadata
+end
+
+local function CopyOxWeaponMetadata(metadata)
+	local copy = {}
+
+	if type(metadata) == 'table' then
+		for key, value in pairs(metadata) do
+			copy[key] = value
+		end
+	end
+
+	if type(copy.components) ~= 'table' then
+		copy.components = {}
+	end
+
+	return copy
+end
+
+local function GetOxWeaponSlot(source, weaponName)
+	local ox_inventory = GetOxInventory()
+
+	if not ox_inventory or type(weaponName) ~= 'string' or weaponName == '' then
+		return nil
+	end
+
+	local searched, slots = pcall(function()
+		return ox_inventory:Search(source, 'slots', weaponName)
+	end)
+
+	if not searched or type(slots) ~= 'table' then
+		return nil
+	end
+
+	for _, slot in pairs(slots) do
+		if type(slot) == 'table' and slot.name == weaponName and slot.slot then
+			return slot
+		end
+	end
+
+	return nil
+end
+
+local function GetOxWeaponMetadata(source, weaponName)
+	local slot = GetOxWeaponSlot(source, weaponName)
+	if not slot then
+		return nil, nil
+	end
+
+	return slot, CopyOxWeaponMetadata(slot.metadata)
+end
+
+local function SetOxWeaponMetadata(source, slot, metadata)
+	local ox_inventory = GetOxInventory()
+
+	if not ox_inventory or not slot or type(metadata) ~= 'table' then
+		return false
+	end
+
+	local set, result = pcall(function()
+		return ox_inventory:SetMetadata(source, slot.slot, metadata)
+	end)
+
+	return set and result ~= false
+end
+
+local function TableContains(list, value)
+	if type(list) ~= 'table' or type(value) ~= 'string' or value == '' then
+		return false
+	end
+
+	for i = 1, #list do
+		if list[i] == value then
+			return true
+		end
+	end
+
+	return false
+end
+
 ---Checks if player can receive the weapon
 ---@param source number Player source
 ---@param xPlayer table ESX player object
@@ -35,6 +125,7 @@ function CanReceiveWeapon(source, xPlayer, weaponName)
 	end
 
 	if ox_inventory then
+		local metadata = BuildOxWeaponMetadata(weaponName)
 		local searched, count = pcall(function()
 			return ox_inventory:Search(source, 'count', weaponName)
 		end)
@@ -50,7 +141,7 @@ function CanReceiveWeapon(source, xPlayer, weaponName)
 		end
 
 		local checked, canCarry = pcall(function()
-			return ox_inventory:CanCarryItem(source, weaponName, 1)
+			return ox_inventory:CanCarryItem(source, weaponName, 1, metadata)
 		end)
 
 		if not checked or not canCarry then
@@ -90,8 +181,9 @@ function AddWeapon(source, xPlayer, weaponName)
 	end
 
 	if ox_inventory then
+		local metadata = BuildOxWeaponMetadata(weaponName)
 		local added, result = pcall(function()
-			return ox_inventory:AddItem(source, weaponName, 1)
+			return ox_inventory:AddItem(source, weaponName, 1, metadata)
 		end)
 
 		return added and result == true
@@ -105,12 +197,13 @@ function AddWeapon(source, xPlayer, weaponName)
 end
 
 ---Checks whether the player owns a weapon in the active non-ox loadout.
+---@param source number Player source
 ---@param xPlayer table ESX player object
 ---@param weaponName string
 ---@return boolean
-function HasPlayerWeapon(xPlayer, weaponName)
+function HasPlayerWeapon(source, xPlayer, weaponName)
 	if Config.OxInventory then
-		return false
+		return GetOxWeaponSlot(source, weaponName) ~= nil
 	end
 
 	if type(xPlayer.hasWeapon) ~= 'function' then
@@ -198,7 +291,12 @@ end
 ---@return number|nil ammo
 function GetPlayerWeaponAmmo(source, xPlayer, weaponName)
 	if Config.OxInventory then
-		return nil
+		local _, metadata = GetOxWeaponMetadata(source, weaponName)
+		if not metadata then
+			return nil
+		end
+
+		return NormalizeAmmoCount(metadata.ammo) or 0
 	end
 
 	local pedAmmo = GetPedWeaponAmmo(source, weaponName)
@@ -235,26 +333,40 @@ function CanAddWeaponAmmo(source, xPlayer, weaponName, amount, ammoState)
 
 	amount = math.floor(amount)
 
-	if type(ammoState) ~= 'table' then
-		xPlayer.showNotification(TranslateCap('unavailable'))
-		return false
+	local maxAmmo = type(ammoState) == 'table' and NormalizePositiveAmmoLimit(ammoState.maxAmmo) or nil
+	if Config.OxInventory and not maxAmmo then
+		maxAmmo = GetWeaponShopConfiguredAmmoLimit()
 	end
 
-	local maxAmmo = NormalizePositiveAmmoLimit(ammoState.maxAmmo)
 	if not maxAmmo then
 		xPlayer.showNotification(TranslateCap('unavailable'))
 		return false
 	end
 
-	local currentAmmo = NormalizeAmmoCount(ammoState.currentAmmo)
+	local currentAmmo
+	if Config.OxInventory then
+		currentAmmo = GetPlayerWeaponAmmo(source, xPlayer, weaponName)
+	else
+		if type(ammoState) ~= 'table' then
+			xPlayer.showNotification(TranslateCap('unavailable'))
+			return false
+		end
+
+		currentAmmo = NormalizeAmmoCount(ammoState.currentAmmo)
+		if not currentAmmo then
+			xPlayer.showNotification(TranslateCap('unavailable'))
+			return false
+		end
+
+		local serverAmmo = GetPlayerWeaponAmmo(source, xPlayer, weaponName)
+		if serverAmmo and serverAmmo > currentAmmo then
+			currentAmmo = serverAmmo
+		end
+	end
+
 	if not currentAmmo then
 		xPlayer.showNotification(TranslateCap('unavailable'))
 		return false
-	end
-
-	local serverAmmo = GetPlayerWeaponAmmo(source, xPlayer, weaponName)
-	if serverAmmo and serverAmmo > currentAmmo then
-		currentAmmo = serverAmmo
 	end
 
 	if currentAmmo >= maxAmmo or currentAmmo + amount > maxAmmo then
@@ -266,12 +378,24 @@ function CanAddWeaponAmmo(source, xPlayer, weaponName, amount, ammoState)
 end
 
 ---Adds ammo to an owned weapon.
+---@param source number Player source
 ---@param xPlayer table ESX player object
 ---@param weaponName string
 ---@param amount number
 ---@return boolean
-function AddWeaponAmmo(xPlayer, weaponName, amount)
-	if Config.OxInventory or type(xPlayer.addWeaponAmmo) ~= 'function' then
+function AddWeaponAmmo(source, xPlayer, weaponName, amount)
+	if Config.OxInventory then
+		local slot, metadata = GetOxWeaponMetadata(source, weaponName)
+		if not slot or not metadata then
+			return false
+		end
+
+		metadata.ammo = (NormalizeAmmoCount(metadata.ammo) or 0) + math.floor(tonumber(amount) or 0)
+
+		return SetOxWeaponMetadata(source, slot, metadata)
+	end
+
+	if type(xPlayer.addWeaponAmmo) ~= 'function' then
 		return false
 	end
 
@@ -283,12 +407,18 @@ function AddWeaponAmmo(xPlayer, weaponName, amount)
 end
 
 ---Checks whether a weapon component is already owned.
+---@param source number Player source
 ---@param xPlayer table ESX player object
 ---@param weaponName string
 ---@param componentName string
 ---@return boolean
-function HasWeaponComponent(xPlayer, weaponName, componentName)
-	if Config.OxInventory or type(xPlayer.hasWeaponComponent) ~= 'function' then
+function HasWeaponComponent(source, xPlayer, weaponName, componentName)
+	if Config.OxInventory then
+		local _, metadata = GetOxWeaponMetadata(source, weaponName)
+		return metadata and TableContains(metadata.components, componentName) or false
+	end
+
+	if type(xPlayer.hasWeaponComponent) ~= 'function' then
 		return false
 	end
 
@@ -300,12 +430,30 @@ function HasWeaponComponent(xPlayer, weaponName, componentName)
 end
 
 ---Adds a component to an owned weapon.
+---@param source number Player source
 ---@param xPlayer table ESX player object
 ---@param weaponName string
 ---@param componentName string
 ---@return boolean
-function AddWeaponComponent(xPlayer, weaponName, componentName)
-	if Config.OxInventory or type(xPlayer.addWeaponComponent) ~= 'function' then
+function AddWeaponComponent(source, xPlayer, weaponName, componentName)
+	if Config.OxInventory then
+		if not IsOxInventoryItemAvailable(componentName) then
+			return false
+		end
+
+		local slot, metadata = GetOxWeaponMetadata(source, weaponName)
+		if not slot or not metadata then
+			return false
+		end
+
+		if not TableContains(metadata.components, componentName) then
+			metadata.components[#metadata.components + 1] = componentName
+		end
+
+		return SetOxWeaponMetadata(source, slot, metadata)
+	end
+
+	if type(xPlayer.addWeaponComponent) ~= 'function' then
 		return false
 	end
 
@@ -317,11 +465,19 @@ function AddWeaponComponent(xPlayer, weaponName, componentName)
 end
 
 ---Gets the current tint index for an owned weapon.
+---@param source number Player source
 ---@param xPlayer table ESX player object
 ---@param weaponName string
 ---@return number
-function GetWeaponTint(xPlayer, weaponName)
-	if Config.OxInventory or type(xPlayer.getWeaponTint) ~= 'function' then
+function GetWeaponTint(source, xPlayer, weaponName)
+	if Config.OxInventory then
+		local _, metadata = GetOxWeaponMetadata(source, weaponName)
+		local tintIndex = metadata and tonumber(metadata.tint) or 0
+
+		return tintIndex and math.max(math.floor(tintIndex), 0) or 0
+	end
+
+	if type(xPlayer.getWeaponTint) ~= 'function' then
 		return 0
 	end
 
@@ -333,12 +489,24 @@ function GetWeaponTint(xPlayer, weaponName)
 end
 
 ---Sets a tint on an owned weapon.
+---@param source number Player source
 ---@param xPlayer table ESX player object
 ---@param weaponName string
 ---@param tintIndex number
 ---@return boolean
-function SetWeaponTint(xPlayer, weaponName, tintIndex)
-	if Config.OxInventory or type(xPlayer.setWeaponTint) ~= 'function' then
+function SetWeaponTint(source, xPlayer, weaponName, tintIndex)
+	if Config.OxInventory then
+		local slot, metadata = GetOxWeaponMetadata(source, weaponName)
+		if not slot or not metadata then
+			return false
+		end
+
+		metadata.tint = math.max(math.floor(tonumber(tintIndex) or 0), 0)
+
+		return SetOxWeaponMetadata(source, slot, metadata)
+	end
+
+	if type(xPlayer.setWeaponTint) ~= 'function' then
 		return false
 	end
 

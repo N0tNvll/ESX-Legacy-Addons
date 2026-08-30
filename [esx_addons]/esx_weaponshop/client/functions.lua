@@ -114,9 +114,76 @@ local function NormalizeAmmoValue(value)
 	return math.max(math.floor(value), 0)
 end
 
+local function GetOxInventoryWeaponSlot(weaponName)
+	if not Config.OxInventory or GetResourceState('ox_inventory') ~= 'started' then
+		return nil
+	end
+
+	if type(weaponName) ~= 'string' or weaponName == '' then
+		return nil
+	end
+
+	local searched, slots = pcall(function()
+		return exports.ox_inventory:Search('slots', weaponName)
+	end)
+
+	if not searched or type(slots) ~= 'table' then
+		return nil
+	end
+
+	for _, slot in pairs(slots) do
+		if type(slot) == 'table' and slot.name == weaponName and slot.slot then
+			return slot
+		end
+	end
+
+	return nil
+end
+
+local function BuildOxInventoryWeaponState(weaponName)
+	local state = {
+		owned = false,
+		ammo = 0,
+		tintIndex = 0,
+		components = {}
+	}
+
+	local slot = GetOxInventoryWeaponSlot(weaponName)
+	if not slot then
+		return state
+	end
+
+	local metadata = type(slot.metadata) == 'table' and slot.metadata or {}
+	state.owned = true
+	state.ammo = NormalizeAmmoValue(metadata.ammo) or 0
+	state.tintIndex = NormalizeAmmoValue(metadata.tint) or 0
+
+	if type(metadata.components) == 'table' then
+		for i = 1, #metadata.components do
+			if type(metadata.components[i]) == 'string' then
+				state.components[#state.components + 1] = metadata.components[i]
+			end
+		end
+	end
+
+	return state
+end
+
 local function GetWeaponAmmoState(weaponName)
 	if type(weaponName) ~= 'string' or weaponName == '' then
 		return nil
+	end
+
+	if Config.OxInventory then
+		local state = BuildOxInventoryWeaponState(weaponName)
+		if not state.owned then
+			return nil
+		end
+
+		return {
+			currentAmmo = state.ammo,
+			maxAmmo = GetWeaponShopAmmoLimit(weaponName) or GetWeaponShopConfiguredAmmoLimit()
+		}
 	end
 
 	local ped = PlayerPedId()
@@ -149,7 +216,7 @@ local function BuildWeaponState(weaponName, upgrades)
 	}
 
 	if Config.OxInventory then
-		return state
+		return BuildOxInventoryWeaponState(weaponName)
 	end
 
 	local ped = PlayerPedId()

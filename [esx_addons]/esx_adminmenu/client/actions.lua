@@ -456,6 +456,17 @@ local function watchGodmodeVehicle()
 	end)
 end
 
+local function watchGodmodePed()
+	startToggleLoop("godmodePed", function()
+		return godmodeActive
+	end, 500, function()
+		SetPlayerInvincible(PlayerId(), true)
+		SetEntityInvincible(PlayerPedId(), true)
+	end, function()
+		restoreInvincibility()
+	end)
+end
+
 local function watchInvisibleVehicle()
 	startToggleLoop("invisibleVehicle", function()
 		return invisibleActive
@@ -637,7 +648,10 @@ function ClientActions.ToggleGodmode()
 	applyGodmodeVehicle(vehicle)
 
 	if godmodeActive then
+		watchGodmodePed()
 		watchGodmodeVehicle()
+	else
+		restoreInvincibility()
 	end
 
 	return godmodeActive
@@ -1218,6 +1232,7 @@ RegisterNetEvent("esx:onPlayerSpawn", function()
 	local ped = PlayerPedId()
 
 	if godmodeActive then
+		SetPlayerInvincible(PlayerId(), true)
 		SetEntityInvincible(ped, true)
 	end
 

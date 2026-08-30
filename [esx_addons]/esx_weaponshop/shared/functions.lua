@@ -33,7 +33,15 @@ end
 ---Checks whether weapon upgrades are usable with the active inventory backend.
 ---@return boolean supported
 function AreWeaponShopUpgradesSupported()
-	return Config.WeaponShopUpgrades and Config.WeaponShopUpgrades.Enabled == true and not Config.OxInventory
+	if not Config.WeaponShopUpgrades or Config.WeaponShopUpgrades.Enabled ~= true then
+		return false
+	end
+
+	if Config.OxInventory then
+		return GetResourceState('ox_inventory') == 'started'
+	end
+
+	return true
 end
 
 local function NormalizePositiveInteger(value)
@@ -55,6 +63,90 @@ local function NormalizeInteger(value)
 	end
 
 	return math.floor(value)
+end
+
+---Gets the configured metadata ammo ceiling for ox_inventory weapons.
+---@return number|nil maxAmmo
+function GetWeaponShopConfiguredAmmoLimit()
+	local ammoConfig = Config.WeaponShopUpgrades and Config.WeaponShopUpgrades.Ammo or {}
+
+	return NormalizePositiveInteger(ammoConfig.MaxTotal)
+		or NormalizePositiveInteger(ammoConfig.MaxAmount)
+end
+
+local function IsOxInventoryActive()
+	return Config.OxInventory == true and GetResourceState('ox_inventory') == 'started'
+end
+
+local function GetOxInventoryItem(itemName)
+	if not IsOxInventoryActive() or type(itemName) ~= 'string' or itemName == '' then
+		return nil
+	end
+
+	local ok, item = pcall(function()
+		return exports.ox_inventory:Items(itemName)
+	end)
+
+	return ok and type(item) == 'table' and item or nil
+end
+
+---Checks whether an ox_inventory item exists.
+---@param itemName string
+---@return boolean
+function IsOxInventoryItemAvailable(itemName)
+	return GetOxInventoryItem(itemName) ~= nil
+end
+
+---Checks whether a weapon should carry ammo in ox_inventory metadata.
+---@param weaponName string
+---@param weapon table|nil
+---@return boolean
+function WeaponShopWeaponUsesAmmo(weaponName, weapon)
+	weapon = weapon or GetWeaponConfig(weaponName)
+
+	if weapon and weapon.throwable then
+		return false
+	end
+
+	if IsOxInventoryActive() then
+		local oxItem = GetOxInventoryItem(weaponName)
+		if oxItem and oxItem.ammoname then
+			return true
+		end
+	end
+
+	return weapon and type(weapon.ammo) == 'table' or false
+end
+
+local function ResolveOxComponentItem(component)
+	local componentConfig = Config.WeaponShopUpgrades and Config.WeaponShopUpgrades.Components or {}
+	local byHash = componentConfig.OxItemsByHash or {}
+	local byName = componentConfig.OxItemsByName or {}
+	local componentHash = type(component) == 'table' and tonumber(component.hash) or nil
+	local componentName = type(component) == 'table' and component.name or nil
+
+	return (componentHash and byHash[componentHash]) or (componentName and byName[componentName]) or nil
+end
+
+local function ResolveWeaponShopComponentName(component)
+	if type(component) ~= 'table' or type(component.name) ~= 'string' or component.name == '' then
+		return nil
+	end
+
+	if not Config.OxInventory then
+		return component.name
+	end
+
+	local oxComponentName = ResolveOxComponentItem(component)
+	if type(oxComponentName) ~= 'string' or oxComponentName == '' then
+		return nil
+	end
+
+	if not IsOxInventoryItemAvailable(oxComponentName) then
+		return nil
+	end
+
+	return oxComponentName
 end
 
 local function NormalizeAmmoNativeResult(first, second)
@@ -220,15 +312,17 @@ function BuildWeaponUpgrades(weaponName)
 	local upgradeConfig = Config.WeaponShopUpgrades
 	local ammoConfig = upgradeConfig.Ammo or {}
 
-	if ammoConfig.Enabled ~= false and type(weapon.ammo) == 'table' and not weapon.throwable then
+	if ammoConfig.Enabled ~= false and WeaponShopWeaponUsesAmmo(weaponName, weapon) then
+		local ammoLabel = type(weapon.ammo) == 'table' and weapon.ammo.label or TranslateCap('upgrade_ammo')
+
 		upgrades.ammo = {
-			label = weapon.ammo.label or TranslateCap('upgrade_ammo'),
+			label = ammoLabel,
 			pricePerRound = tonumber(ammoConfig.PricePerRound) or 0,
 			defaultAmount = tonumber(ammoConfig.DefaultAmount) or 30,
 			minAmount = tonumber(ammoConfig.MinAmount) or 1,
 			maxAmount = tonumber(ammoConfig.MaxAmount) or 250,
 			quickAmounts = ammoConfig.QuickAmounts or { 30, 60, 120 },
-			maxAmmo = GetWeaponShopAmmoLimit(weaponName)
+			maxAmmo = GetWeaponShopAmmoLimit(weaponName) or (Config.OxInventory and GetWeaponShopConfiguredAmmoLimit() or nil)
 		}
 	end
 
@@ -240,9 +334,11 @@ function BuildWeaponUpgrades(weaponName)
 
 			if type(componentName) == 'string' and not (componentConfig.Blacklisted and componentConfig.Blacklisted[componentName]) then
 				local price = GetComponentPrice(componentName, weaponName)
-				if price > 0 then
+				local shopComponentName = ResolveWeaponShopComponentName(component)
+				if price > 0 and shopComponentName then
 					upgrades.components[#upgrades.components + 1] = {
-						name = componentName,
+						name = shopComponentName,
+						esxName = componentName,
 						label = component.label or componentName,
 						price = price
 					}

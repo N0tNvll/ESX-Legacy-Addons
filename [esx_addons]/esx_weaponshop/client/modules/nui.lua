@@ -50,7 +50,7 @@ local function SyncBoughtWeaponToPed(weaponName)
 end
 
 local function BuildBoughtWeaponState(weaponName)
-	local ammo = GetInitialWeaponAmmo()
+	local ammo = WeaponShopWeaponUsesAmmo(weaponName) and GetInitialWeaponAmmo() or 0
 	local ped = PlayerPedId()
 
 	if ped and ped ~= 0 then
@@ -153,6 +153,8 @@ local function BuildBoughtUpgradeState(data)
 
 	if data.action == 'component' then
 		AddComponentToState(state, data.componentName)
+	elseif data.action == 'ammo' then
+		state.ammo = math.max((NormalizeUiInteger(state.ammo) or 0) + (NormalizeUiInteger(data.amount) or 0), 0)
 	elseif data.action == 'tint' then
 		state.tintIndex = NormalizeUiInteger(data.tintIndex) or state.tintIndex
 	end
