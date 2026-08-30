@@ -50,6 +50,23 @@ local function SyncBoughtWeaponToPed(weaponName)
 end
 
 local function BuildBoughtWeaponState(weaponName)
+	if Config.OxInventory and type(BuildCurrentShopWeaponState) == 'function' then
+		local state = BuildCurrentShopWeaponState(weaponName)
+		local hadWeaponState = type(state) == 'table' and state.owned == true
+
+		state = type(state) == 'table' and state or {}
+		state.owned = true
+		state.ammo = NormalizeUiInteger(state.ammo) or 0
+		state.tintIndex = NormalizeUiInteger(state.tintIndex) or 0
+		state.components = type(state.components) == 'table' and state.components or {}
+
+		if not hadWeaponState and WeaponShopWeaponUsesAmmo(weaponName) then
+			state.ammo = state.ammo + GetInitialWeaponAmmo()
+		end
+
+		return state
+	end
+
 	local ammo = WeaponShopWeaponUsesAmmo(weaponName) and GetInitialWeaponAmmo() or 0
 	local ped = PlayerPedId()
 

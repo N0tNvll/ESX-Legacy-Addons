@@ -114,6 +114,22 @@ local function NormalizeAmmoValue(value)
 	return math.max(math.floor(value), 0)
 end
 
+local function GetOxInventoryItemCount(itemName)
+	if not Config.OxInventory or GetResourceState('ox_inventory') ~= 'started' then
+		return 0
+	end
+
+	if type(itemName) ~= 'string' or itemName == '' then
+		return 0
+	end
+
+	local searched, count = pcall(function()
+		return exports.ox_inventory:Search('count', itemName)
+	end)
+
+	return searched and NormalizeAmmoValue(count) or 0
+end
+
 local function GetOxInventoryWeaponSlot(weaponName)
 	if not Config.OxInventory or GetResourceState('ox_inventory') ~= 'started' then
 		return nil
@@ -149,14 +165,23 @@ local function BuildOxInventoryWeaponState(weaponName)
 	}
 
 	local slot = GetOxInventoryWeaponSlot(weaponName)
+	local ammoItemName = GetOxWeaponAmmoItem(weaponName)
+
+	if ammoItemName then
+		state.ammo = GetOxInventoryItemCount(ammoItemName)
+	end
+
 	if not slot then
 		return state
 	end
 
 	local metadata = type(slot.metadata) == 'table' and slot.metadata or {}
 	state.owned = true
-	state.ammo = NormalizeAmmoValue(metadata.ammo) or 0
 	state.tintIndex = NormalizeAmmoValue(metadata.tint) or 0
+
+	if not ammoItemName then
+		state.ammo = NormalizeAmmoValue(metadata.ammo) or 0
+	end
 
 	if type(metadata.components) == 'table' then
 		for i = 1, #metadata.components do

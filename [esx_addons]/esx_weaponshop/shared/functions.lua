@@ -65,7 +65,7 @@ local function NormalizeInteger(value)
 	return math.floor(value)
 end
 
----Gets the configured metadata ammo ceiling for ox_inventory weapons.
+---Gets the configured inventory ammo ceiling for ox_inventory weapons.
 ---@return number|nil maxAmmo
 function GetWeaponShopConfiguredAmmoLimit()
 	local ammoConfig = Config.WeaponShopUpgrades and Config.WeaponShopUpgrades.Ammo or {}
@@ -97,7 +97,25 @@ function IsOxInventoryItemAvailable(itemName)
 	return GetOxInventoryItem(itemName) ~= nil
 end
 
----Checks whether a weapon should carry ammo in ox_inventory metadata.
+---Gets the ox_inventory ammo item used by a weapon.
+---@param weaponName string
+---@return string|nil ammoItemName
+function GetOxWeaponAmmoItem(weaponName)
+	local oxItem = GetOxInventoryItem(weaponName)
+	local ammoItemName = oxItem and oxItem.ammoname
+
+	if type(ammoItemName) ~= 'string' or ammoItemName == '' then
+		return nil
+	end
+
+	if not IsOxInventoryItemAvailable(ammoItemName) then
+		return nil
+	end
+
+	return ammoItemName
+end
+
+---Checks whether a weapon uses ammo in the active inventory backend.
 ---@param weaponName string
 ---@param weapon table|nil
 ---@return boolean
@@ -109,10 +127,7 @@ function WeaponShopWeaponUsesAmmo(weaponName, weapon)
 	end
 
 	if IsOxInventoryActive() then
-		local oxItem = GetOxInventoryItem(weaponName)
-		if oxItem and oxItem.ammoname then
-			return true
-		end
+		return GetOxWeaponAmmoItem(weaponName) ~= nil
 	end
 
 	return weapon and type(weapon.ammo) == 'table' or false

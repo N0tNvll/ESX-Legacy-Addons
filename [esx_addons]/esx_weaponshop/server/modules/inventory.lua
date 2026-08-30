@@ -21,6 +21,17 @@ local function GetInitialWeaponAmmo()
 	return math.max(math.floor(ammo), 0)
 end
 
+local function GetInitialOxWeaponAmmoItem(weaponName)
+	local ammoItemName = GetOxWeaponAmmoItem(weaponName)
+	local amount = GetInitialWeaponAmmo()
+
+	if not ammoItemName or amount <= 0 then
+		return nil, 0
+	end
+
+	return ammoItemName, amount
+end
+
 local function BuildOxWeaponMetadata(weaponName)
 	local metadata = {
 		components = {},
@@ -28,7 +39,7 @@ local function BuildOxWeaponMetadata(weaponName)
 	}
 
 	if WeaponShopWeaponUsesAmmo(weaponName) then
-		metadata.ammo = GetInitialWeaponAmmo()
+		metadata.ammo = 0
 	end
 
 	return metadata
@@ -97,6 +108,65 @@ local function SetOxWeaponMetadata(source, slot, metadata)
 	return set and result ~= false
 end
 
+local function GetOxItemCount(source, itemName)
+	local ox_inventory = GetOxInventory()
+
+	if not ox_inventory or type(itemName) ~= 'string' or itemName == '' then
+		return nil
+	end
+
+	local searched, count = pcall(function()
+		return ox_inventory:Search(source, 'count', itemName)
+	end)
+
+	return searched and type(count) == 'number' and count or nil
+end
+
+local function CanCarryOxItem(source, itemName, count, metadata)
+	local ox_inventory = GetOxInventory()
+	count = tonumber(count)
+
+	if not ox_inventory or type(itemName) ~= 'string' or itemName == '' or not count or count <= 0 then
+		return false
+	end
+
+	local checked, canCarry = pcall(function()
+		return ox_inventory:CanCarryItem(source, itemName, math.floor(count), metadata)
+	end)
+
+	return checked and canCarry == true
+end
+
+local function AddOxItem(source, itemName, count, metadata)
+	local ox_inventory = GetOxInventory()
+	count = tonumber(count)
+
+	if not ox_inventory or type(itemName) ~= 'string' or itemName == '' or not count or count <= 0 then
+		return false
+	end
+
+	local added, result = pcall(function()
+		return ox_inventory:AddItem(source, itemName, math.floor(count), metadata)
+	end)
+
+	return added and result == true
+end
+
+local function RemoveOxItem(source, itemName, count, metadata)
+	local ox_inventory = GetOxInventory()
+	count = tonumber(count)
+
+	if not ox_inventory or type(itemName) ~= 'string' or itemName == '' or not count or count <= 0 then
+		return false
+	end
+
+	local removed, result = pcall(function()
+		return ox_inventory:RemoveItem(source, itemName, math.floor(count), metadata)
+	end)
+
+	return removed and result ~= false
+end
+
 local function TableContains(list, value)
 	if type(list) ~= 'table' or type(value) ~= 'string' or value == '' then
 		return false
@@ -126,6 +196,7 @@ function CanReceiveWeapon(source, xPlayer, weaponName)
 
 	if ox_inventory then
 		local metadata = BuildOxWeaponMetadata(weaponName)
+		local ammoItemName, initialAmmo = GetInitialOxWeaponAmmoItem(weaponName)
 		local searched, count = pcall(function()
 			return ox_inventory:Search(source, 'count', weaponName)
 		end)
@@ -140,11 +211,12 @@ function CanReceiveWeapon(source, xPlayer, weaponName)
 			return false
 		end
 
-		local checked, canCarry = pcall(function()
-			return ox_inventory:CanCarryItem(source, weaponName, 1, metadata)
-		end)
+		if not CanCarryOxItem(source, weaponName, 1, metadata) then
+			xPlayer.showNotification(TranslateCap('cannot_carry'))
+			return false
+		end
 
-		if not checked or not canCarry then
+		if initialAmmo > 0 and not CanCarryOxItem(source, ammoItemName, initialAmmo) then
 			xPlayer.showNotification(TranslateCap('cannot_carry'))
 			return false
 		end
@@ -182,11 +254,18 @@ function AddWeapon(source, xPlayer, weaponName)
 
 	if ox_inventory then
 		local metadata = BuildOxWeaponMetadata(weaponName)
-		local added, result = pcall(function()
-			return ox_inventory:AddItem(source, weaponName, 1, metadata)
-		end)
+		local ammoItemName, initialAmmo = GetInitialOxWeaponAmmoItem(weaponName)
 
-		return added and result == true
+		if not AddOxItem(source, weaponName, 1, metadata) then
+			return false
+		end
+
+		if initialAmmo > 0 and not AddOxItem(source, ammoItemName, initialAmmo) then
+			RemoveOxItem(source, weaponName, 1)
+			return false
+		end
+
+		return true
 	end
 
 	local added = pcall(function()
@@ -291,12 +370,12 @@ end
 ---@return number|nil ammo
 function GetPlayerWeaponAmmo(source, xPlayer, weaponName)
 	if Config.OxInventory then
-		local _, metadata = GetOxWeaponMetadata(source, weaponName)
-		if not metadata then
+		local ammoItemName = GetOxWeaponAmmoItem(weaponName)
+		if not ammoItemName then
 			return nil
 		end
 
-		return NormalizeAmmoCount(metadata.ammo) or 0
+		return NormalizeAmmoCount(GetOxItemCount(source, ammoItemName)) or 0
 	end
 
 	local pedAmmo = GetPedWeaponAmmo(source, weaponName)
@@ -333,10 +412,34 @@ function CanAddWeaponAmmo(source, xPlayer, weaponName, amount, ammoState)
 
 	amount = math.floor(amount)
 
-	local maxAmmo = type(ammoState) == 'table' and NormalizePositiveAmmoLimit(ammoState.maxAmmo) or nil
-	if Config.OxInventory and not maxAmmo then
-		maxAmmo = GetWeaponShopConfiguredAmmoLimit()
+	if Config.OxInventory then
+		local ammoItemName = GetOxWeaponAmmoItem(weaponName)
+		if not ammoItemName then
+			xPlayer.showNotification(TranslateCap('unavailable'))
+			return false
+		end
+
+		local currentAmmo = NormalizeAmmoCount(GetOxItemCount(source, ammoItemName))
+		if not currentAmmo then
+			xPlayer.showNotification(TranslateCap('unavailable'))
+			return false
+		end
+
+		local maxAmmo = GetWeaponShopConfiguredAmmoLimit()
+		if maxAmmo and (currentAmmo >= maxAmmo or currentAmmo + amount > maxAmmo) then
+			xPlayer.showNotification(TranslateCap('ammo_full'))
+			return false
+		end
+
+		if not CanCarryOxItem(source, ammoItemName, amount) then
+			xPlayer.showNotification(TranslateCap('cannot_carry'))
+			return false
+		end
+
+		return true
 	end
+
+	local maxAmmo = type(ammoState) == 'table' and NormalizePositiveAmmoLimit(ammoState.maxAmmo) or nil
 
 	if not maxAmmo then
 		xPlayer.showNotification(TranslateCap('unavailable'))
@@ -344,24 +447,20 @@ function CanAddWeaponAmmo(source, xPlayer, weaponName, amount, ammoState)
 	end
 
 	local currentAmmo
-	if Config.OxInventory then
-		currentAmmo = GetPlayerWeaponAmmo(source, xPlayer, weaponName)
-	else
-		if type(ammoState) ~= 'table' then
-			xPlayer.showNotification(TranslateCap('unavailable'))
-			return false
-		end
+	if type(ammoState) ~= 'table' then
+		xPlayer.showNotification(TranslateCap('unavailable'))
+		return false
+	end
 
-		currentAmmo = NormalizeAmmoCount(ammoState.currentAmmo)
-		if not currentAmmo then
-			xPlayer.showNotification(TranslateCap('unavailable'))
-			return false
-		end
+	currentAmmo = NormalizeAmmoCount(ammoState.currentAmmo)
+	if not currentAmmo then
+		xPlayer.showNotification(TranslateCap('unavailable'))
+		return false
+	end
 
-		local serverAmmo = GetPlayerWeaponAmmo(source, xPlayer, weaponName)
-		if serverAmmo and serverAmmo > currentAmmo then
-			currentAmmo = serverAmmo
-		end
+	local serverAmmo = GetPlayerWeaponAmmo(source, xPlayer, weaponName)
+	if serverAmmo and serverAmmo > currentAmmo then
+		currentAmmo = serverAmmo
 	end
 
 	if not currentAmmo then
@@ -385,14 +484,12 @@ end
 ---@return boolean
 function AddWeaponAmmo(source, xPlayer, weaponName, amount)
 	if Config.OxInventory then
-		local slot, metadata = GetOxWeaponMetadata(source, weaponName)
-		if not slot or not metadata then
+		local ammoItemName = GetOxWeaponAmmoItem(weaponName)
+		if not ammoItemName then
 			return false
 		end
 
-		metadata.ammo = (NormalizeAmmoCount(metadata.ammo) or 0) + math.floor(tonumber(amount) or 0)
-
-		return SetOxWeaponMetadata(source, slot, metadata)
+		return AddOxItem(source, ammoItemName, amount)
 	end
 
 	if type(xPlayer.addWeaponAmmo) ~= 'function' then
