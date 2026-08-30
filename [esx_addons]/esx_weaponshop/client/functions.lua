@@ -178,6 +178,13 @@ local function BuildWeaponState(weaponName, upgrades)
 	return state
 end
 
+---Builds the current weapon state for direct NUI refreshes.
+---@param weaponName string
+---@return table state
+function BuildCurrentShopWeaponState(weaponName)
+	return BuildWeaponState(weaponName, BuildWeaponUpgrades(weaponName))
+end
+
 ---Builds NUI item list for a zone
 ---@param zone string
 ---@return table

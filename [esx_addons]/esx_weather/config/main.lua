@@ -15,7 +15,7 @@
 ---@field Time TimeConfig
 
 Config = {
-    debug       = true,
+    debug       = false,
     panelCommand = "weatherpanel",
     AdminGroups = {
         admin = true,

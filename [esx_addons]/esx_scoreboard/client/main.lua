@@ -1,7 +1,7 @@
 --- @module client.main
 --- Main client entry point for the scoreboard resource
 
-local ScoreboardModule = xLib.require "client.module.main"
+local ScoreboardModule = xLib.require "@esx_scoreboard.client.module.main"
 
 local RESOURCE_NAME <const> = GetCurrentResourceName()
 

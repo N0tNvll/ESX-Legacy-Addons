@@ -22,6 +22,49 @@ const EventHandlers = (() => {
     };
 
     /**
+     * Closes a custom dropdown and resets transient layout classes
+     * @param {HTMLElement} dropdown - Dropdown root element
+     * @returns {void}
+     */
+    const closeDropdown = (dropdown) => {
+        dropdown.classList.remove('active', 'drop-up');
+
+        const card = dropdown.closest('.zone-card');
+        if (card) card.classList.remove('dropdown-active');
+    };
+
+    /**
+     * Chooses the dropdown opening direction based on visible space
+     * @param {HTMLElement} dropdown - Dropdown root element
+     * @returns {void}
+     */
+    const updateDropdownDirection = (dropdown) => {
+        const trigger = dropdown.querySelector('.custom-select-trigger');
+        const menu = dropdown.querySelector('.custom-select-dropdown');
+
+        if (!trigger || !menu) return;
+
+        dropdown.classList.remove('drop-up');
+
+        const modalBody = dropdown.closest('.modal-body');
+        const bounds = modalBody ? modalBody.getBoundingClientRect() : {
+            top: 0,
+            bottom: window.innerHeight
+        };
+        const triggerRect = trigger.getBoundingClientRect();
+        const style = window.getComputedStyle(menu);
+        const maxHeight = parseFloat(style.maxHeight);
+        const menuHeight = Number.isFinite(maxHeight) ? Math.min(menu.scrollHeight, maxHeight) : menu.scrollHeight;
+        const gap = 4;
+        const spaceBelow = bounds.bottom - triggerRect.bottom - gap;
+        const spaceAbove = triggerRect.top - bounds.top - gap;
+
+        if (spaceBelow < menuHeight && spaceAbove > spaceBelow) {
+            dropdown.classList.add('drop-up');
+        }
+    };
+
+    /**
      * Handle custom dropdown toggle
      * @param {HTMLElement} trigger - Dropdown trigger element
      * @returns {void}
@@ -34,21 +77,20 @@ const EventHandlers = (() => {
 
         document.querySelectorAll('.custom-select.active').forEach(el => {
             if (el !== dropdown) {
-                el.classList.remove('active');
-                const otherCard = el.closest('.zone-card');
-                if (otherCard) otherCard.classList.remove('dropdown-active');
+                closeDropdown(el);
             }
         });
 
-        dropdown.classList.toggle('active');
+        const shouldOpen = !dropdown.classList.contains('active');
 
-        if (card) {
-            if (dropdown.classList.contains('active')) {
-                card.classList.add('dropdown-active');
-            } else {
-                card.classList.remove('dropdown-active');
-            }
+        if (!shouldOpen) {
+            closeDropdown(dropdown);
+            return;
         }
+
+        dropdown.classList.add('active');
+        if (card) card.classList.add('dropdown-active');
+        updateDropdownDirection(dropdown);
     };
 
     /**
@@ -64,7 +106,7 @@ const EventHandlers = (() => {
         const currentValue = dropdown.dataset.value;
 
         if (value === currentValue) {
-            dropdown.classList.remove('active');
+            closeDropdown(dropdown);
             return;
         }
 
@@ -124,7 +166,7 @@ const EventHandlers = (() => {
         });
         option.classList.add('selected');
 
-        dropdown.classList.remove('active');
+        closeDropdown(dropdown);
     };
 
     /**
@@ -158,9 +200,7 @@ const EventHandlers = (() => {
      */
     const closeAllDropdowns = () => {
         document.querySelectorAll('.custom-select.active').forEach(el => {
-            el.classList.remove('active');
-            const card = el.closest('.zone-card');
-            if (card) card.classList.remove('dropdown-active');
+            closeDropdown(el);
         });
     };
 
@@ -215,9 +255,7 @@ const EventHandlers = (() => {
         if (event.key === 'Escape' && State.isVisible) {
             const activeDropdown = document.querySelector('.custom-select.active');
             if (activeDropdown) {
-                activeDropdown.classList.remove('active');
-                const card = activeDropdown.closest('.zone-card');
-                if (card) card.classList.remove('dropdown-active');
+                closeDropdown(activeDropdown);
                 event.stopPropagation();
             } else {
                 handleClose();

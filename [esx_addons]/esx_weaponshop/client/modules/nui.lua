@@ -69,6 +69,97 @@ local function BuildBoughtWeaponState(weaponName)
 	}
 end
 
+local function GetWeaponComponentData(weaponName, componentName)
+	if type(weaponName) ~= 'string' or weaponName == '' or type(componentName) ~= 'string' or componentName == '' then
+		return nil
+	end
+
+	local ok, first, second = pcall(ESX.GetWeaponComponent, weaponName, componentName)
+	if not ok then
+		return nil
+	end
+
+	if type(second) == 'table' then
+		return second
+	end
+
+	return type(first) == 'table' and first or nil
+end
+
+local function AddComponentToState(state, componentName)
+	if type(state) ~= 'table' or type(componentName) ~= 'string' or componentName == '' then
+		return
+	end
+
+	if type(state.components) ~= 'table' then
+		state.components = {}
+	end
+
+	for i = 1, #state.components do
+		if state.components[i] == componentName then
+			return
+		end
+	end
+
+	state.components[#state.components + 1] = componentName
+end
+
+local function SyncBoughtUpgradeToPed(data)
+	if Config.OxInventory or type(data) ~= 'table' then
+		return
+	end
+
+	local weaponName = data.weaponName
+	if type(weaponName) ~= 'string' or weaponName == '' then
+		return
+	end
+
+	local ped = PlayerPedId()
+	if not ped or ped == 0 then
+		return
+	end
+
+	local weaponHash = joaat(weaponName)
+	if not HasPedGotWeapon(ped, weaponHash, false) then
+		return
+	end
+
+	if data.action == 'component' then
+		local component = GetWeaponComponentData(weaponName, data.componentName)
+
+		if component and component.hash and type(GiveWeaponComponentToPed) == 'function' then
+			GiveWeaponComponentToPed(ped, weaponHash, component.hash)
+		end
+	elseif data.action == 'tint' then
+		local tintIndex = NormalizeUiInteger(data.tintIndex)
+
+		if tintIndex and type(SetPedWeaponTintIndex) == 'function' then
+			SetPedWeaponTintIndex(ped, weaponHash, tintIndex)
+		end
+	end
+end
+
+local function BuildBoughtUpgradeState(data)
+	if type(data) ~= 'table' or type(data.weaponName) ~= 'string' or type(BuildCurrentShopWeaponState) ~= 'function' then
+		return nil
+	end
+
+	local state = BuildCurrentShopWeaponState(data.weaponName)
+	if type(state) ~= 'table' then
+		return nil
+	end
+
+	state.owned = true
+
+	if data.action == 'component' then
+		AddComponentToState(state, data.componentName)
+	elseif data.action == 'tint' then
+		state.tintIndex = NormalizeUiInteger(data.tintIndex) or state.tintIndex
+	end
+
+	return state
+end
+
 local function ApplyItemStateOverrides(items, stateOverrides)
 	if type(stateOverrides) ~= 'table' then
 		return
@@ -190,17 +281,26 @@ RegisterNUICallback('buyUpgrade', function(data, cb)
 		return
 	end
 
+	local shop = currentShop
+
 	xLib.callback('esx_weaponshop:buyUpgrade', false, function(bought)
 		if bought then
 			PlaySoundFrontend(-1, 'WEAPON_PURCHASE', 'HUD_AMMO_SHOP_SOUNDSET', false)
 			ESX.ShowNotification(TranslateCap('upgrade_bought'))
-			OpenNui(currentShop, 'shop', data.weaponName)
+			SyncBoughtUpgradeToPed(data)
+
+			if currentShop == shop then
+				local state = BuildBoughtUpgradeState(data)
+				OpenNui(shop, 'shop', data.weaponName, state and {
+					[data.weaponName] = state
+				} or nil)
+			end
 		else
 			PlaySoundFrontend(-1, 'ERROR', 'HUD_AMMO_SHOP_SOUNDSET', false)
 		end
 
 		cb({ ok = bought and true or false })
-	end, data, currentShop)
+	end, data, shop)
 end)
 
 -- License callback

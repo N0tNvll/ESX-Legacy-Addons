@@ -1,7 +1,7 @@
 --- @module client.module.main
 --- Client-side scoreboard module
 
-local ScoreboardClass = xLib.require "client.module.class"
+local ScoreboardClass = xLib.require "@esx_scoreboard.client.module.class"
 
 local ScoreboardModule = {}
 local currentScoreboard = nil

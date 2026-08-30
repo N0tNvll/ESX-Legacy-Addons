@@ -128,6 +128,12 @@
     transition: all var(--transition-normal);
 }
 
+.custom-select.drop-up .custom-select-dropdown {
+    top: auto;
+    bottom: calc(100% + 0.25rem);
+    transform: translateY(0.5rem);
+}
+
 .custom-select.active .custom-select-dropdown {
     opacity: 1;
     visibility: visible;
