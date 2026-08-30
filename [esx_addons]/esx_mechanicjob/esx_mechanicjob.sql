@@ -18,18 +18,18 @@ SET @mechanic_skin_male = '{"tshirt_1":15,"tshirt_2":0,"torso_1":243,"torso_2":5
 SET @mechanic_skin_female = '{"tshirt_1":1,"tshirt_2":0,"torso_1":251,"torso_2":5,"decals_1":0,"decals_2":0,"arms":6,"pants_1":97,"pants_2":5,"shoes_1":70,"shoes_2":0,"mask_1":0,"mask_2":0,"bproof_1":0,"bproof_2":0,"bags_1":0,"bags_2":0,"helmet_1":-1,"helmet_2":0,"glasses_1":-1,"glasses_2":0,"chain_1":0,"chain_2":0,"ears_1":-1,"ears_2":0}';
 
 INSERT INTO `job_grades` (job_name, grade, name, label, salary, skin_male, skin_female) VALUES
-	('mechanic',0,'recrue','Recrue',12,@mechanic_skin_male,@mechanic_skin_female),
+	('mechanic',0,'recrue','Recruit',12,@mechanic_skin_male,@mechanic_skin_female),
 	('mechanic',1,'novice','Novice',24,@mechanic_skin_male,@mechanic_skin_female),
-	('mechanic',2,'experimente','Experimente',36,@mechanic_skin_male,@mechanic_skin_female),
-	('mechanic',3,'chief',"Chef d\'équipe",48,@mechanic_skin_male,@mechanic_skin_female),
-	('mechanic',4,'boss','Patron',0,@mechanic_skin_male,@mechanic_skin_female)
+	('mechanic',2,'experimente','Experienced',36,@mechanic_skin_male,@mechanic_skin_female),
+	('mechanic',3,'chief','Team Lead',48,@mechanic_skin_male,@mechanic_skin_female),
+	('mechanic',4,'boss','Boss',0,@mechanic_skin_male,@mechanic_skin_female)
 ;
 
 INSERT INTO `items` (name, label, weight) VALUES
-	('gazbottle', 'bouteille de gaz', 2),
-	('fixtool', 'outils réparation', 2),
-	('carotool', 'outils carosserie', 2),
-	('blowpipe', 'Chalumeaux', 2),
-	('fixkit', 'Kit réparation', 3),
-	('carokit', 'Kit carosserie', 3)
+	('gazbottle', 'Gas bottle', 2),
+	('fixtool', 'Repair tools', 2),
+	('carotool', 'Bodywork tools', 2),
+	('blowpipe', 'Blowtorches', 2),
+	('fixkit', 'Repair kit', 3),
+	('carokit', 'Bodywork kit', 3)
 ;
