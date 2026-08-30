@@ -162,6 +162,11 @@ function OpenCloakroomMenu()
 			setUniform(data.current.uniform, playerPed)
 		elseif data.current.value == 'police_wear' then
 			xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
+				if type(skin) ~= 'table' then
+					setUniform(grade, playerPed)
+					return
+				end
+
 				local uniform = jobSkin and (skin.sex == 0 and jobSkin.skin_male or jobSkin.skin_female)
 
 				if type(uniform) == 'table' and next(uniform) then
@@ -1450,7 +1455,7 @@ xLib.addKeybind({
 			CurrentAction     = 'menu_boss_actions'
 			CurrentActionMsg  = TranslateCap('open_bossmenu')
 			CurrentActionData = {}
-		end, { wash = false }) -- disable washing money
+		end, { wash = false, uniforms = true }) -- disable washing money
 	elseif CurrentAction == 'remove_entity' then
 		DeleteEntity(CurrentActionData.entity)
 	end

@@ -389,7 +389,7 @@ local function createPlayerRecord(src, xPlayer)
     serverId = src,
     name = sanitizeString(playerName, MAX_NAME_LEN, "Unknown"),
     job = jobName,
-    jobLabel = getJobLabel(jobName, jobName),
+    jobLabel = sanitizeString(xPlayer.job.label or getJobLabel(jobName, jobName), MAX_GRADE_LEN, jobName),
     jobGrade = jobGrade,
     ping = GetPlayerPing(src) or 0,
     activity = ScoreboardModule.GetPlayerActivity(src)
@@ -415,6 +415,12 @@ local function upsertPlayer(src, xPlayer)
   if not previousJob or previousJob ~= record.job then
     incrementJob(record.job, record.jobLabel)
     playerJobMap[src] = record.job
+  else
+    local counter = ensureJobCounter(record.job, record.jobLabel)
+    if counter.label ~= record.jobLabel then
+      counter.label = record.jobLabel
+      summaryDirty = true
+    end
   end
 
   playersById[src] = record
@@ -899,6 +905,11 @@ AddEventHandler("playerDropped", function()
 end)
 
 AddEventHandler("esx:setJob", function(source)
+  if type(source) ~= "number" then return end
+  upsertPlayer(source)
+end)
+
+AddEventHandler("esx:jobDataRefreshed", function(source)
   if type(source) ~= "number" then return end
   upsertPlayer(source)
 end)

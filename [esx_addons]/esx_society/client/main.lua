@@ -14,7 +14,7 @@ function OpenBossMenu(society, close, options)
 				employees = true,
 				salary = true,
 				grades = true,
-				uniforms = true
+				uniforms = Config.EnableUniformManagement == true
 			}
 
 			for k,v in pairs(defaultOptions) do
@@ -275,7 +275,7 @@ function OpenManageSalaryMenu(society, options)
 		ESX.OpenContext("right", elements, function(menu,element)
 			local elements = {
 				{unselectable = true, icon = "fas fa-wallet", title = element.title, description = TranslateCap('change_salary_description'), value = element.value},
-				{icon = "fas fa-wallet", title = TranslateCap('amount_title'), input = true, inputType = "number", inputPlaceholder = TranslateCap('change_salary_placeholder'), inputMin = 1, inputMax = Config.MaxSalary, name = "gradesalary"},
+				{icon = "fas fa-wallet", title = TranslateCap('amount_title'), input = true, inputType = "number", inputPlaceholder = TranslateCap('change_salary_placeholder'), inputMin = 0, inputMax = Config.MaxSalary, name = "gradesalary"},
 				{icon = "fas fa-check", title = TranslateCap('confirm'), value = "confirm"}, 
 				{icon = "fas fa-arrow-left", title = TranslateCap('return'), value = "return"}
 			}

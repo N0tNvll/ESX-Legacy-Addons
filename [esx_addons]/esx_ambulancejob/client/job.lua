@@ -30,7 +30,7 @@ function OpenAmbulanceActionsMenu()
 		elseif element.value == 'boss_actions' then
 			TriggerEvent('esx_society:openBossMenu', 'ambulance', function(data, menu)
 				menu.close()
-			end, { wash = false })
+			end, { wash = false, uniforms = true })
 		end
 	end)
 end

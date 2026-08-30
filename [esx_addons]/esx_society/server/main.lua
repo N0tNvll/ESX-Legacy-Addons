@@ -5,6 +5,7 @@ end
 })
 local RegisteredSocieties = {}
 local SocietiesByName = {}
+local gradeUpdateLastAt = {}
 
 local function getValidAmount(amount)
 	amount = tonumber(amount)
@@ -18,6 +19,82 @@ local function getValidAmount(amount)
 	end
 
 	return amount
+end
+
+local function getValidSalary(salary)
+	salary = tonumber(salary)
+	if not salary or salary ~= math.floor(salary) then
+		return nil
+	end
+
+	if salary < 0 or salary > Config.MaxSalary then
+		return nil
+	end
+
+	return salary
+end
+
+local function getValidJobGradeLabel(label)
+	if type(label) ~= 'string' then
+		return nil
+	end
+
+	label = ESX.Math.Trim(label:gsub('[%c]', ' ')):sub(1, Config.MaxJobGradeLabelLength or 40)
+	label = ESX.Math.Trim(label)
+
+	if label == '' then
+		return nil
+	end
+
+	return label
+end
+
+local function decodeJsonObject(value, fallback)
+	if type(value) == 'table' then
+		return value
+	end
+
+	if type(value) ~= 'string' or value == '' then
+		return fallback
+	end
+
+	local ok, decoded = pcall(json.decode, value)
+	if not ok or type(decoded) ~= 'table' then
+		return fallback
+	end
+
+	return decoded
+end
+
+local function isGradeUpdateLimited(source, job, action)
+	local cooldown = Config.JobGradeUpdateCooldown or 1500
+	if cooldown <= 0 then
+		return false
+	end
+
+	local key = ('%s:%s:%s'):format(source, job, action)
+	local now = GetGameTimer()
+
+	if now - (gradeUpdateLastAt[key] or 0) < cooldown then
+		return true
+	end
+
+	gradeUpdateLastAt[key] = now
+	return false
+end
+
+local function refreshJobOrFallback(job)
+	if type(ESX.RefreshJob) == 'function' and ESX.RefreshJob(job) then
+		return true
+	end
+
+	print(('[^3WARNING^7] Failed to refresh job ^5%s^7, falling back to RefreshJobs!'):format(tostring(job)))
+
+	if type(ESX.RefreshJobs) == 'function' then
+		ESX.RefreshJobs()
+	end
+
+	return Jobs[job] ~= nil
 end
 
 local function isBoss(xPlayer)
@@ -97,11 +174,10 @@ end
 
 local function getValidJobGrade(job, grade)
 	grade = tonumber(grade)
-	if not grade then
+	if not grade or grade ~= math.floor(grade) then
 		return nil
 	end
 
-	grade = ESX.Math.Round(grade)
 	if not Jobs[job] or not Jobs[job].grades[tostring(grade)] then
 		return nil
 	end
@@ -496,27 +572,30 @@ xLib.callback.registerCompat('esx_society:setJobSalary', function(source, cb, jo
 	local xPlayer = ESX.Player(source)
 	local xPlayerJob = xPlayer and xPlayer.getJob()
 	grade = getValidJobGrade(job, grade)
-	salary = tonumber(salary)
-
-	if salary then
-		salary = math.floor(salary)
-	end
+	salary = getValidSalary(salary)
 
 	if not xPlayerJob or xPlayerJob.name ~= job or not Config.BossGrades[xPlayerJob.grade_name] or not grade then
 		print(('[^3WARNING^7] Player ^5%s^7 attempted to setJobSalary for ^5%s^7!'):format(source, job))
-		return cb()
+		return cb(false)
 	end
 
-	if not salary or salary < 0 or salary > Config.MaxSalary then
+	if not salary then
 		print(('[^3WARNING^7] Player ^5%s^7 attempted to setJobSalary over the config limit for ^5%s^7!'):format(source, job))
-		return cb()
+		return cb(false)
+	end
+
+	if tonumber(Jobs[job].grades[tostring(grade)].salary) == salary then
+		return cb(false)
+	end
+
+	if isGradeUpdateLimited(source, job, 'salary') then
+		return cb(false)
 	end
 
 	MySQL.update('UPDATE job_grades SET salary = ? WHERE job_name = ? AND grade = ?', {salary, job, grade}, function(rowsChanged)
-		if rowsChanged ~= 1 then return cb() end
+		if rowsChanged ~= 1 then return cb(false) end
 
-		ESX.RefreshJob(job)
-		cb()
+		cb(refreshJobOrFallback(job))
 	end)
 end)
 
@@ -524,58 +603,101 @@ xLib.callback.registerCompat('esx_society:setJobLabel', function(source, cb, job
 	local xPlayer = ESX.Player(source)
 	local xPlayerJob = xPlayer and xPlayer.getJob()
 	grade = getValidJobGrade(job, grade)
-	label = type(label) == 'string' and label:gsub('[%c]', ' '):sub(1, Config.MaxJobGradeLabelLength or 40) or ''
+	label = getValidJobGradeLabel(label)
 
-	if not xPlayerJob or xPlayerJob.name ~= job or not Config.BossGrades[xPlayerJob.grade_name] or not grade or label == '' then
+	if not xPlayerJob or xPlayerJob.name ~= job or not Config.BossGrades[xPlayerJob.grade_name] or not grade or not label then
 		print(('[^3WARNING^7] Player ^5%s^7 attempted to setJobLabel for ^5%s^7!'):format(source, job))
-		return cb()
+		return cb(false)
+	end
+
+	if Jobs[job].grades[tostring(grade)].label == label then
+		return cb(false)
+	end
+
+	if isGradeUpdateLimited(source, job, 'label') then
+		return cb(false)
 	end
 
 	MySQL.update('UPDATE job_grades SET label = ? WHERE job_name = ? AND grade = ?', {label, job, grade}, function(rowsChanged)
-		if rowsChanged ~= 1 then return cb() end
+		if rowsChanged ~= 1 then return cb(false) end
 
-		ESX.RefreshJob(job)
-		cb()
+		cb(refreshJobOrFallback(job))
 	end)
 end)
 
 local ALL_GRADES <const> = -1
-local UNIFORM_COMPONENT_MIN <const> = -1
-local UNIFORM_COMPONENT_MAX <const> = 2000
 local UNIFORM_COLUMNS <const> = {
 	[0] = 'skin_male',
 	[1] = 'skin_female'
 }
+local UNIFORM_PROP_DRAWABLES <const> = {
+	helmet_1 = true,
+	glasses_1 = true,
+	watches_1 = true,
+	bracelets_1 = true,
+	ears_1 = true
+}
 
 local lastUniformSaveAt = {}
+local uniformSaveInFlight = {}
+
+local function getUniformComponentBounds(component)
+	local limit = Config.UniformComponentLimits and Config.UniformComponentLimits[component]
+
+	if limit then
+		return limit.min or 0, limit.max or (Config.UniformDrawableMax or 2000)
+	end
+
+	if UNIFORM_PROP_DRAWABLES[component] then
+		return -1, Config.UniformPropMax or 255
+	end
+
+	if component:sub(-2) == '_2' then
+		return 0, Config.UniformTextureMax or 255
+	end
+
+	return 0, Config.UniformDrawableMax or 2000
+end
+
+local function getAuthoritativeSkinSex(xPlayer)
+	local identitySex = xPlayer.get('sex')
+	if type(identitySex) == 'string' then
+		identitySex = identitySex:lower()
+	end
+
+	if identitySex == 'm' or identitySex == 0 then
+		return 0
+	elseif identitySex == 'f' or identitySex == 1 then
+		return 1
+	end
+
+	local skin = decodeJsonObject(MySQL.scalar.await('SELECT skin FROM users WHERE identifier = ?', {xPlayer.getIdentifier()}), {})
+	if skin.sex == 0 or skin.sex == 1 then
+		return skin.sex
+	end
+
+	return nil
+end
 
 ---@param skin any
 ---@return table?
 local function getValidUniform(skin)
-	if type(skin) ~= 'table' then
+	if type(skin) ~= 'table' or (skin.sex ~= 0 and skin.sex ~= 1) then
 		return nil
 	end
 
 	local uniform = {}
-	local hasComponent = false
 
 	for i = 1, #Config.UniformComponents do
 		local component = Config.UniformComponents[i]
 		local value = skin[component]
+		local min, max = getUniformComponentBounds(component)
 
-		if value ~= nil then
-			if type(value) ~= 'number' or value ~= math.floor(value)
-				or value < UNIFORM_COMPONENT_MIN or value > UNIFORM_COMPONENT_MAX then
-				return nil
-			end
-
-			uniform[component] = math.floor(value)
-			hasComponent = true
+		if type(value) ~= 'number' or value ~= math.floor(value) or value < min or value > max then
+			return nil
 		end
-	end
 
-	if not hasComponent then
-		return nil
+		uniform[component] = value
 	end
 
 	return uniform
@@ -585,13 +707,7 @@ end
 ---@param uniform table
 ---@return boolean
 local function isSameUniform(storedUniform, uniform)
-	if type(storedUniform) == 'string' then
-		storedUniform = json.decode(storedUniform)
-	end
-
-	if type(storedUniform) ~= 'table' then
-		return false
-	end
+	storedUniform = decodeJsonObject(storedUniform, {})
 
 	for i = 1, #Config.UniformComponents do
 		local component = Config.UniformComponents[i]
@@ -616,15 +732,20 @@ xLib.callback.registerCompat('esx_society:setJobUniform', function(source, cb, j
 	local now = GetGameTimer()
 	local cooldownLeft = Config.UniformSaveCooldown - (now - (lastUniformSaveAt[job] or 0))
 
-	if cooldownLeft > 0 then
-		xPlayer.showNotification(TranslateCap('uniform_cooldown', math.ceil(cooldownLeft / 1000)))
+	if uniformSaveInFlight[job] or cooldownLeft > 0 then
+		xPlayer.showNotification(TranslateCap('uniform_cooldown', math.max(1, math.ceil(math.max(cooldownLeft, 0) / 1000))))
 		return cb(false)
 	end
 
-	local column = type(skin) == 'table' and UNIFORM_COLUMNS[skin.sex] or nil
 	local uniform = getValidUniform(skin)
+	local column = uniform and UNIFORM_COLUMNS[skin.sex] or nil
 
 	if not column or not uniform then
+		xPlayer.showNotification(TranslateCap('uniform_failed'))
+		return cb(false)
+	end
+
+	if getAuthoritativeSkinSex(xPlayer) ~= skin.sex then
 		xPlayer.showNotification(TranslateCap('uniform_failed'))
 		return cb(false)
 	end
@@ -678,15 +799,22 @@ xLib.callback.registerCompat('esx_society:setJobUniform', function(source, cb, j
 		parameters[#parameters + 1] = grade
 	end
 
-	lastUniformSaveAt[job] = now
+	uniformSaveInFlight[job] = true
 
 	MySQL.update(query, parameters, function(affectedRows)
+		uniformSaveInFlight[job] = nil
+
 		if not affectedRows or affectedRows == 0 then
 			xPlayer.showNotification(TranslateCap('uniform_failed'))
 			return cb(false)
 		end
 
-		ESX.RefreshJob(job)
+		if not refreshJobOrFallback(job) then
+			xPlayer.showNotification(TranslateCap('uniform_failed'))
+			return cb(false)
+		end
+
+		lastUniformSaveAt[job] = GetGameTimer()
 		xPlayer.showNotification(TranslateCap('uniform_saved', gradeLabel))
 		cb(true)
 	end)

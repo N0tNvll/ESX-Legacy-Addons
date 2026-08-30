@@ -50,9 +50,10 @@ end, {wash = false}) -- set custom options, e.g disable washing
 ```
 
 ## Uniform management
-- Boss grades (`Config.BossGrades`) get a `uniform management` entry in the boss menu: pick one grade or all grades and the outfit currently worn is saved as the uniform of that grade in `job_grades.skin_male` / `skin_female`, depending on the sex of the ped
-- Only the components listed in `Config.UniformComponents` are stored; `Config.UniformSaveCooldown` limits how often the uniforms of a job can be saved
-- Pass `uniforms = false` in the `options` of `esx_society:openBossMenu` to hide the entry
+- Set `Config.EnableUniformManagement = true` to show uniform management globally, or pass `uniforms = true` in the `options` of `esx_society:openBossMenu` for compatible jobs.
+- Boss grades (`Config.BossGrades`) can pick one grade or all grades and save the outfit currently worn into `job_grades.skin_male` / `skin_female`.
+- The server only accepts complete uniforms containing every component listed in `Config.UniformComponents`; `Config.UniformDrawableMax`, `Config.UniformTextureMax`, `Config.UniformPropMax` and `Config.UniformComponentLimits` control accepted values.
+- `Config.UniformSaveCooldown` limits how often the uniforms of a job can be saved.
 
 # Legal
 ### License

@@ -234,7 +234,7 @@ function OpenTaxiActionsMenu()
         elseif element.value == 'boss_actions' then
             TriggerEvent('esx_society:openBossMenu', 'taxi', function(data, menu)
                 menu.close()
-            end)
+            end, { uniforms = true })
         end
     end, function(menu)
         CurrentAction = 'taxi_actions_menu'

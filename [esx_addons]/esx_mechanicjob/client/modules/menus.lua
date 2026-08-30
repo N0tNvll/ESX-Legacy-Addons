@@ -147,7 +147,7 @@ function Mechanic.openActionsMenu()
 		elseif element.value == 'boss_actions' then
 			TriggerEvent('esx_society:openBossMenu', 'mechanic', function()
 				ESX.CloseContext()
-			end)
+			end, { uniforms = true })
 		end
 	end, function()
 		Mechanic.setCurrentAction('mechanic_actions_menu', TranslateCap('open_actions'), {})
