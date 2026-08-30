@@ -66,16 +66,30 @@ Config = {}
 --- Key to open the scoreboard (default: Z)
 Config.OpenKey = "Z"
 
---- Interval (ms) to refresh scoreboard data from the server
-Config.UpdateInterval = 5000
+--- Interval (ms) to broadcast summary counters to open clients
+Config.SummaryInterval = 10000
+
+--- Interval (ms) to refresh the visible player page
+Config.PageRefreshInterval = 15000
+
+--- Interval (ms) to refresh ping values server-side
+Config.PingRefreshInterval = 30000
+
+--- Minimum interval (ms) between player page/search/sort requests
+Config.PageRequestCooldown = 1500
+
+--- Player rows sent per page by default and absolute maximum
+Config.DefaultPageSize = 50
+Config.MaxPageSize = 100
+Config.MaxPageCacheEntries = 256
 
 --- Server display name shown in the scoreboard header
 Config.ServerName = "ESX Server"
 
 --- Max players displayed in the header (set to nil to use sv_maxclients convar)
-Config.MaxPlayers = 64
+Config.MaxPlayers = nil
 
---- Logo URL shown in the scoreboard header (set to "" to disable)
+--- HTTPS logo URL shown in the scoreboard header (set to "" to disable)
 Config.LogoUrl = ""
 
 --- Enable debug prints on resource start

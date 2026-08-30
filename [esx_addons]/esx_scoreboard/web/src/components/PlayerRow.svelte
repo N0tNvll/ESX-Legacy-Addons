@@ -1,7 +1,7 @@
 <script>
   import JobBadge from "./JobBadge.svelte"
 
-  let { serverId, name, job, jobGrade, group, ping, index } = $props()
+  let { serverId, name, job, jobLabel = "", jobGrade, ping, index } = $props()
 
   function getPingColor(pingValue) {
     if (pingValue < 60) return "#10B981"
@@ -9,17 +9,6 @@
     return "#EF4444"
   }
 
-  function getGroupInfo(groupName) {
-    const groups = {
-      admin: { label: "Admin", color: "#EF4444" },
-      mod: { label: "Mod", color: "#F59E0B" },
-      supporter: { label: "Supp", color: "#3B82F6" },
-      user: { label: "Player", color: "var(--light-color)" }
-    }
-    return groups[groupName.toLowerCase()] || groups.user
-  }
-
-  const groupInfo = $derived(getGroupInfo(group))
   const pingColor = $derived(getPingColor(ping))
   const isEven = $derived(index % 2 === 0)
 </script>
@@ -31,13 +20,10 @@
 
   <div class="col name">
     <span class="player-name">{name}</span>
-    {#if group.toLowerCase() !== "user"}
-      <span class="group-tag" style="color: {groupInfo.color}">{groupInfo.label}</span>
-    {/if}
   </div>
 
   <div class="col job">
-    <JobBadge {job} {jobGrade} />
+    <JobBadge {job} {jobLabel} {jobGrade} />
   </div>
 
   <div class="col ping">
@@ -112,18 +98,6 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  .group-tag {
-    font-size: 10px;
-    font-weight: 600;
-    padding: 1px 6px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-    flex-shrink: 0;
   }
 
   .ping-indicator {

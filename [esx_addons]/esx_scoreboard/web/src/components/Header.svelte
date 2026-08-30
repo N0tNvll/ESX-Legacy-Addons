@@ -13,12 +13,10 @@
 
 <header class="scoreboard-header">
   <div class="header-left">
-    {#if logoUrl && /^https?:\/\//.test(logoUrl)}
+    {#if logoUrl && /^https:\/\//.test(logoUrl)}
       <img src={logoUrl} alt="Server Logo" class="server-logo" />
     {:else}
-      <div class="logo-placeholder">
-        <span>ESX</span>
-      </div>
+      <img src="./esx-logo.png" alt="ESX Logo" class="server-logo" />
     {/if}
     <div class="server-info">
       <h1 class="server-name">{serverName}</h1>
@@ -62,24 +60,10 @@
   }
 
   .server-logo {
-    width: 52px;
+    width: 120px;
     height: 52px;
-    border-radius: 10px;
-    object-fit: cover;
-    border: 2px solid var(--brand-color);
-  }
-
-  .logo-placeholder {
-    width: 52px;
-    height: 52px;
-    border-radius: 10px;
-    background: var(--brand-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 14px;
-    color: var(--darkest-color);
+    object-fit: contain;
+    flex-shrink: 0;
   }
 
   .server-info {

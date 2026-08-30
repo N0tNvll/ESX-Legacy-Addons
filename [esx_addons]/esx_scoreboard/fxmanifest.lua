@@ -17,22 +17,20 @@ shared_scripts {
 }
 
 client_scripts {
-  "client/main.lua",
-  "client/module/main.lua",
-  "client/module/enum.lua",
-  "client/module/class.lua"
+  "client/main.lua"
 }
 
 server_scripts {
-  "server/main.lua",
-  "server/module/main.lua"
+  "server/main.lua"
 }
 
 ui_page "web/dist/index.html"
 
 files {
   "web/dist/index.html",
-  "web/dist/assets/*"
+  "web/dist/assets/*",
+  "web/dist/*.png",
+  "client/module/*.lua"
 }
 
 dependency {

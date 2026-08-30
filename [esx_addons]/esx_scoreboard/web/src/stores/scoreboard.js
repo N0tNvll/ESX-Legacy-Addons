@@ -5,8 +5,8 @@ import { writable, derived } from "svelte/store"
  * @property {number} serverId
  * @property {string} name
  * @property {string} job
+ * @property {string} jobLabel
  * @property {string} jobGrade
- * @property {string} group
  * @property {number} ping
  * @property {string|null} activity
  */
@@ -21,30 +21,16 @@ import { writable, derived } from "svelte/store"
 
 /**
  * @typedef {Object} ActivityData
+ * @property {number} id
  * @property {string} type
  * @property {string} label
  * @property {string} location
  * @property {number} startTime
  */
 
-/**
- * @typedef {Object} ScoreboardState
- * @property {boolean} visible
- * @property {PlayerData[]} players
- * @property {JobCount[]} jobs
- * @property {ActivityData[]} activities
- * @property {string} searchQuery
- * @property {string} sortBy
- * @property {boolean} sortAsc
- * @property {string} serverName
- * @property {number} maxPlayers
- * @property {number} uptime
- * @property {string} logoUrl
- */
-
-/** @type {ScoreboardState} */
 const initialState = {
   visible: false,
+  loading: false,
   players: [],
   jobs: [],
   activities: [],
@@ -54,112 +40,98 @@ const initialState = {
   serverName: "ESX Server",
   maxPlayers: 128,
   uptime: 0,
-  logoUrl: ""
+  logoUrl: "",
+  totalPlayers: 0,
+  page: 1,
+  pageSize: 50,
+  total: 0,
+  totalPages: 1,
+  paging: {
+    defaultPageSize: 50,
+    maxPageSize: 100
+  }
 }
 
-/**
- * List of valid columns that can be used for sorting.
- * @type {string[]}
- */
 const VALID_COLUMNS = ["serverId", "name", "job", "ping"]
 
-/**
- * Core writable store holding the full scoreboard state.
- * @type {import("svelte/store").Writable<ScoreboardState>}
- */
 export const scoreboardStore = writable(initialState)
 
-/**
- * Derived store that returns the player list filtered by search query
- * and sorted by the current sort column/direction.
- * Re-computes whenever players, searchQuery, sortBy, or sortAsc change.
- * @type {import("svelte/store").Readable<PlayerData[]>}
- */
-export const filteredPlayers = derived(scoreboardStore, ($state) => {
-  let players = [...$state.players]
-
-  const query = $state.searchQuery.trim().toLowerCase()
-  if (query) {
-    players = players.filter((p) =>
-      p.name.toLowerCase().includes(query) ||
-      p.job.toLowerCase().includes(query) ||
-      String(p.serverId).includes(query)
-    )
-  }
-
-  players.sort((a, b) => {
-    let valA = a[$state.sortBy]
-    let valB = b[$state.sortBy]
-
-    if (typeof valA === "string") {
-      valA = valA.toLowerCase()
-      valB = valB.toLowerCase()
-    }
-
-    if (valA < valB) return $state.sortAsc ? -1 : 1
-    if (valA > valB) return $state.sortAsc ? 1 : -1
-    return 0
-  })
-
-  return players
-})
-
-/**
- * Derived store exposing the total number of connected players.
- * @type {import("svelte/store").Readable<number>}
- */
-export const totalPlayers = derived(scoreboardStore, ($state) => $state.players.length)
-
-/**
- * Derived store exposing the count of currently active activities/events.
- * @type {import("svelte/store").Readable<number>}
- */
+export const filteredPlayers = derived(scoreboardStore, ($state) => $state.players)
+export const totalPlayers = derived(scoreboardStore, ($state) => $state.totalPlayers)
 export const activeActivityCount = derived(scoreboardStore, ($state) => $state.activities.length)
 
-/**
- * Update scoreboard visibility.
- * @param {boolean} visible
- */
+function asText(value, fallback = "") {
+  if (typeof value !== "string") return fallback
+  const text = value.replace(/[\u0000-\u001f\u007f]/g, "").trim()
+  return text || fallback
+}
+
+function asNumber(value, fallback = 0) {
+  const number = Number(value)
+  return Number.isFinite(number) ? number : fallback
+}
+
+function safeHex(value, fallback = "#6B7280") {
+  return /^#[0-9a-f]{6}$/i.test(value || "") ? value : fallback
+}
+
+function safeUrl(value) {
+  const url = asText(value, "")
+  return /^https:\/\//i.test(url) ? url : ""
+}
+
+function normalizePlayer(player) {
+  const job = asText(player?.job, "unemployed")
+  return {
+    serverId: Math.max(0, Math.floor(asNumber(player?.serverId, 0))),
+    name: asText(player?.name, "Unknown").slice(0, 64),
+    job,
+    jobLabel: asText(player?.jobLabel, job).slice(0, 64),
+    jobGrade: asText(player?.jobGrade, "").slice(0, 64),
+    ping: Math.max(0, Math.floor(asNumber(player?.ping, 0))),
+    activity: asText(player?.activity, "")
+  }
+}
+
+function normalizeJob(job) {
+  const name = asText(job?.name, "unemployed")
+  return {
+    name,
+    label: asText(job?.label, name).slice(0, 64),
+    count: Math.max(0, Math.floor(asNumber(job?.count, 0))),
+    color: safeHex(job?.color)
+  }
+}
+
+function normalizeActivity(activity) {
+  return {
+    id: Math.floor(asNumber(activity?.id, 0)),
+    type: asText(activity?.type, "activity").slice(0, 50),
+    label: asText(activity?.label, "Activity").slice(0, 100),
+    location: asText(activity?.location, "").slice(0, 100),
+    startTime: Math.max(0, Math.floor(asNumber(activity?.startTime, 0)))
+  }
+}
+
 export function setVisible(visible) {
   scoreboardStore.update((s) => ({ ...s, visible }))
 }
 
-/**
- * Update the full players list.
- * @param {PlayerData[]} players
- */
-export function setPlayers(players) {
-  scoreboardStore.update((s) => ({ ...s, players }))
+export function setLoading(loading) {
+  scoreboardStore.update((s) => ({ ...s, loading }))
 }
 
-/**
- * Update the job counts list.
- * @param {JobCount[]} jobs
- */
-export function setJobs(jobs) {
-  scoreboardStore.update((s) => ({ ...s, jobs }))
-}
-
-/**
- * Update the active activities list.
- * @param {ActivityData[]} activities
- */
-export function setActivities(activities) {
-  scoreboardStore.update((s) => ({ ...s, activities }))
-}
-
-/**
- * Set the current search query used to filter the player list.
- * @param {string} query
- */
 export function setSearchQuery(query) {
-  scoreboardStore.update((s) => ({ ...s, searchQuery: query }))
+  scoreboardStore.update((s) => ({ ...s, searchQuery: asText(query, "").slice(0, 48) }))
 }
 
-/**
- * Set the sort column. Toggles sort direction if the same column is selected again.
- * @param {string} column
- */
+export function setPageSize(pageSize) {
+  scoreboardStore.update((s) => ({
+    ...s,
+    pageSize: Math.max(10, Math.min(s.paging.maxPageSize, Math.floor(asNumber(pageSize, s.pageSize))))
+  }))
+}
+
 export function setSortBy(column) {
   if (!VALID_COLUMNS.includes(column)) return
   scoreboardStore.update((s) => ({
@@ -169,50 +141,67 @@ export function setSortBy(column) {
   }))
 }
 
-/**
- * Update server info fields (name, max players, uptime, logo).
- * Only overwrites keys present in the passed object; preserves existing values for missing keys.
- * @param {Object} info
- * @param {string} [info.serverName]
- * @param {number} [info.maxPlayers]
- * @param {number} [info.uptime]
- * @param {string} [info.logoUrl]
- */
-export function setServerInfo(info) {
+export function ingestSummary(summary) {
+  if (!summary || typeof summary !== "object") return
+
+  scoreboardStore.update((s) => {
+    const maxPageSize = Math.max(10, Math.min(100, Math.floor(asNumber(summary.paging?.maxPageSize, s.paging.maxPageSize))))
+    const defaultPageSize = Math.max(10, Math.min(maxPageSize, Math.floor(asNumber(summary.paging?.defaultPageSize, s.paging.defaultPageSize))))
+
+    return {
+      ...s,
+      jobs: Array.isArray(summary.jobs) ? summary.jobs.map(normalizeJob) : s.jobs,
+      activities: Array.isArray(summary.activities) ? summary.activities.map(normalizeActivity) : s.activities,
+      totalPlayers: Math.max(0, Math.floor(asNumber(summary.totalPlayers, s.totalPlayers))),
+      serverName: asText(summary.info?.serverName, s.serverName).slice(0, 80),
+      maxPlayers: Math.max(1, Math.floor(asNumber(summary.info?.maxPlayers, s.maxPlayers))),
+      uptime: Math.max(0, Math.floor(asNumber(summary.info?.uptime, s.uptime))),
+      logoUrl: safeUrl(summary.info?.logoUrl),
+      paging: { defaultPageSize, maxPageSize },
+      pageSize: Math.min(s.pageSize, maxPageSize)
+    }
+  })
+}
+
+export function ingestPage(page) {
+  if (!page || typeof page !== "object") return
+
   scoreboardStore.update((s) => ({
     ...s,
-    serverName: info.serverName ?? s.serverName,
-    maxPlayers: info.maxPlayers ?? s.maxPlayers,
-    uptime: info.uptime ?? s.uptime,
-    logoUrl: info.logoUrl ?? s.logoUrl
+    loading: false,
+    players: Array.isArray(page.players) ? page.players.map(normalizePlayer) : [],
+    page: Math.max(1, Math.floor(asNumber(page.page, 1))),
+    pageSize: Math.max(10, Math.min(s.paging.maxPageSize, Math.floor(asNumber(page.pageSize, s.pageSize)))),
+    total: Math.max(0, Math.floor(asNumber(page.total, 0))),
+    totalPages: Math.max(1, Math.floor(asNumber(page.totalPages, 1))),
+    searchQuery: asText(page.search, s.searchQuery).slice(0, 48),
+    sortBy: VALID_COLUMNS.includes(page.sortBy) ? page.sortBy : s.sortBy,
+    sortAsc: page.sortAsc === true
   }))
 }
 
-/**
- * Batch-ingest a full server payload in a single store update.
- * Use this when receiving a consolidated data packet from the server
- * to avoid triggering multiple separate store writes.
- * @param {Object} data
- * @param {PlayerData[]} [data.players]
- * @param {JobCount[]} [data.jobs]
- * @param {ActivityData[]} [data.activities]
- * @param {Object} [data.info]
- * @param {string} [data.info.serverName]
- * @param {number} [data.info.maxPlayers]
- * @param {number} [data.info.uptime]
- * @param {string} [data.info.logoUrl]
- */
-export function ingestServerPayload(data) {
+export function ingestActivities(activities) {
   scoreboardStore.update((s) => ({
     ...s,
-    ...(data.players && { players: data.players }),
-    ...(data.jobs && { jobs: data.jobs }),
-    ...(data.activities && { activities: data.activities }),
-    ...(data.info && {
-      serverName: data.info.serverName ?? s.serverName,
-      maxPlayers: data.info.maxPlayers ?? s.maxPlayers,
-      uptime: data.info.uptime ?? s.uptime,
-      logoUrl: data.info.logoUrl ?? s.logoUrl
-    })
+    activities: Array.isArray(activities) ? activities.map(normalizeActivity) : []
+  }))
+}
+
+export function ingestServerPayload(data) {
+  const players = Array.isArray(data.players) ? data.players.map(normalizePlayer) : []
+
+  scoreboardStore.update((s) => ({
+    ...s,
+    loading: false,
+    players,
+    jobs: Array.isArray(data.jobs) ? data.jobs.map(normalizeJob) : s.jobs,
+    activities: Array.isArray(data.activities) ? data.activities.map(normalizeActivity) : s.activities,
+    totalPlayers: players.length,
+    total: players.length,
+    totalPages: 1,
+    serverName: asText(data.info?.serverName, s.serverName).slice(0, 80),
+    maxPlayers: Math.max(1, Math.floor(asNumber(data.info?.maxPlayers, s.maxPlayers))),
+    uptime: Math.max(0, Math.floor(asNumber(data.info?.uptime, s.uptime))),
+    logoUrl: safeUrl(data.info?.logoUrl)
   }))
 }

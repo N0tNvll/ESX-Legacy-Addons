@@ -1,7 +1,7 @@
 --- @module client.module.class
 --- Class definitions for the scoreboard client module
 
-local Enum = xLib.require "client.module.enum"
+local Enum = xLib.require "@esx_scoreboard.client.module.enum"
 
 --- @class Scoreboard
 --- @field state number Current scoreboard state
