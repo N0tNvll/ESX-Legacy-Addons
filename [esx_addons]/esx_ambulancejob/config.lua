@@ -87,6 +87,8 @@ Config.PharmacyItems = {
 		item = "bandage"
 	},
 }
+Config.MaxPharmacyTake = 5
+Config.PharmacyCooldown = 5000
 
 Config.Hospitals = {
 

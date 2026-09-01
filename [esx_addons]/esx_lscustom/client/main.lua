@@ -4,7 +4,7 @@ local gameBuild = GetGameBuildNumber()
 
 RegisterNetEvent('esx:playerLoaded')
 AddEventHandler('esx:playerLoaded', function()
-    ESX.TriggerServerCallback('esx_lscustom:getVehiclesPrices', function(vehicles)
+    xLib.callback('esx_lscustom:getVehiclesPrices', false, function(vehicles)
         Vehicles = vehicles
     end)
 end)

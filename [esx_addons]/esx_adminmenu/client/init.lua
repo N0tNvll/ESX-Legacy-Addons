@@ -25,7 +25,7 @@ local function requestInitData()
     initRequestPending = true
     initAttempts = initAttempts + 1
 
-    ESX.TriggerServerCallback('esx-adminmenu:server:getInitData', function(data)
+    xLib.callback('esx-adminmenu:server:getInitData', false, function(data)
         initRequestPending = false
 
         if not data or data.err then

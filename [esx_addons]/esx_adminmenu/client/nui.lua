@@ -81,7 +81,7 @@ local function refreshInitData()
 end
 
 local function openDashboard(cb)
-    ESX.TriggerServerCallback("esx-adminmenu:server:openDashboard", function(res)
+    xLib.callback("esx-adminmenu:server:openDashboard", false, function(res)
         if not res or not res.success then
             local err = getCallbackError(res, "You do not have permission to open the admin dashboard.")
             notifyClientError(err)
@@ -110,7 +110,7 @@ local function openDashboard(cb)
 end
 
 local function openAdminMenu(cb)
-    ESX.TriggerServerCallback("esx-adminmenu:server:canOpen", function(res)
+    xLib.callback("esx-adminmenu:server:canOpen", false, function(res)
         if not res or not res.success then
             local err = getCallbackError(res, "You do not have permission to open the admin menu.")
             notifyClientError(err)
@@ -142,7 +142,7 @@ local function pushServerData()
         return
     end
 
-    ESX.TriggerServerCallback("esx-adminmenu:server:canOpen", function(res)
+    xLib.callback("esx-adminmenu:server:canOpen", false, function(res)
         if not res or not res.success then
             return
         end
@@ -155,7 +155,7 @@ local function pushServerData()
 end
 
 local function checkAdminAction(action, cb)
-    ESX.TriggerServerCallback("esx-adminmenu:server:canUseAdminAction", cb, { action = action })
+    xLib.callback("esx-adminmenu:server:canUseAdminAction", false, cb, { action = action })
 end
 
 local function runProtectedClientAction(cb, label, action, permissionAction)
@@ -292,7 +292,7 @@ end
 
 -- Bespoke closures: quick actions that emit extra menu state on success.
 RegisterNUICallback("adminMenu:revive", function(data, cb)
-    ESX.TriggerServerCallback("esx-adminmenu:server:selfAction", function(res)
+    xLib.callback("esx-adminmenu:server:selfAction", false, function(res)
         if not res or not res.success then
             respondFailure(cb, "[esx-adminmenu:revive]", res)
             return
@@ -419,9 +419,9 @@ local function registerServerBridge(spec)
         end
 
         if spec.passData == false then
-            ESX.TriggerServerCallback(spec.event, handler)
+            xLib.callback(spec.event, false, handler)
         else
-            ESX.TriggerServerCallback(spec.event, handler, data)
+            xLib.callback(spec.event, false, handler, data)
         end
     end)
 end

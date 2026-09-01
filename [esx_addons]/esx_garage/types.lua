@@ -38,7 +38,7 @@
 ---@field spawns vector4[]
 ---@field blip? GarageBlip
 ---@field ped? GaragePed
----@field cost integer
+---@field cost? integer Defaults to Config.Settings.defaultImpoundFee when omitted.
 
 ---@class GarageSettings
 ---@field interactionDistance number

@@ -1,5 +1,10 @@
 if Config.Cruise.Enable then
-    ESX.RegisterInput('esx_cruisecontrol:Enable', Translate('cruiseControl'), "keyboard", Config.Cruise.Key, function()
+    xLib.addKeybind({
+    name = 'esx_cruisecontrol:Enable',
+    description = Translate('cruiseControl'),
+    defaultMapper = "keyboard",
+    defaultKey = Config.Cruise.Key,
+    onPressed = function()
         if not Utils.vehicle then return end
         
         if CC.cruiseActive then
@@ -7,25 +12,44 @@ if Config.Cruise.Enable then
             return
         end
         CC:Enable()
-    end)
+    end,
+})
 
-    ESX.RegisterInput('esx_cruisecontrol:IncreaseSpeed', Translate('increaseSpeed'), "keyboard", "ADD", function()
+    xLib.addKeybind({
+    name = 'esx_cruisecontrol:IncreaseSpeed',
+    description = Translate('increaseSpeed'),
+    defaultMapper = "keyboard",
+    defaultKey = "ADD",
+    onPressed = function()
         if not Utils.vehicle then return end
         CC:ChangeSpeed(true)
-    end)
+    end,
+})
 
-    ESX.RegisterInput('esx_cruisecontrol:DecreaseSpeed', Translate('decreaseSpeed'), "keyboard", "SUBTRACT", function()
+    xLib.addKeybind({
+    name = 'esx_cruisecontrol:DecreaseSpeed',
+    description = Translate('decreaseSpeed'),
+    defaultMapper = "keyboard",
+    defaultKey = "SUBTRACT",
+    onPressed = function()
         if not Utils.vehicle then return end
         CC:ChangeSpeed(false)
-    end)
+    end,
+})
 end
 
 if Config.Seatbelt.Enable then
-    ESX.RegisterInput('esx_cruisecontrol:ToggleSeatbelt', Translate('toggleSeatbelt'), "keyboard", Config.Seatbelt.Key, function()
+    xLib.addKeybind({
+    name = 'esx_cruisecontrol:ToggleSeatbelt',
+    description = Translate('toggleSeatbelt'),
+    defaultMapper = "keyboard",
+    defaultKey = Config.Seatbelt.Key,
+    onPressed = function()
         if not Utils.vehicle then return end
         SB.seatbelt = not SB.seatbelt
         SB:SetState(SB.seatbelt)
         ESX.ShowNotification(Translate(SB.seatbelt and 'seatbeltOn' or 'seatbeltOff', 5000, 'info'))
-    end)
+    end,
+})
 end
 

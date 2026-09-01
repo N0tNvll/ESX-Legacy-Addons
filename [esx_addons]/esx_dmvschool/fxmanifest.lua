@@ -11,6 +11,7 @@ lua54 'yes'
 
 shared_script '@es_extended/imports.lua'
 
+shared_script '@esx_lib/imports.lua'
 server_scripts {
 	'@es_extended/locale.lua',
 	'locales/*.lua',

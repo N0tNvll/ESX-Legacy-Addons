@@ -3,6 +3,29 @@ local HasAlreadyEnteredMarker, isDead, isHandcuffed, hasAlreadyJoined, playerInS
 local LastStation, LastPart, LastPartNum, LastEntity, CurrentAction, CurrentActionMsg
 dragStatus.isDragged, isInShopMenu = false, false
 
+local function vehicleExists(vehicle)
+	return vehicle and vehicle ~= 0 and DoesEntityExist(vehicle)
+end
+
+local function getPoliceActionVehicle()
+	local vehicle = xLib.game.getVehicleInDirection()
+
+	if vehicleExists(vehicle) then
+		return vehicle
+	end
+
+	local playerPed = PlayerPedId()
+	local coords = GetEntityCoords(playerPed)
+	local closestVehicle, closestDistance = xLib.game.getClosestVehicle(coords)
+	local maxDistance = Config.ActionVehicleDistance or 5.0
+
+	if vehicleExists(closestVehicle) and closestDistance ~= -1 and closestDistance <= maxDistance then
+		return closestVehicle
+	end
+
+	return 0
+end
+
 function cleanPlayer(playerPed)
 	SetPedArmour(playerPed, 0)
 	ClearPedBloodDamage(playerPed)
@@ -40,7 +63,7 @@ function OpenCloakroomMenu()
 		{icon = "fas fa-shirt", title = TranslateCap('citizen_wear'), value = 'citizen_wear'},
 		{icon = "fas fa-shirt", title = TranslateCap('bullet_wear'), uniform = 'bullet_wear'},
 		{icon = "fas fa-shirt", title = TranslateCap('gilet_wear'), uniform = 'gilet_wear'},
-		{icon = "fas fa-shirt", title = TranslateCap('police_wear'), uniform = grade}
+		{icon = "fas fa-shirt", title = TranslateCap('police_wear'), value = 'police_wear'}
 	}
 
 	if Config.EnableCustomPeds then
@@ -71,11 +94,11 @@ function OpenCloakroomMenu()
 
 		if data.current.value == 'citizen_wear' then
 			if Config.EnableCustomPeds then
-				ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin, jobSkin)
+				xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
 					local isMale = skin.sex == 0
 
 					TriggerEvent('skinchanger:loadDefaultModel', isMale, function()
-						ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin)
+						xLib.callback('esx_skin:getPlayerSkin', false, function(skin)
 							TriggerEvent('skinchanger:loadSkin', skin)
 							TriggerEvent('esx:restoreLoadout')
 						end)
@@ -83,27 +106,21 @@ function OpenCloakroomMenu()
 
 				end)
 			else
-				ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin)
+				xLib.callback('esx_skin:getPlayerSkin', false, function(skin)
 					TriggerEvent('skinchanger:loadSkin', skin)
 				end)
 			end
 
 			if Config.EnableESXService then
-				ESX.TriggerServerCallback('esx_service:isInService', function(isInService)
+				xLib.callback('esx_service:isInService', false, function(isInService)
 					if isInService then
 						playerInService = false
 
-						local notification = {
-							title    = TranslateCap('service_anonunce'),
-							subject  = '',
-							msg      = TranslateCap('service_out_announce', GetPlayerName(PlayerId())),
-							iconType = 1
-						}
-
-						TriggerServerEvent('esx_service:notifyAllInService', notification, 'police')
-
-						TriggerServerEvent('esx_service:disableService', 'police')
-						ESX.ShowNotification(TranslateCap('service_out'))
+						xLib.callback('esx_service:disableService', false, function(disabled)
+							if disabled then
+								ESX.ShowNotification(TranslateCap('service_out'))
+							end
+						end, 'police')
 					end
 				end, 'police')
 			end
@@ -112,42 +129,19 @@ function OpenCloakroomMenu()
 		if Config.EnableESXService and data.current.value ~= 'citizen_wear' then
 			local awaitService
 
-			ESX.TriggerServerCallback('esx_service:isInService', function(isInService)
+			xLib.callback('esx_service:isInService', false, function(isInService)
 				if not isInService then
 
-					if Config.MaxInService ~= -1 then
-						ESX.TriggerServerCallback('esx_service:enableService', function(canTakeService, maxInService, inServiceCount)
-							if not canTakeService then
-								ESX.ShowNotification(TranslateCap('service_max', inServiceCount, maxInService))
-							else
-								awaitService = true
-								playerInService = true
-
-								local notification = {
-									title    = TranslateCap('service_anonunce'),
-									subject  = '',
-									msg      = TranslateCap('service_in_announce', GetPlayerName(PlayerId())),
-									iconType = 1
-								}
-
-								TriggerServerEvent('esx_service:notifyAllInService', notification, 'police')
-								ESX.ShowNotification(TranslateCap('service_in'))
-							end
-						end, 'police')
-					else
-						awaitService = true
-						playerInService = true
-
-						local notification = {
-							title    = TranslateCap('service_anonunce'),
-							subject  = '',
-							msg      = TranslateCap('service_in_announce', GetPlayerName(PlayerId())),
-							iconType = 1
-						}
-
-						TriggerServerEvent('esx_service:notifyAllInService', notification, 'police')
-						ESX.ShowNotification(TranslateCap('service_in'))
-					end
+					xLib.callback('esx_service:enableService', false, function(canTakeService, maxInService, inServiceCount)
+						if not canTakeService then
+							awaitService = false
+							ESX.ShowNotification(TranslateCap('service_max', inServiceCount, maxInService))
+						else
+							awaitService = true
+							playerInService = true
+							ESX.ShowNotification(TranslateCap('service_in'))
+						end
+					end, 'police')
 
 				else
 					awaitService = true
@@ -166,17 +160,32 @@ function OpenCloakroomMenu()
 
 		if data.current.uniform then
 			setUniform(data.current.uniform, playerPed)
+		elseif data.current.value == 'police_wear' then
+			xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
+				if type(skin) ~= 'table' then
+					setUniform(grade, playerPed)
+					return
+				end
+
+				local uniform = jobSkin and (skin.sex == 0 and jobSkin.skin_male or jobSkin.skin_female)
+
+				if type(uniform) == 'table' and next(uniform) then
+					TriggerEvent('skinchanger:loadClothes', skin, uniform)
+				else
+					setUniform(grade, playerPed)
+				end
+			end)
 		elseif data.current.value == 'freemode_ped' then
 			local modelHash
 
-			ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin, jobSkin)
+			xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
 				if skin.sex == 0 then
 					modelHash = joaat(data.current.maleModel)
 				else
 					modelHash = joaat(data.current.femaleModel)
 				end
 
-				ESX.Streaming.RequestModel(modelHash, function()
+				xLib.streaming.requestModel(modelHash, function()
 					SetPlayerModel(PlayerId(), modelHash)
 					SetModelAsNoLongerNeeded(modelHash)
 					SetPedDefaultComponentVariation(PlayerPedId())
@@ -265,7 +274,7 @@ function OpenPoliceActionsMenu()
 			end
 
 			ESX.OpenContext("right", elements2, function(menu2,element2)
-				local closestPlayer, closestDistance = ESX.Game.GetClosestPlayer()
+				local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
 				if closestPlayer ~= -1 and closestDistance <= 3.0 then
 					local data2 = {current = element2}
 					local action = data2.current.value
@@ -300,7 +309,7 @@ function OpenPoliceActionsMenu()
 				{unselectable = true, icon = "fas fa-car", title = element.title}
 			}
 			local playerPed = PlayerPedId()
-			local vehicle = ESX.Game.GetVehicleInDirection()
+			local vehicle = getPoliceActionVehicle()
 
 			if DoesEntityExist(vehicle) then
 				elements3[#elements3+1] = {icon = "fas fa-car", title = TranslateCap('vehicle_info'), value = 'vehicle_infos'}
@@ -317,7 +326,7 @@ function OpenPoliceActionsMenu()
 			ESX.OpenContext("right", elements3, function(menu3,element3)
 				local data2 = {current = element3}
 				local coords  = GetEntityCoords(playerPed)
-				vehicle = ESX.Game.GetVehicleInDirection()
+				vehicle = getPoliceActionVehicle()
 				action  = data2.current.value
 
 				if action == 'search_database' then
@@ -345,7 +354,7 @@ function OpenPoliceActionsMenu()
 						TaskStartScenarioInPlace(playerPed, 'CODE_HUMAN_MEDIC_TEND_TO_DEAD', 0, true)
 
 						currentTask.busy = true
-						currentTask.task = ESX.SetTimeout(10000, function()
+						currentTask.task = xLib.timeout.setTimeout(10000, function()
 							ClearPedTasks(playerPed)
 							ImpoundVehicle(vehicle)
 							Wait(100)
@@ -355,10 +364,10 @@ function OpenPoliceActionsMenu()
 							while currentTask.busy do
 								Wait(1000)
 
-								vehicle = GetClosestVehicle(coords.x, coords.y, coords.z, 3.0, 0, 71)
+								vehicle = GetClosestVehicle(coords.x, coords.y, coords.z, Config.ActionVehicleDistance or 5.0, 0, 71)
 								if not DoesEntityExist(vehicle) and currentTask.busy then
 									ESX.ShowNotification(TranslateCap('impound_canceled_moved'))
-									ESX.ClearTimeout(currentTask.task)
+									xLib.timeout.clearTimeout(currentTask.task)
 									ClearPedTasks(playerPed)
 									currentTask.busy = false
 									break
@@ -388,7 +397,7 @@ function OpenPoliceActionsMenu()
 				local coords, forward = GetEntityCoords(playerPed), GetEntityForwardVector(playerPed)
 				local objectCoords = (coords + forward * 1.0)
 
-				ESX.Game.SpawnObject(data2.current.model, objectCoords, function(obj)
+				xLib.game.spawnObject(data2.current.model, objectCoords, function(obj)
 					Wait(100)
 					SetEntityHeading(obj, GetEntityHeading(playerPed))
 					PlaceObjectOnGroundProperly(obj)
@@ -401,7 +410,7 @@ function OpenPoliceActionsMenu()
 end
 
 function OpenIdentityCardMenu(player)
-	ESX.TriggerServerCallback('esx_policejob:getOtherPlayerData', function(data)
+	xLib.callback('esx_policejob:getOtherPlayerData', false, function(data)
 		local elements = {
 			{icon = "fas fa-user", title = TranslateCap('name', data.name)},
 			{icon = "fas fa-user", title = TranslateCap('job', ('%s - %s'):format(data.job, data.grade))}
@@ -438,7 +447,7 @@ function OpenBodySearchMenu(player)
 		return
 	end
 
-	ESX.TriggerServerCallback('esx_policejob:getOtherPlayerData', function(data)
+	xLib.callback('esx_policejob:getOtherPlayerData', false, function(data)
 		local elements = {
 			{unselectable = true, icon = "fas fa-user", title = TranslateCap('search')}
 		}
@@ -518,7 +527,7 @@ function OpenFineCategoryMenu(player, category)
     if not fineList[category] then
 		local p = promise.new()
 
-		ESX.TriggerServerCallback('esx_policejob:getFineList', function(fines)
+		xLib.callback('esx_policejob:getFineList', false, function(fines)
 			p:resolve(fines)
 		end, category)
 
@@ -544,10 +553,10 @@ function OpenFineCategoryMenu(player, category)
 		if Config.EnablePlayerManagement then
 			TriggerServerEvent('esx_billing:sendBill', GetPlayerServerId(player), 'society_police', TranslateCap('fine_total', data.current.fineLabel), data.current.amount)
 		else
-			TriggerServerEvent('esx_billing:sendBill', GetPlayerServerId(player), '', TranslateCap('fine_total', data.current.fineLabel), data.current.amount)
+			TriggerServerEvent('esx_billing:sendBill', GetPlayerServerId(player), 'society_police', TranslateCap('fine_total', data.current.fineLabel), data.current.amount)
 		end
 
-		ESX.SetTimeout(300, function()
+		xLib.timeout.setTimeout(300, function()
 			OpenFineCategoryMenu(player, category)
 		end)
 	end)
@@ -599,7 +608,7 @@ function LookupVehicle(elementF)
 		if not data.value or length < 2 or length > 8 then
 			ESX.ShowNotification(TranslateCap('search_database_error_invalid'))
 		else
-			ESX.TriggerServerCallback('esx_policejob:getVehicleInfos', function(retrivedInfo)
+			xLib.callback('esx_policejob:getVehicleInfos', false, function(retrivedInfo)
 				local elements = {
 					{unselectable = true, icon = "fas fa-car", title = element.title},
 					{unselectable = true, icon = "fas fa-car", title = TranslateCap('plate', retrivedInfo.plate)}			
@@ -624,7 +633,7 @@ function ShowPlayerLicense(player)
 		{unselectable = true, icon = "fas fa-scroll", title = TranslateCap('license_revoke')}
 	}
 
-	ESX.TriggerServerCallback('esx_policejob:getOtherPlayerData', function(playerData)
+	xLib.callback('esx_policejob:getOtherPlayerData', false, function(playerData)
 		if playerData.licenses then
 			for i=1, #playerData.licenses, 1 do
 				if playerData.licenses[i].label and playerData.licenses[i].type then
@@ -644,7 +653,7 @@ function ShowPlayerLicense(player)
 
 			TriggerServerEvent('esx_license:removeLicense', GetPlayerServerId(player), data.current.type)
 
-			ESX.SetTimeout(300, function()
+			xLib.timeout.setTimeout(300, function()
 				ShowPlayerLicense(player)
 			end)
 		end)
@@ -656,7 +665,7 @@ function OpenUnpaidBillsMenu(player)
 		{unselectable = true, icon = "fas fa-scroll", title = TranslateCap('unpaid_bills')}
 	}
 
-	ESX.TriggerServerCallback('esx_billing:getTargetBills', function(bills)
+	xLib.callback('esx_billing:getTargetBills', false, function(bills)
 		for k,bill in ipairs(bills) do
 			elements[#elements+1] = {
 				unselectable = true,
@@ -672,7 +681,7 @@ function OpenUnpaidBillsMenu(player)
 end
 
 function OpenVehicleInfosMenu(vehicleData)
-	ESX.TriggerServerCallback('esx_policejob:getVehicleInfos', function(retrivedInfo)
+	xLib.callback('esx_policejob:getVehicleInfos', false, function(retrivedInfo)
 		local elements = {
 			{unselectable = true, icon = "fas fa-car", title = TranslateCap('vehicle_info')},
 			{icon = "fas fa-car", title = TranslateCap('plate', retrivedInfo.plate)}
@@ -690,7 +699,7 @@ function OpenVehicleInfosMenu(vehicleData)
 end
 
 function OpenGetWeaponMenu()
-	ESX.TriggerServerCallback('esx_policejob:getArmoryWeapons', function(weapons)
+	xLib.callback('esx_policejob:getArmoryWeapons', false, function(weapons)
 		local elements = {
 			{unselectable = true, icon = "fas fa-gun", title = TranslateCap('get_weapon_menu')}
 		}
@@ -707,7 +716,7 @@ function OpenGetWeaponMenu()
 
 		ESX.OpenContext("right", elements, function(menu,element)
 			local data = {current = element}
-			ESX.TriggerServerCallback('esx_policejob:removeArmoryWeapon', function()
+			xLib.callback('esx_policejob:removeArmoryWeapon', false, function()
 				ESX.CloseContext()
 				OpenGetWeaponMenu()
 			end, data.current.value)
@@ -736,7 +745,7 @@ function OpenPutWeaponMenu()
 
 	ESX.OpenContext("right", elements, function(menu,element)
 		local data = {current = element}
-		ESX.TriggerServerCallback('esx_policejob:addArmoryWeapon', function()
+		xLib.callback('esx_policejob:addArmoryWeapon', false, function()
 			ESX.CloseContext()
 			OpenPutWeaponMenu()
 		end, data.current.value, true)
@@ -814,7 +823,7 @@ function OpenBuyWeaponsMenu()
 				OpenWeaponComponentShop(data.current.components, data.current.name, menu)
 			end
 		else
-			ESX.TriggerServerCallback('esx_policejob:buyWeapon', function(bought)
+			xLib.callback('esx_policejob:buyWeapon', false, function(bought)
 				if bought then
 					if data.current.price > 0 then
 						ESX.ShowNotification(TranslateCap('armory_bought', data.current.weaponLabel, ESX.Math.GroupDigits(data.current.price)))
@@ -837,7 +846,7 @@ function OpenWeaponComponentShop(components, weaponName, parentShop)
 		if data.current.hasComponent then
 			ESX.ShowNotification(TranslateCap('armory_hascomponent'))
 		else
-			ESX.TriggerServerCallback('esx_policejob:buyWeapon', function(bought)
+			xLib.callback('esx_policejob:buyWeapon', false, function(bought)
 				if bought then
 					if data.current.price > 0 then
 						ESX.ShowNotification(TranslateCap('armory_bought', data.current.componentLabel, ESX.Math.GroupDigits(data.current.price)))
@@ -855,7 +864,7 @@ function OpenWeaponComponentShop(components, weaponName, parentShop)
 end
 
 function OpenGetStocksMenu()
-	ESX.TriggerServerCallback('esx_policejob:getStockItems', function(items)
+	xLib.callback('esx_policejob:getStockItems', false, function(items)
 		local elements = {
 			{unselectable = true, icon = "fas fa-box", title = TranslateCap('police_stock')}
 		}
@@ -897,7 +906,7 @@ function OpenGetStocksMenu()
 end
 
 function OpenPutStocksMenu()
-	ESX.TriggerServerCallback('esx_policejob:getPlayerInventory', function(inventory)
+	xLib.callback('esx_policejob:getPlayerInventory', false, function(inventory)
 		local elements = {
 			{unselectable = true, icon = "fas fa-box", title = TranslateCap('inventory')}
 		}
@@ -1048,14 +1057,14 @@ AddEventHandler('esx_policejob:handcuff', function()
 
 		if Config.EnableHandcuffTimer then
 			if handcuffTimer.active then
-				ESX.ClearTimeout(handcuffTimer.task)
+				xLib.timeout.clearTimeout(handcuffTimer.task)
 			end
 
 			StartHandcuffTimer()
 		end
 	else
 		if Config.EnableHandcuffTimer and handcuffTimer.active then
-			ESX.ClearTimeout(handcuffTimer.task)
+			xLib.timeout.clearTimeout(handcuffTimer.task)
 		end
 
 		ClearPedSecondaryTask(playerPed)
@@ -1082,7 +1091,7 @@ AddEventHandler('esx_policejob:unrestrain', function()
 
 		-- end timer
 		if Config.EnableHandcuffTimer and handcuffTimer.active then
-			ESX.ClearTimeout(handcuffTimer.task)
+			xLib.timeout.clearTimeout(handcuffTimer.task)
 		end
 	end
 end)
@@ -1129,7 +1138,7 @@ RegisterNetEvent('esx_policejob:putInVehicle')
 AddEventHandler('esx_policejob:putInVehicle', function()
 	if isHandcuffed then
 		local playerPed = PlayerPedId()
-		local vehicle, distance = ESX.Game.GetClosestVehicle()
+		local vehicle, distance = xLib.game.getClosestVehicle()
 
 		if vehicle and distance < 5 then
 			local maxSeats, freeSeat = GetVehicleMaxNumberOfPassengers(vehicle)
@@ -1213,7 +1222,7 @@ CreateThread(function()
 			DisableControlAction(27, 75, true) -- Disable exit vehicle
 
 			if IsEntityPlayingAnim(ESX.PlayerData.ped, 'mp_arresting', 'idle', 3) ~= 1 then
-				ESX.Streaming.RequestAnimDict('mp_arresting', function()
+				xLib.streaming.requestAnimDict('mp_arresting', function()
 					TaskPlayAnim(ESX.PlayerData.ped, 'mp_arresting', 'idle', 8.0, -8, -1, 49, 0.0, false, false, false)
 					RemoveAnimDict('mp_arresting')
 				end)
@@ -1397,7 +1406,12 @@ CreateThread(function()
 	end
 end)
 
-ESX.RegisterInput("police:interact", "(ESX PoliceJob) " .. TranslateCap('interaction'), "keyboard", "E", function()
+xLib.addKeybind({
+    name = "police:interact",
+    description = "(ESX PoliceJob) " .. TranslateCap('interaction'),
+    defaultMapper = "keyboard",
+    defaultKey = "E",
+    onPressed = function()
 	if not CurrentAction then 
 		return 
 	end
@@ -1432,7 +1446,7 @@ ESX.RegisterInput("police:interact", "(ESX PoliceJob) " .. TranslateCap('interac
 			ESX.ShowNotification(TranslateCap('service_not'))
 		end
 	elseif CurrentAction == 'delete_vehicle' then
-		ESX.Game.DeleteVehicle(CurrentActionData.vehicle)
+		xLib.game.deleteVehicle(CurrentActionData.vehicle)
 	elseif CurrentAction == 'menu_boss_actions' then
 		ESX.CloseContext()
 		TriggerEvent('esx_society:openBossMenu', 'police', function(data, menu)
@@ -1441,15 +1455,21 @@ ESX.RegisterInput("police:interact", "(ESX PoliceJob) " .. TranslateCap('interac
 			CurrentAction     = 'menu_boss_actions'
 			CurrentActionMsg  = TranslateCap('open_bossmenu')
 			CurrentActionData = {}
-		end, { wash = false }) -- disable washing money
+		end, { wash = false, uniforms = true }) -- disable washing money
 	elseif CurrentAction == 'remove_entity' then
 		DeleteEntity(CurrentActionData.entity)
 	end
 
 	CurrentAction = nil
-end)
+end,
+})
 
-ESX.RegisterInput("police:quickactions", "(ESX PoliceJob) "..TranslateCap('quick_actions'), "keyboard", "F6", function()
+xLib.addKeybind({
+    name = "police:quickactions",
+    description = "(ESX PoliceJob) "..TranslateCap('quick_actions'),
+    defaultMapper = "keyboard",
+    defaultKey = "F6",
+    onPressed = function()
 	if not ESX.PlayerData.job or (ESX.PlayerData.job.name ~= 'police') or isDead then
 		return
 	end
@@ -1461,7 +1481,8 @@ ESX.RegisterInput("police:quickactions", "(ESX PoliceJob) "..TranslateCap('quick
 	else
 		ESX.ShowNotification(TranslateCap('service_not'))
 	end
-end)
+end,
+})
 
 local function markVehicleImpounded(vehicle)
 	if not DoesEntityExist(vehicle) then
@@ -1524,11 +1545,11 @@ AddEventHandler('onResourceStop', function(resource)
 		TriggerEvent('esx_phone:removeSpecialContact', 'police')
 
 		if Config.EnableESXService then
-			TriggerServerEvent('esx_service:disableService', 'police')
+			xLib.callback('esx_service:disableService', false, function() end, 'police')
 		end
 
 		if Config.EnableHandcuffTimer and handcuffTimer.active then
-			ESX.ClearTimeout(handcuffTimer.task)
+			xLib.timeout.clearTimeout(handcuffTimer.task)
 		end
 	end
 end)
@@ -1536,12 +1557,12 @@ end)
 -- handcuff timer, unrestrain the player after an certain amount of time
 function StartHandcuffTimer()
 	if Config.EnableHandcuffTimer and handcuffTimer.active then
-		ESX.ClearTimeout(handcuffTimer.task)
+		xLib.timeout.clearTimeout(handcuffTimer.task)
 	end
 
 	handcuffTimer.active = true
 
-	handcuffTimer.task = ESX.SetTimeout(Config.HandcuffTimer, function()
+	handcuffTimer.task = xLib.timeout.setTimeout(Config.HandcuffTimer, function()
 		ESX.ShowNotification(TranslateCap('unrestrained_timer'))
 		TriggerEvent('esx_policejob:unrestrain')
 		handcuffTimer.active = false
@@ -1554,7 +1575,7 @@ end
 function ImpoundVehicle(vehicle)
 	--local vehicleName = GetLabelText(GetDisplayNameFromVehicleModel(GetEntityModel(vehicle)))
 	markVehicleImpounded(vehicle)
-	ESX.Game.DeleteVehicle(vehicle)
+	xLib.game.deleteVehicle(vehicle)
 	ESX.ShowNotification(TranslateCap('impound_successful'))
 	currentTask.busy = false
 end

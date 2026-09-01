@@ -13,6 +13,68 @@ local function indexExists(tableName, indexName)
 	return tonumber(count) and tonumber(count) > 0
 end
 
+local function indexStartsWith(tableName, columns)
+	local rows = Helpers.safeQuery(
+		[[SELECT INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME
+		FROM INFORMATION_SCHEMA.STATISTICS
+		WHERE TABLE_SCHEMA = DATABASE()
+			AND TABLE_NAME = ?
+			AND SEQ_IN_INDEX <= ?
+		ORDER BY INDEX_NAME, SEQ_IN_INDEX]],
+		{ tableName, #columns }
+	)
+
+	if type(rows) ~= "table" then
+		return false
+	end
+
+	local indexes = {}
+	for i = 1, #rows do
+		local row = rows[i]
+		local indexName = row.INDEX_NAME or row.index_name
+		local sequence = tonumber(row.SEQ_IN_INDEX or row.seq_in_index)
+		local column = row.COLUMN_NAME or row.column_name
+
+		if indexName and sequence and column then
+			indexes[indexName] = indexes[indexName] or {}
+			indexes[indexName][sequence] = column
+		end
+	end
+
+	for _, indexedColumns in pairs(indexes) do
+		local matches = true
+
+		for i = 1, #columns do
+			if indexedColumns[i] ~= columns[i] then
+				matches = false
+				break
+			end
+		end
+
+		if matches then
+			return true
+		end
+	end
+
+	return false
+end
+
+local function ensureOwnedVehicleSearchIndex(indexName, definition, columns)
+	if indexExists("owned_vehicles", indexName) or indexStartsWith("owned_vehicles", columns) then
+		return
+	end
+
+	print(("[esx-adminmenu] Creating owned_vehicles search index %s..."):format(indexName))
+
+	local result = Helpers.safeQuery(("ALTER TABLE owned_vehicles ADD INDEX %s %s"):format(indexName, definition))
+
+	if result == nil then
+		print(("[esx-adminmenu] Failed to create %s"):format(indexName))
+	else
+		print(("[esx-adminmenu] Created %s"):format(indexName))
+	end
+end
+
 local function ensureUserSearchIndexes()
 	if not indexExists("users", "idx_adminmenu_first_last") then
 		print("[esx-adminmenu] Creating users firstname/lastname search index...")
@@ -58,6 +120,12 @@ local function ensureUserSearchIndexes()
 			print("[esx-adminmenu] Created idx_adminmenu_phone")
 		end
 	end
+end
+
+local function ensureOwnedVehicleSearchIndexes()
+	ensureOwnedVehicleSearchIndex("idx_adminmenu_owned_plate", "(plate)", { "plate" })
+	ensureOwnedVehicleSearchIndex("idx_adminmenu_owned_owner_plate", "(owner, plate)", { "owner", "plate" })
+	ensureOwnedVehicleSearchIndex("idx_adminmenu_owned_type_plate", "(type, plate)", { "type", "plate" })
 end
 
 local function ensureAdminLogSearchIndexes()
@@ -196,6 +264,7 @@ local function initDB()
 	]])
 
 	ensureUserSearchIndexes()
+	ensureOwnedVehicleSearchIndexes()
 	ensureAdminLogSearchIndexes()
 
 	print("[esx-adminmenu] Database tables/indexes checked/created!")

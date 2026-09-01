@@ -411,6 +411,13 @@ local function appendNullableCondition(conditions, params, column, value)
     params[#params + 1] = value
 end
 
+---@param a any
+---@param b any
+---@return boolean
+local function sameOptionalLocation(a, b)
+    return activePound(a) == activePound(b)
+end
+
 ---@param identifier string
 ---@param row OwnedVehicleRow
 ---@param stored integer
@@ -479,6 +486,35 @@ local function prepareRetrieveSpawn(identifier, row)
 end
 
 ---@param identifier string
+---@param current OwnedVehicleRow
+---@param lastUsed integer
+---@return boolean, string?
+local function finalizeCurrentRetrieveState(identifier, current, lastUsed)
+    local condition, params = retrieveStateCondition(identifier, current, storedValue(current.stored))
+    local queryParams = { lastUsed }
+    appendParams(queryParams, params)
+
+    local ok, result = pcall(MySQL.update.await,
+        ("UPDATE `owned_vehicles` SET `stored` = 0, `pound` = NULL, `parking` = NULL, `last_used` = ? WHERE %s"):format(condition),
+        queryParams)
+
+    if not ok then
+        return false, "error"
+    end
+
+    if affectedRows(result) > 0 then
+        return true
+    end
+
+    local refreshed = ownedRow(identifier, current.plate)
+    if refreshed and storedValue(refreshed.stored) == 0 and not activePound(refreshed.pound) then
+        return true
+    end
+
+    return false, "state_changed"
+end
+
+---@param identifier string
 ---@param row OwnedVehicleRow
 ---@return boolean, string?
 local function commitRetrieveState(identifier, row)
@@ -497,16 +533,20 @@ local function commitRetrieveState(identifier, row)
 
     if affectedRows(result) < 1 then
         local current = ownedRow(identifier, row.plate)
-        if current and storedValue(current.stored) == 0 and not activePound(current.pound) then
-            local finalized = pcall(MySQL.update.await,
-                "UPDATE `owned_vehicles` SET `pound` = NULL, `parking` = NULL, `last_used` = ? WHERE `owner` = ? AND `plate` = ? AND `stored` = 0",
-                { lastUsed, identifier, row.plate })
+        if current then
+            local currentStored = storedValue(current.stored)
+            local canFinalize = false
 
-            if finalized then
-                return true
+            if currentStored == 0 then
+                canFinalize = activePound(current.pound) == nil or sameOptionalLocation(current.pound, row.pound)
+            elseif currentStored == 1 then
+                canFinalize = sameOptionalLocation(current.parking, row.parking)
+                    and sameOptionalLocation(current.pound, row.pound)
             end
 
-            return false, "error"
+            if canFinalize then
+                return finalizeCurrentRetrieveState(identifier, current, lastUsed)
+            end
         end
 
         return false, "state_changed"
@@ -705,7 +745,7 @@ local function appendSearchCondition(scopeSql, params, search)
     return scopeSql .. " AND (`plate` LIKE ? ESCAPE '\\\\' OR `custom_name` LIKE ? ESCAPE '\\\\')"
 end
 
-ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, data)
+xLib.callback.registerCompat("esx_garage:getVehicles", function(source, cb, data)
     if rejectRateLimited(source, cb, "esx_garage:getVehicles") then
         return
     end
@@ -807,7 +847,7 @@ ESX.RegisterServerCallback("esx_garage:getVehicles", function(source, cb, data)
     })
 end)
 
-ESX.RegisterServerCallback("esx_garage:retrieveVehicle", function(source, cb, data)
+xLib.callback.registerCompat("esx_garage:retrieveVehicle", function(source, cb, data)
     if rejectRateLimited(source, cb, "esx_garage:retrieveVehicle") then
         return
     end
@@ -875,19 +915,20 @@ ESX.RegisterServerCallback("esx_garage:retrieveVehicle", function(source, cb, da
         local hasWorldVehicle = managedEntity ~= nil or hasUnmanagedWorldVehicle(key, expectedModel, managedEntity)
 
         local fee = 0
+        local rowPound = activePound(row.pound)
 
-        if row.pound then
+        if rowPound then
             if not impound then
                 return { success = false, error = "use_impound" }
             end
-            if row.pound ~= data.garageId then
+            if rowPound ~= data.garageId then
                 return { success = false, error = "wrong_impound" }
             end
             if hasWorldVehicle then
                 return { success = false, error = "not_stored" }
             end
 
-            local lot = Impounds[row.pound]
+            local lot = Impounds[rowPound]
             fee = (lot and lot.cost) or Config.Settings.defaultImpoundFee
         elseif not isStored(row.stored) then
             if hasWorldVehicle then
@@ -968,7 +1009,7 @@ ESX.RegisterServerCallback("esx_garage:retrieveVehicle", function(source, cb, da
     cb(result)
 end)
 
-ESX.RegisterServerCallback("esx_garage:storeVehicle", function(source, cb, data)
+xLib.callback.registerCompat("esx_garage:storeVehicle", function(source, cb, data)
     if rejectRateLimited(source, cb, "esx_garage:storeVehicle") then
         return
     end
@@ -1113,7 +1154,7 @@ ESX.RegisterServerCallback("esx_garage:storeVehicle", function(source, cb, data)
     cb(result)
 end)
 
-ESX.RegisterServerCallback("esx_garage:toggleFavorite", function(source, cb, data)
+xLib.callback.registerCompat("esx_garage:toggleFavorite", function(source, cb, data)
     if rejectRateLimited(source, cb, "esx_garage:toggleFavorite") then
         return
     end
@@ -1156,7 +1197,7 @@ ESX.RegisterServerCallback("esx_garage:toggleFavorite", function(source, cb, dat
     cb({ success = true, data = data.isFavorite })
 end)
 
-ESX.RegisterServerCallback("esx_garage:renameVehicle", function(source, cb, data)
+xLib.callback.registerCompat("esx_garage:renameVehicle", function(source, cb, data)
     if rejectRateLimited(source, cb, "esx_garage:renameVehicle") then
         return
     end
@@ -1200,7 +1241,7 @@ ESX.RegisterServerCallback("esx_garage:renameVehicle", function(source, cb, data
     cb({ success = true, data = name })
 end)
 
-ESX.RegisterServerCallback("esx_garage:transferVehicle", function(source, cb, data)
+xLib.callback.registerCompat("esx_garage:transferVehicle", function(source, cb, data)
     if rejectRateLimited(source, cb, "esx_garage:transferVehicle") then
         return
     end
@@ -1280,7 +1321,7 @@ ESX.RegisterServerCallback("esx_garage:transferVehicle", function(source, cb, da
     cb(result)
 end)
 
-ESX.RegisterServerCallback("esx_garage:giveKeys", function(source, cb, data)
+xLib.callback.registerCompat("esx_garage:giveKeys", function(source, cb, data)
     if rejectRateLimited(source, cb, "esx_garage:giveKeys") then
         return
     end

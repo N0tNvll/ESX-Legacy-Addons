@@ -104,8 +104,8 @@ AddEventHandler('esx:playerLoaded', function(playerId, xPlayer)
 	xPlayer.set('addonAccounts', addonAccounts)
 end)
 
-RegisterNetEvent('esx_addonaccount:refreshAccounts')
 AddEventHandler('esx_addonaccount:refreshAccounts', function()
+	AccountsIndex, Accounts, SharedAccounts = {}, {}, {}
 	local addonAccounts = MySQL.query.await('SELECT * FROM addon_account')
 
 	for i = 1, #addonAccounts, 1 do
@@ -137,4 +137,6 @@ AddEventHandler('esx_addonaccount:refreshAccounts', function()
 			SharedAccounts[name] = addonAccount
 		end
 	end
+
+	GlobalState.SharedAccounts = SharedAccounts
 end)

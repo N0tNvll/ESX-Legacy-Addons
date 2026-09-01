@@ -19,6 +19,23 @@ local CALLBACK_COOLDOWNS <const> = {
 local callbackCooldowns = {}
 
 ---@return integer
+local function defaultImpoundFee()
+    local fee = tonumber(Config.Settings.defaultImpoundFee) or 0
+    return math.max(0, math.floor(fee))
+end
+
+---@param impound Impound
+---@return integer
+local function configuredImpoundCost(impound)
+    local cost = tonumber(impound.cost)
+    if cost == nil then
+        return defaultImpoundFee()
+    end
+
+    return math.max(0, math.floor(cost))
+end
+
+---@return integer
 local function currentTimeMs()
     if type(GetGameTimer) == "function" then
         return GetGameTimer()
@@ -60,6 +77,7 @@ end
 
 for i = 1, #Config.Impounds do
     local impound = Config.Impounds[i]
+    impound.cost = configuredImpoundCost(impound)
     Impounds[impound.id] = impound
 end
 
@@ -191,7 +209,7 @@ local function accessiblePayload(source)
     return { garages = garages, impounds = impounds }
 end
 
-ESX.RegisterServerCallback("esx_garage:getGarages", function(source, cb)
+xLib.callback.registerCompat("esx_garage:getGarages", function(source, cb)
     if rejectRateLimited(source, cb, "esx_garage:getGarages") then
         return
     end

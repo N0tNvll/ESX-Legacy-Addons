@@ -456,6 +456,17 @@ local function watchGodmodeVehicle()
 	end)
 end
 
+local function watchGodmodePed()
+	startToggleLoop("godmodePed", function()
+		return godmodeActive
+	end, 500, function()
+		SetPlayerInvincible(PlayerId(), true)
+		SetEntityInvincible(PlayerPedId(), true)
+	end, function()
+		restoreInvincibility()
+	end)
+end
+
 local function watchInvisibleVehicle()
 	startToggleLoop("invisibleVehicle", function()
 		return invisibleActive
@@ -637,7 +648,10 @@ function ClientActions.ToggleGodmode()
 	applyGodmodeVehicle(vehicle)
 
 	if godmodeActive then
+		watchGodmodePed()
 		watchGodmodeVehicle()
+	else
+		restoreInvincibility()
 	end
 
 	return godmodeActive
@@ -1218,6 +1232,7 @@ RegisterNetEvent("esx:onPlayerSpawn", function()
 	local ped = PlayerPedId()
 
 	if godmodeActive then
+		SetPlayerInvincible(PlayerId(), true)
 		SetEntityInvincible(ped, true)
 	end
 
@@ -1310,7 +1325,7 @@ function Spectate(targetId, targetCoords)
 			if IsDisabledControlJustPressed(0, 322) and GetGameTimer() >= escCooldownUntil then
 				escCooldownUntil = GetGameTimer() + escCooldown
 
-				ESX.TriggerServerCallback("esx-adminmenu:server:spectate:stop", function(res)
+				xLib.callback("esx-adminmenu:server:spectate:stop", false, function(res)
 					if not res or res.err then
 						print("[esx-adminmenu]", res and res.err)
 						return

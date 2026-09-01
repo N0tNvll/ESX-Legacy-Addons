@@ -50,7 +50,7 @@ function DepositTaxToSociety(taxAmount)
 	end)
 end
 
-ESX.RegisterServerCallback('esx_shops:getTaxRate', function(source, cb)
+xLib.callback.registerCompat('esx_shops:getTaxRate', function(source, cb)
 	local xPlayer = ESX.Player(source)
 	if not xPlayer then
 		cb(Config.TaxRate, nil)

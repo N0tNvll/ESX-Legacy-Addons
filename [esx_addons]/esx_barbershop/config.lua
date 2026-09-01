@@ -1,6 +1,7 @@
 Config = {}
 
 Config.Price = 100
+Config.ShopDistance = 3.0
 
 Config.DrawDistance = 10.0
 Config.MarkerSize   = vector3(1.5, 1.5, 1.0)

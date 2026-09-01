@@ -18,14 +18,14 @@ function OpenShopMenu()
 		ESX.OpenContext("right", elements, function(menu,element)
 			if element.value == "yes" then
 				TriggerEvent('skinchanger:getSkin', function(skin) newSkin = skin end)
-				ESX.TriggerServerCallback('esx_clotheshop:buyClothes', function(bought)
+				xLib.callback('esx_clotheshop:buyClothes', false, function(bought)
 					if bought then
 						TriggerEvent('skinchanger:getSkin', function(skin)
 							TriggerServerEvent('esx_skin:save', skin)
 						end)
 
 						hasPaid = true
-						ESX.TriggerServerCallback('esx_clotheshop:checkPropertyDataStore', function(foundStore)
+						xLib.callback('esx_clotheshop:checkPropertyDataStore', false, function(foundStore)
 							if foundStore then
 								local elements2 = {
 									{unselectable = true, icon = "fas fa-check-double", title = TranslateCap('save_in_dressing')},
@@ -60,14 +60,14 @@ function OpenShopMenu()
 						end)
 					else
 						ESX.CloseContext()
-						ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin)
+						xLib.callback('esx_skin:getPlayerSkin', false, function(skin)
 							TriggerEvent('skinchanger:loadSkin', skin)
 						end)
 						ESX.ShowNotification(TranslateCap('not_enough_money'))
 					end
 				end, newSkin, oldSkin)
 			elseif element.value == "no" then
-				ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin)
+				xLib.callback('esx_skin:getPlayerSkin', false, function(skin)
 					TriggerEvent('skinchanger:loadSkin', skin)
 				end)
 				ESX.CloseContext()
@@ -116,7 +116,7 @@ AddEventHandler('esx_clotheshop:hasExitedMarker', function(zone)
 	currentAction = nil
 
 	if not hasPaid then
-		ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin)
+		xLib.callback('esx_skin:getPlayerSkin', false, function(skin)
 			TriggerEvent('skinchanger:loadSkin', skin)
 		end)
 	end

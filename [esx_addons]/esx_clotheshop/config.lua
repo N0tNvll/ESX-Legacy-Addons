@@ -3,6 +3,10 @@ Config.Locale = GetConvar('esx:locale', 'en')
 
 Config.Price = 250
 Config.ChargePerPiece = false
+Config.ShopDistance = 3.0
+Config.PurchaseSessionDuration = 60000
+Config.MaxOutfits = 20
+Config.MaxOutfitLabelLength = 40
 
 Config.DrawDistance = 10.0
 Config.MarkerSize   = {x = 1.5, y = 1.5, z = 1.0}

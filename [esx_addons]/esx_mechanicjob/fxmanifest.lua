@@ -16,14 +16,27 @@ client_scripts {
 	'@es_extended/locale.lua',
 	'locales/*.lua',
 	'config.lua',
-	'client/main.lua'
+	'client/modules/init.lua',
+	'client/modules/utils.lua',
+	'client/modules/npc_jobs.lua',
+	'client/modules/menus.lua',
+	'client/modules/item_actions.lua',
+	'client/modules/markers.lua',
+	'client/modules/commands.lua'
 }
 
 server_scripts {
 	'@es_extended/locale.lua',
 	'locales/*.lua',
 	'config.lua',
-	'server/main.lua'
+	'server/modules/init.lua',
+	'server/modules/utils.lua',
+	'server/main.lua',
+	'server/modules/impound.lua',
+	'server/modules/workshop.lua',
+	'server/modules/npc_jobs.lua',
+	'server/modules/items.lua',
+	'server/modules/stock.lua'
 }
 
 dependencies {

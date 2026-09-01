@@ -66,7 +66,7 @@ AddEventHandler('esx_ambulancejob:clsearch', function(medicId)
 
   if isDead then
     local coords = GetEntityCoords(playerPed)
-    local playersInArea = ESX.Game.GetPlayersInArea(coords, 50.0)
+    local playersInArea = xLib.game.getPlayersInArea(coords, 50.0)
 
     for i = 1, #playersInArea, 1 do
       local player = playersInArea[i]
@@ -99,7 +99,7 @@ function OnPlayerDeath(elapsed)
   if Config.DeathAnim.enabled then
     local coords = GetEntityCoords(ESX.PlayerData.ped)
     NetworkResurrectLocalPlayer(coords.x, coords.y, coords.z, 0.0, 0.0, false)
-    ESX.Streaming.RequestAnimDict(Config.DeathAnim.dict)
+    xLib.streaming.requestAnimDict(Config.DeathAnim.dict)
     TaskPlayAnim(ESX.PlayerData.ped, Config.DeathAnim.dict, Config.DeathAnim.name, Config.DeathAnim.fadeIn, Config.DeathAnim.fadeOut,
       -1, Config.DeathAnim.flags, Config.DeathAnim.playbackRate, false, false, false)
     FreezeEntityPosition(ESX.PlayerData.ped, true)
@@ -126,7 +126,7 @@ AddEventHandler('esx_ambulancejob:useItem', function(itemName)
     local lib, anim = 'anim@heists@narcotics@funding@gang_idle', 'gang_chatting_idle01' -- TODO better animations
     local playerPed = PlayerPedId()
 
-    ESX.Streaming.RequestAnimDict(lib, function()
+    xLib.streaming.requestAnimDict(lib, function()
       TaskPlayAnim(playerPed, lib, anim, 8.0, -8.0, -1, 0, 0, false, false, false)
       RemoveAnimDict(lib)
 
@@ -144,7 +144,7 @@ AddEventHandler('esx_ambulancejob:useItem', function(itemName)
     local lib, anim = 'anim@heists@narcotics@funding@gang_idle', 'gang_chatting_idle01' -- TODO better animations
     local playerPed = PlayerPedId()
 
-    ESX.Streaming.RequestAnimDict(lib, function()
+    xLib.streaming.requestAnimDict(lib, function()
       TaskPlayAnim(playerPed, lib, anim, 8.0, -8.0, -1, 0, 0, false, false, false)
       RemoveAnimDict(lib)
 
@@ -246,7 +246,7 @@ function StartDeathTimer(elapsed)
   local canPayFine = false
 
   if Config.EarlyRespawnFine then
-    ESX.TriggerServerCallback('esx_ambulancejob:checkBalance', function(canPay)
+    xLib.callback('esx_ambulancejob:checkBalance', false, function(canPay)
       canPayFine = canPay
     end)
   end
@@ -355,7 +355,7 @@ end
 
 function RemoveItemsAfterRPDeath()
   CreateThread(function()
-    ESX.TriggerServerCallback('esx_ambulancejob:removeItemsAfterRPDeath', function()
+    xLib.callback('esx_ambulancejob:removeItemsAfterRPDeath', false, function()
       local ClosestHospital = GetClosestRespawnPoint()
 
       ESX.SetPlayerData('loadout', {})

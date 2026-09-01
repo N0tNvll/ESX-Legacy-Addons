@@ -32,6 +32,8 @@ local INTERACTION_STYLES <const> = {
     impound = { locale = "access_Impound", color = DEFAULT_MARKER_COLOR },
 }
 
+xLib.points.startLoop()
+
 if not DecorIsRegisteredAsType(PED_DECOR, 2) then
     DecorRegister(PED_DECOR, 2)
 end
@@ -129,8 +131,8 @@ local function clearWorld()
 
     for i = 1, #points do
         local point = points[i]
-        if point and ESX.Point and ESX.Point.delete then
-            ESX.Point.delete(point)
+        if point and xLib.point and xLib.point.delete then
+            xLib.point.delete(point)
         end
     end
 
@@ -167,7 +169,7 @@ local function addInteractionPoint(location, raw, action)
         }
     end
 
-    points[#points + 1] = ESX.Point:new({
+    points[#points + 1] = xLib.point:new({
         coords = coords,
         distance = Config.Settings.interactionDistance,
         enter = function()
@@ -233,7 +235,7 @@ local function refresh()
     end
     refreshing = true
 
-    local ok, data = pcall(ESX.AwaitServerCallback, "esx_garage:getGarages")
+    local ok, data = pcall(xLib.callback.await, "esx_garage:getGarages", false)
     if ok and type(data) == "table" and type(data.garages) == "table" and type(data.impounds) == "table" then
         pcall(function()
             clearWorld()
@@ -323,7 +325,7 @@ end
 ---@param payload any
 ---@return any
 local function serverCall(name, payload)
-    local ok, result = pcall(ESX.AwaitServerCallback, name, payload)
+    local ok, result = pcall(xLib.callback.await, name, false, payload)
     if not ok then
         return nil
     end
@@ -494,7 +496,13 @@ local function onInteract()
     openMenu()
 end
 
-ESX.RegisterInput("esx_garage_interact", TranslateCap("open_garage"), "keyboard", "E", onInteract)
+xLib.addKeybind({
+    name = "esx_garage_interact",
+    description = TranslateCap("open_garage"),
+    defaultMapper = "keyboard",
+    defaultKey = "E",
+    onPressed = onInteract,
+})
 
 ---@param spawns vector4[]
 ---@return vector4?
@@ -505,7 +513,7 @@ local function pickClearSpawn(spawns)
 
     for i = 1, #spawns do
         local spawn = spawns[i]
-        if ESX.Game.IsSpawnPointClear(vector3(spawn.x, spawn.y, spawn.z), 2.5) then
+        if xLib.game.isSpawnPointClear(vector3(spawn.x, spawn.y, spawn.z), 2.5) then
             return spawn
         end
     end

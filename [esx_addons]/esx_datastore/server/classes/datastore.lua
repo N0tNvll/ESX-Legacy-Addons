@@ -62,11 +62,11 @@ function CreateDataStore(name, owner, data)
 
 	function self.save()
 		for i=1, #timeoutCallbacks, 1 do
-			ESX.ClearTimeout(timeoutCallbacks[i])
+			xLib.timeout.clearTimeout(timeoutCallbacks[i])
 			timeoutCallbacks[i] = nil
 		end
 
-		local timeoutCallback = ESX.SetTimeout(10000, function()
+		local timeoutCallback = xLib.timeout.setTimeout(10000, function()
 			if self.owner == nil then
 				MySQL.update('UPDATE datastore_data SET data = ? WHERE name = ?', {json.encode(self.data), self.name})
 			else

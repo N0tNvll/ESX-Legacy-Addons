@@ -111,11 +111,11 @@ function OpenCloakroom()
 
     ESX.OpenContext("right", elements, function(menu,element)
         if element.value == "wear_citizen" then
-            ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin)
+            xLib.callback('esx_skin:getPlayerSkin', false, function(skin)
                 TriggerEvent('skinchanger:loadSkin', skin)
             end)
         elseif element.value == "wear_work" then
-            ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin, jobSkin)
+            xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
                 if skin.sex == 0 then
                     TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_male)
                 else
@@ -136,7 +136,7 @@ function OpenVehicleSpawnerMenu()
     }
 
     if Config.EnableSocietyOwnedVehicles then
-        ESX.TriggerServerCallback('esx_society:getVehiclesInGarage', function(vehicles)
+        xLib.callback('esx_society:getVehiclesInGarage', false, function(vehicles)
 
             for i = 1, #vehicles, 1 do
                 elements[#elements+1] = {
@@ -147,13 +147,13 @@ function OpenVehicleSpawnerMenu()
             end
 
             ESX.OpenContext("right", elements, function(menu,element)
-                if not ESX.Game.IsSpawnPointClear(Config.Zones.VehicleSpawnPoint.Pos, 5.0) then
+                if not xLib.game.isSpawnPointClear(Config.Zones.VehicleSpawnPoint.Pos, 5.0) then
                     ESX.ShowNotification(TranslateCap('spawnpoint_blocked'))
                     return
                 end
 
                 local vehicleProps = element.value
-                ESX.TriggerServerCallback("esx_taxijob:SpawnVehicle", function()
+                xLib.callback("esx_taxijob:SpawnVehicle", false, function()
                     return
                 end, vehicleProps.model, vehicleProps)
                 TriggerServerEvent('esx_society:removeVehicleFromGarage', 'taxi', vehicleProps)
@@ -174,11 +174,11 @@ function OpenVehicleSpawnerMenu()
                 ESX.ShowNotification(TranslateCap('unknow_model'), "error")
                 return
             end
-            if not ESX.Game.IsSpawnPointClear(Config.Zones.VehicleSpawnPoint.Pos, 5.0) then
+            if not xLib.game.isSpawnPointClear(Config.Zones.VehicleSpawnPoint.Pos, 5.0) then
                 ESX.ShowNotification(TranslateCap('spawnpoint_blocked'))
                 return
             end
-            ESX.TriggerServerCallback("esx_taxijob:SpawnVehicle", function()
+            xLib.callback("esx_taxijob:SpawnVehicle", false, function()
                 ESX.ShowNotification(TranslateCap('vehicle_spawned', element.title), "success")
             end, element.model, {plate = "TAXI JOB"})
             ESX.CloseContext()
@@ -196,14 +196,12 @@ function DeleteJobVehicle()
     if Config.EnableSocietyOwnedVehicles then
         local vehicleProps = xLib.game.getVehicleProperties(CurrentActionData.vehicle)
         TriggerServerEvent('esx_society:putVehicleInGarage', 'taxi', vehicleProps)
-        ESX.Game.DeleteVehicle(CurrentActionData.vehicle)
+        xLib.game.deleteVehicle(CurrentActionData.vehicle)
     else
         if IsInAuthorizedVehicle() then
-            ESX.Game.DeleteVehicle(CurrentActionData.vehicle)
+            xLib.game.deleteVehicle(CurrentActionData.vehicle)
 
-            if Config.MaxInService ~= -1 then
-                TriggerServerEvent('esx_service:disableService', 'taxi')
-            end
+            xLib.callback('esx_service:disableService', false, function() end, 'taxi')
         else
             ESX.ShowNotification(TranslateCap('only_taxi'))
         end
@@ -236,7 +234,7 @@ function OpenTaxiActionsMenu()
         elseif element.value == 'boss_actions' then
             TriggerEvent('esx_society:openBossMenu', 'taxi', function(data, menu)
                 menu.close()
-            end)
+            end, { uniforms = true })
         end
     end, function(menu)
         CurrentAction = 'taxi_actions_menu'
@@ -266,7 +264,7 @@ function OpenMobileTaxiActionsMenu()
                     ESX.ShowNotification(TranslateCap('amount_invalid'))
                 else
                     ESX.CloseContext()
-                    local closestPlayer, closestDistance = ESX.Game.GetClosestPlayer()
+                    local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
                     if closestPlayer == -1 or closestDistance > 3.0 then
                         ESX.ShowNotification(TranslateCap('no_players_near'))
                     else
@@ -324,7 +322,7 @@ function IsInAuthorizedVehicle()
 end
 
 function OpenGetStocksMenu()
-    ESX.TriggerServerCallback('esx_taxijob:getStockItems', function(items)
+    xLib.callback('esx_taxijob:getStockItems', false, function(items)
         local elements = {
             {unselectable = true, icon = "fas fa-box", title = TranslateCap('taxi_stock')}
         }
@@ -367,7 +365,7 @@ function OpenGetStocksMenu()
 end
 
 function OpenPutStocksMenu()
-    ESX.TriggerServerCallback('esx_taxijob:getPlayerInventory', function(inventory)
+    xLib.callback('esx_taxijob:getPlayerInventory', false, function(inventory)
         local elements = {
             {unselectable = true, icon = "fas fa-box", title = TranslateCap('inventory')}
         }
@@ -585,7 +583,7 @@ CreateThread(function()
                                 RemoveBlip(DestinationBlip)
 
                                 local function scope(customer)
-                                    ESX.SetTimeout(60000, function()
+                                    xLib.timeout.setTimeout(60000, function()
                                         DeletePed(customer)
                                     end)
                                 end
@@ -632,6 +630,7 @@ CreateThread(function()
                             EndTextCommandSetBlipName(DestinationBlip)
                             SetBlipRoute(DestinationBlip, true)
 
+                            TriggerServerEvent('esx_taxijob:startMission', customerCoords, targetCoords)
                             CustomerEnteredVehicle = true
                         end
                     else
