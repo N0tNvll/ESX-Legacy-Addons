@@ -18,15 +18,46 @@ const ERROR_MESSAGES: Record<string, string> = {
   not_stored: 'This vehicle is not stored.',
   plate_mismatch: 'That is not the vehicle for this plate.',
   player: 'Player not found.',
+  rate_limited: 'Please wait a moment before trying again.',
   self: 'You already own this vehicle.',
   spawn_failed: 'The vehicle could not be spawned.',
+  state_changed: 'Vehicle state changed, reopen the garage.',
   target_offline: 'That player is not online.',
   too_far: 'You are too far from the garage.',
   use_impound: 'This vehicle can only be recovered from an impound.',
   wrong_garage: 'This vehicle is parked in another garage.',
 };
 
+let lastQuietNotificationAt = 0;
+const QUIET_ERROR_CODES = new Set(['rate_limited', 'busy']);
+
+export const errorCode = (error: unknown): string => (
+  error instanceof Error ? error.message : String(error ?? '')
+);
+
+export const isErrorCode = (error: unknown, code: string): boolean => errorCode(error) === code;
+export const isQuietErrorCode = (error: unknown): boolean => QUIET_ERROR_CODES.has(errorCode(error));
+
 export const errorMessage = (error: unknown, fallback = 'Something went wrong.'): string => {
-  const code = error instanceof Error ? error.message : String(error ?? '');
-  return ERROR_MESSAGES[code] ?? fallback;
+  return ERROR_MESSAGES[errorCode(error)] ?? fallback;
+};
+
+export const showErrorNotification = (error: unknown, fallback?: string): void => {
+  const code = errorCode(error);
+  if (QUIET_ERROR_CODES.has(code)) {
+    const now = Date.now();
+    if (now - lastQuietNotificationAt < 1200) {
+      return;
+    }
+
+    lastQuietNotificationAt = now;
+  }
+
+  window.postMessage({
+    type: 'showNotification',
+    payload: {
+      message: errorMessage(error, fallback),
+      type: 'error'
+    }
+  }, '*');
 };

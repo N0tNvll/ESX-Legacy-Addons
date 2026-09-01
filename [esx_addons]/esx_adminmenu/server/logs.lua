@@ -357,16 +357,27 @@ function Logs.query(filters)
     -- Free-text search across the columns an admin would actually type into.
     -- Infix LIKE cannot use an index, so it is bounded by the LIMIT below and
     -- by the retention window: admin_logs never grows past RetentionDays.
-    local search = type(filters.search) == "string" and filters.search:match("^%s*(.-)%s*$") or ""
+    local search =
+        type(filters.search) == "string"
+        and filters.search:match("^%s*(.-)%s*$")
+        or ""
+
     if #search >= 2 and #search <= 100 then
-        local infix = "%" .. escapeLike(search) .. "%"
+        local prefix = escapeLike(search) .. "%"
 
-        where[#where + 1] =
-        "(actor_name LIKE ? OR actor_identifier LIKE ? OR target_name LIKE ? OR target_identifier LIKE ? OR action LIKE ?)"
+        where[#where + 1] = [[(
+            actor_name LIKE ?
+            OR actor_identifier LIKE ?
+            OR target_name LIKE ?
+            OR target_identifier LIKE ?
+            OR action LIKE ?
+        )]]
 
-        for _ = 1, 5 do
-            params[#params + 1] = infix
-        end
+        params[#params + 1] = prefix
+        params[#params + 1] = prefix
+        params[#params + 1] = prefix
+        params[#params + 1] = prefix
+        params[#params + 1] = prefix
     end
 
     if type(filters.actor) == "string" and filters.actor ~= "" then
@@ -396,7 +407,13 @@ function Logs.query(filters)
     end
 
     local limit = math.max(1, math.min(tonumber(filters.limit) or 50, 200))
-    local offset = math.max(0, tonumber(filters.offset) or 0)
+
+    local beforeId = tonumber(filters.beforeId)
+
+    if beforeId and beforeId > 0 then
+        where[#where + 1] = "id < ?"
+        params[#params + 1] = math.floor(beforeId)
+    end
 
     local sql = [[SELECT id, created_at, actor_identifier, actor_name, namespace, action,
         target_identifier, target_name, success, error, payload
@@ -408,9 +425,8 @@ function Logs.query(filters)
 
     -- id desc rather than created_at desc: id is the primary key, so the sort
     -- is served by the index and stays cheap as the table grows.
-    sql = sql .. " ORDER BY id DESC LIMIT ? OFFSET ?"
+    sql = sql .. " ORDER BY id DESC LIMIT ?"
     params[#params + 1] = limit + 1
-    params[#params + 1] = offset
 
     local rows = Helpers.safeQuery(sql, params) or {}
     local hasMore = #rows > limit
@@ -419,7 +435,18 @@ function Logs.query(filters)
         rows[#rows] = nil
     end
 
-    return { logs = rows, hasMore = hasMore, nextOffset = offset + #rows, limit = limit }
+    local nextCursor = nil
+
+    if #rows > 0 then
+        nextCursor = tonumber(rows[#rows].id)
+    end
+
+    return {
+        logs = rows,
+        hasMore = hasMore,
+        nextCursor = nextCursor,
+        limit = limit,
+    }
 end
 
 --- Deletes expired rows in bounded chunks so the table is never locked long.

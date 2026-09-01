@@ -126,7 +126,7 @@ Config.AllowedGroups = {
 
 ------------------Interacting With Wardrobe Markers ------------------------------
 Config.WardrobeInteraction = function(PropertyId, Interaction)
-  ESX.TriggerServerCallback('esx_property:getPlayerDressing', function(dressing)
+  xLib.callback('esx_property:getPlayerDressing', false, function(dressing)
     local elements = {{unselectable = true, icon = "fas fa-tshirt", title = "Wardrobe"}}
 
     for i=1, #dressing, 1 do
@@ -138,7 +138,7 @@ Config.WardrobeInteraction = function(PropertyId, Interaction)
     
     ESX.OpenContext("left", elements, function(menu, element)
         TriggerEvent('skinchanger:getSkin', function(skin)
-            ESX.TriggerServerCallback('esx_property:getPlayerOutfit', function(clothes)
+            xLib.callback('esx_property:getPlayerOutfit', false, function(clothes)
                 TriggerEvent('skinchanger:loadClothes', skin, clothes)
                 TriggerEvent('esx_skin:setLastSkin', skin)
 

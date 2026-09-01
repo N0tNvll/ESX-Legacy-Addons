@@ -5,6 +5,7 @@ Locales['hu'] = {
   ['vehicle_list']              = 'Munkajárművek',
   ['work_wear']                 = 'Munkaruha',
   ['civ_wear']                  = 'Civil ruházat',
+  ['no_outfit']                 = 'nincs szerelő munkaruha beállítva',
   ['deposit_stock']             = 'Készlet berakás',
   ['withdraw_stock']            = 'Készlet kivétel',
   ['boss_actions']              = 'Leader Panel',

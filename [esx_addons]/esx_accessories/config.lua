@@ -3,6 +3,8 @@ Config = {}
 Config.Locale = GetConvar('esx:locale', 'en')
 
 Config.Price = 100
+Config.ShopDistance = 3.0
+Config.PurchaseSessionDuration = 60000
 
 Config.EnableControls = true
 

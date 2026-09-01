@@ -83,12 +83,53 @@ local function isValidLicense(licenseType)
 	return flag
 end
 
-RegisterNetEvent('esx_license:addLicense')
+local function isAdmin(xPlayer)
+	if not xPlayer or type(xPlayer.getGroup) ~= 'function' then return false end
+
+	local group = xPlayer.getGroup()
+	return group == 'admin' or group == 'superadmin'
+end
+
+local function isNearPlayer(source, target, distance)
+	local sourcePed = GetPlayerPed(source)
+	local targetPed = GetPlayerPed(target)
+
+	if sourcePed <= 0 or targetPed <= 0 then return false end
+
+	return #(GetEntityCoords(sourcePed) - GetEntityCoords(targetPed)) <= (distance or Config.LicenseCheckDistance or 5.0)
+end
+
+local function canReadTargetLicenses(source, target)
+	source = tonumber(source)
+	target = tonumber(target)
+
+	if not source or not target then return false end
+	if source == target then return true end
+
+	local xPlayer = ESX.Player(source)
+	local xTarget = ESX.Player(target)
+	if not xPlayer or not xTarget then return false end
+	if isAdmin(xPlayer) then return true end
+
+	local job = xPlayer.getJob()
+	if not job or not Config.allowedJobs[job.name] then return false end
+	if job.onDuty == false then return false end
+
+	return isNearPlayer(source, target)
+end
+
 AddEventHandler('esx_license:addLicense', function(target, licenseType, cb)
 	local xPlayer = ESX.Player(target)
 	if xPlayer then
 		if isValidLicense(licenseType) then
-			AddLicense(xPlayer.getIdentifier(), licenseType, cb)
+			CheckLicense(xPlayer.getIdentifier(), licenseType, function(hasLicense)
+				if hasLicense then
+					if cb then cb(false) end
+					return
+				end
+
+				AddLicense(xPlayer.getIdentifier(), licenseType, cb)
+			end)
 		else
 			print(('[esx_license]: Missing license type in db ^5%s^0 or someone try to use lua executor ID: ^5%s^0'):format(licenseType, target))
 		end
@@ -99,7 +140,7 @@ RegisterNetEvent('esx_license:removeLicense')
 AddEventHandler('esx_license:removeLicense', function(target, licenseType, cb)
 	local xPlayer = ESX.Player(source)
 	if xPlayer then 
-		if Config.allowedJobs[xPlayer.getJob().name] then
+		if Config.allowedJobs[xPlayer.getJob().name] and isValidLicense(licenseType) and canReadTargetLicenses(source, target) then
 			local xTarget = ESX.Player(target)
 			if xTarget then
 				RemoveLicense(xTarget.getIdentifier(), licenseType, cb)
@@ -132,27 +173,37 @@ AddEventHandler('esx_license:getLicensesList', function(cb)
 	GetLicensesList(cb)
 end)
 
-ESX.RegisterServerCallback('esx_license:getLicense', function(source, cb, licenseType)
+xLib.callback.registerCompat('esx_license:getLicense', function(source, cb, licenseType)
 	local xPlayer = ESX.Player(source)
 	if xPlayer then
 		GetLicense(licenseType, cb)
 	end
 end)
 
-ESX.RegisterServerCallback('esx_license:getLicenses', function(source, cb, target)
+xLib.callback.registerCompat('esx_license:getLicenses', function(source, cb, target)
+	target = tonumber(target) or source
+	if not canReadTargetLicenses(source, target) then return cb({}) end
+
 	local xPlayer = ESX.Player(target)
 	if xPlayer then
 		GetLicenses(xPlayer.getIdentifier(), cb)
+	else
+		cb({})
 	end
 end)
 
-ESX.RegisterServerCallback('esx_license:checkLicense', function(source, cb, target, licenseType)
+xLib.callback.registerCompat('esx_license:checkLicense', function(source, cb, target, licenseType)
+	target = tonumber(target) or source
+	if not isValidLicense(licenseType) or not canReadTargetLicenses(source, target) then return cb(false) end
+
 	local xPlayer = ESX.Player(target)
 	if xPlayer then
 		CheckLicense(xPlayer.getIdentifier(), licenseType, cb)
+	else
+		cb(false)
 	end
 end)
 
-ESX.RegisterServerCallback('esx_license:getLicensesList', function(source, cb)
+xLib.callback.registerCompat('esx_license:getLicensesList', function(source, cb)
 	GetLicensesList(cb)
 end)

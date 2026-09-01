@@ -4,6 +4,72 @@ Garages = {}
 ---@type table<string, Impound>
 Impounds = {}
 
+local CALLBACK_COOLDOWNS <const> = {
+    ["esx_garage:getGarages"] = 1500,
+    ["esx_garage:getVehicles"] = 1500,
+    ["esx_garage:retrieveVehicle"] = 1500,
+    ["esx_garage:storeVehicle"] = 1500,
+    ["esx_garage:toggleFavorite"] = 1000,
+    ["esx_garage:renameVehicle"] = 1000,
+    ["esx_garage:transferVehicle"] = 1500,
+    ["esx_garage:giveKeys"] = 1000,
+}
+
+---@type table<integer, table<string, integer>>
+local callbackCooldowns = {}
+
+---@return integer
+local function defaultImpoundFee()
+    local fee = tonumber(Config.Settings.defaultImpoundFee) or 0
+    return math.max(0, math.floor(fee))
+end
+
+---@param impound Impound
+---@return integer
+local function configuredImpoundCost(impound)
+    local cost = tonumber(impound.cost)
+    if cost == nil then
+        return defaultImpoundFee()
+    end
+
+    return math.max(0, math.floor(cost))
+end
+
+---@return integer
+local function currentTimeMs()
+    if type(GetGameTimer) == "function" then
+        return GetGameTimer()
+    end
+
+    return math.floor(os.clock() * 1000)
+end
+
+---@param source integer
+---@param cb function
+---@param callbackName string
+---@return boolean
+function rejectRateLimited(source, cb, callbackName)
+    local cooldown = CALLBACK_COOLDOWNS[callbackName]
+    if not cooldown then
+        return false
+    end
+
+    local now = currentTimeMs()
+    local playerCooldowns = callbackCooldowns[source]
+    if not playerCooldowns then
+        playerCooldowns = {}
+        callbackCooldowns[source] = playerCooldowns
+    end
+
+    if (playerCooldowns[callbackName] or 0) > now then
+        cb({ success = false, error = "rate_limited" })
+        return true
+    end
+
+    playerCooldowns[callbackName] = now + cooldown
+    return false
+end
+
 for i = 1, #Config.Garages do
     local garage = Config.Garages[i]
     Garages[garage.id] = garage
@@ -11,6 +77,7 @@ end
 
 for i = 1, #Config.Impounds do
     local impound = Config.Impounds[i]
+    impound.cost = configuredImpoundCost(impound)
     Impounds[impound.id] = impound
 end
 
@@ -22,7 +89,7 @@ function CanAccessGarage(source, garage)
     if not access then
         return true
     end
-
+    
     local xPlayer = ESX.GetPlayerFromId(source)
     if not xPlayer then
         return false
@@ -87,7 +154,7 @@ local function pedT(ped)
     if not ped then
         return nil
     end
-    return { model = ped.model, coords = vec4t(ped.coords) }
+    return { model = ped.model, z = ped.z, heading = ped.heading, snapToGround = ped.snapToGround }
 end
 
 ---@param garage Garage
@@ -98,6 +165,7 @@ local function garagePayload(garage)
         label = garage.label,
         type = garage.type,
         entryPoint = vec3t(garage.entryPoint),
+        storePoint = garage.storePoint and vec3t(garage.storePoint) or nil,
         spawns = spawnsT(garage.spawns),
         blip = garage.blip,
         ped = pedT(garage.ped),
@@ -141,16 +209,29 @@ local function accessiblePayload(source)
     return { garages = garages, impounds = impounds }
 end
 
-ESX.RegisterServerCallback("esx_garage:getGarages", function(source, cb)
+xLib.callback.registerCompat("esx_garage:getGarages", function(source, cb)
+    if rejectRateLimited(source, cb, "esx_garage:getGarages") then
+        return
+    end
+
     local payload = accessiblePayload(source)
 
     cb(payload)
+end)
+
+AddEventHandler("playerDropped", function()
+    callbackCooldowns[source] = nil
 end)
 
 ---@param def Garage
 local function registerGarage(def)
     assert(type(def) == "table" and type(def.id) == "string", "registerGarage: a garage table with a string id is required")
     assert(hasXYZ(def.entryPoint), ("registerGarage: garage %s needs a valid entryPoint (x, y, z)"):format(def.id))
+
+    if def.storePoint ~= nil then
+        assert(hasXYZ(def.storePoint), ("registerGarage: garage %s has an invalid storePoint (x, y, z)"):format(def.id))
+    end
+
     assert(type(def.spawns) == "table" and #def.spawns > 0, ("registerGarage: garage %s needs at least one spawn"):format(def.id))
 
     for i = 1, #def.spawns do

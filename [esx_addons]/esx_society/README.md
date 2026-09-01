@@ -49,6 +49,12 @@ TriggerEvent('esx_society:openBossMenu', society, function (menu)
 end, {wash = false}) -- set custom options, e.g disable washing
 ```
 
+## Uniform management
+- Set `Config.EnableUniformManagement = true` to show uniform management globally, or pass `uniforms = true` in the `options` of `esx_society:openBossMenu` for compatible jobs.
+- Boss grades (`Config.BossGrades`) can pick one grade or all grades and save the outfit currently worn into `job_grades.skin_male` / `skin_female`.
+- The server only accepts complete uniforms containing every component listed in `Config.UniformComponents`; `Config.UniformDrawableMax`, `Config.UniformTextureMax`, `Config.UniformPropMax` and `Config.UniformComponentLimits` control accepted values.
+- `Config.UniformSaveCooldown` limits how often the uniforms of a job can be saved.
+
 # Legal
 ### License
 esx_society - societies for ESX

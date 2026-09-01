@@ -51,6 +51,7 @@ export const VehicleSchema = z.object({
   impounded: z.boolean(),
   impoundFee: z.number().optional(),
   mileage: z.number(),
+  mileageUnit: z.enum(['mi', 'km']).optional(),
   fuel: z.number().optional(),
   engine: z.number().optional(),
   body: z.number().optional(),
@@ -95,9 +96,26 @@ export const GarageSchema = z.object({
   keys: z.boolean().optional()
 });
 
+export const VehiclePaginationSchema = z.object({
+  page: z.number(),
+  pageSize: z.number(),
+  hasNext: z.boolean(),
+  hasPrevious: z.boolean()
+});
+
+export const VehicleStatsSchema = z.object({
+  total: z.number(),
+  stored: z.number(),
+  out: z.number(),
+  impounded: z.number()
+});
+
 export const OpenGarageDataSchema = z.object({
   garage: GarageSchema,
-  vehicles: z.array(VehicleSchema)
+  vehicles: z.array(VehicleSchema),
+  mileageUnit: z.enum(['mi', 'km']).optional(),
+  pagination: VehiclePaginationSchema,
+  stats: VehicleStatsSchema.optional()
 });
 
 export const NuiCallbackResponseSchema = z.object({

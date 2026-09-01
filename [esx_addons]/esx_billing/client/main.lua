@@ -1,7 +1,7 @@
 local isDead = false
 
 local function showBillsMenu()
-	ESX.TriggerServerCallback('esx_billing:getBills', function(bills)
+	xLib.callback('esx_billing:getBills', false, function(bills)
 		if #bills <= 0 then return ESX.ShowNotification(TranslateCap('no_invoices')) end
 
 		local elements = {
@@ -20,7 +20,7 @@ local function showBillsMenu()
 		ESX.OpenContext('right', elements, function(menu, element)
 			local billId = element.billId
 
-			ESX.TriggerServerCallback('esx_billing:payBill', function(resp)
+			xLib.callback('esx_billing:payBill', false, function(resp)
 				showBillsMenu()
 
 				if not resp then return end
@@ -37,6 +37,25 @@ RegisterCommand('showbills', function()
 end, false)
 
 RegisterKeyMapping('showbills', TranslateCap('keymap_showbills'), 'keyboard', 'F7')
+
+RegisterNetEvent('esx_billing:confirmHighBill', function(token, label, amount, senderName)
+	local elements = {
+		{ unselectable = true, icon = 'fas fa-scroll', title = ('%s - %s'):format(label, ESX.Math.GroupDigits(amount)) },
+		{ icon = 'fas fa-check', title = 'Accept invoice', value = true },
+		{ icon = 'fas fa-times', title = 'Decline invoice', value = false }
+	}
+
+	ESX.ShowNotification(('High invoice from %s requires confirmation'):format(senderName or 'unknown'))
+
+	ESX.OpenContext('right', elements, function(menu, element)
+		if element.value == nil then return end
+
+		xLib.callback('esx_billing:respondHighBill', false, function() end, token, element.value == true)
+		ESX.CloseContext()
+	end, function()
+		xLib.callback('esx_billing:respondHighBill', false, function() end, token, false)
+	end)
+end)
 
 AddEventHandler('esx:onPlayerDeath', function() isDead = true end)
 AddEventHandler('esx:onPlayerSpawn', function() isDead = false end)

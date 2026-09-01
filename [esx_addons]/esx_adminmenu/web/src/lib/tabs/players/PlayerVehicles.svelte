@@ -54,6 +54,7 @@
 	});
 
 	async function loadMoreVehicles() {
+		if (search.trim() !== "") return;
 		await fetchVehiclePage({ search: search.trim() });
 	}
 
@@ -116,7 +117,7 @@
 </div>
 
 <div class="list-wrapper">
-	<VehiclesList {filteredVehicles} loading={uiState.vehicleLoading} hasMore={uiState.vehicleHasMore} onNeedMore={loadMoreVehicles} />
+	<VehiclesList {filteredVehicles} loading={uiState.vehicleLoading} hasMore={search.trim() === "" && uiState.vehicleHasMore} onNeedMore={loadMoreVehicles} />
 </div>
 
 <style>

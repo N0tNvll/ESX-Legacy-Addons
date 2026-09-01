@@ -5,12 +5,13 @@ game 'gta5'
 description 'Adds the ability to customise your clothing'
 
 version '1.0'
-legacyversion '1.14.1'
+legacyversion '1.15.0'
 
 lua54 'yes'
 
 shared_script '@es_extended/imports.lua'
 
+shared_script '@esx_lib/imports.lua'
 server_scripts {
 	'@oxmysql/lib/MySQL.lua',
 	'@es_extended/locale.lua',

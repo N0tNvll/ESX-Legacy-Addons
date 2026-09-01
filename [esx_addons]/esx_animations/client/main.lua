@@ -1,11 +1,11 @@
 local function startAttitude(lib, anim)
-	ESX.Streaming.RequestAnimSet(lib, function()
+	xLib.streaming.requestAnimSet(lib, function()
 		SetPedMovementClipset(ESX.PlayerData.ped, anim, 1)
 	end)
 end
 
 local function startAnim(lib, anim)
-	ESX.Streaming.RequestAnimDict(lib, function()
+	xLib.streaming.requestAnimDict(lib, function()
 		TaskPlayAnim(ESX.PlayerData.ped, lib, anim, 8.0, -8.0, -1, 0, 0.0, false, false, false)
 		RemoveAnimDict(lib)
 	end)

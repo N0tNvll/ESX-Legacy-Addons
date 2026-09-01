@@ -14,7 +14,14 @@
 	let impoundOpen: boolean = $state(false);
 	let selectedImpound: string | null = $state(null);
 
-	const impoundNames = $derived(Object.keys(uiState.impounds ?? {}));
+	const impoundOptions = $derived(
+		Object.entries(uiState.impounds ?? {}).map(([id, impound]) => ({
+			id,
+			label: impound.label ?? id,
+		}))
+	);
+	const selectedImpoundOption = $derived(impoundOptions.find((impound) => impound.id === selectedImpound) ?? impoundOptions[0] ?? null);
+	const selectedImpoundLabel = $derived(selectedImpoundOption ? selectedImpoundOption.label : t("select_impound"));
 
 	let openedAt = $state<number | null>(null);
 
@@ -24,6 +31,13 @@
 		} else {
 			openedAt = null;
 		}
+	});
+
+	$effect(() => {
+		if (!open || confirmType !== "impound_vehicle") return;
+		if (selectedImpound && impoundOptions.some((impound) => impound.id === selectedImpound)) return;
+
+		selectedImpound = impoundOptions[0]?.id ?? null;
 	});
 
 	let newDate: string = $state("");
@@ -74,9 +88,10 @@
 		}
 
 		if (confirmType === "impound_vehicle") {
-			if (!selectedImpound) return;
+			const impoundName = selectedImpoundOption?.id ?? null;
+			if (!impoundName) return;
 
-			onConfirm({ impoundName: selectedImpound });
+			onConfirm({ impoundName });
 			reset();
 			return;
 		}
@@ -242,7 +257,7 @@
 
 						<div class="confirm-dropdown lg-dropdown" role="presentation" onclick={stopPropagation} onkeydown={stopPropagation}>
 							<button type="button" tabindex="-1" class="confirm-dropdown-trigger" aria-expanded={impoundOpen} onclick={toggleImpound}>
-								<span>{selectedImpound ?? t("select_impound")}</span>
+								<span>{selectedImpoundLabel}</span>
 
 								<svg class="confirm-dropdown-arrow" class:open={impoundOpen} viewBox="0 0 11 10">
 									<path
@@ -253,18 +268,18 @@
 							</button>
 
 							<div class="confirm-dropdown-menu" class:open={impoundOpen} tabindex="-1">
-								{#each impoundNames as name}
+								{#each impoundOptions as impound}
 									<button
 										type="button"
 										class="confirm-dropdown-item"
-										class:selected={name === selectedImpound}
+										class:selected={impound.id === selectedImpound}
 										tabindex="-1"
 										onclick={(e) => {
 											e.preventDefault();
-											selectImpound(name);
+											selectImpound(impound.id);
 										}}
 									>
-										{name}
+										{impound.label}
 									</button>
 								{/each}
 							</div>

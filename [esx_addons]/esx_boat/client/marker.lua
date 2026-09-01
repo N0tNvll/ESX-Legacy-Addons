@@ -17,7 +17,7 @@ CreateThread(function()
 						OpenBoatShop(Config.Zones.BoatShops[CurrentActionData.zoneNum])
 					else -- check for license
 
-						ESX.TriggerServerCallback('esx_license:checkLicense', function(hasBoatLicense)
+						xLib.callback('esx_license:checkLicense', false, function(hasBoatLicense)
 							if hasBoatLicense then
 								OpenBoatShop(Config.Zones.BoatShops[CurrentActionData.zoneNum])
 							else

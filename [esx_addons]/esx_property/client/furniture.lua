@@ -25,7 +25,7 @@ if Config.Furniture.Enabled then
 
   RegisterNetEvent("esx_property:placeFurniture", function(Id, furniture, findex)
     if Properties[Id] and InProperty and CurrentId == Id then
-      ESX.Game.SpawnLocalObject(furniture.Name, vector3(furniture.Pos.x, furniture.Pos.y, furniture.Pos.z - 0.1), function(object)
+      xLib.game.spawnLocalObject(furniture.Name, vector3(furniture.Pos.x, furniture.Pos.y, furniture.Pos.z - 0.1), function(object)
         SetEntityCoordsNoOffset(object, furniture.Pos.x, furniture.Pos.y, furniture.Pos.z)
         SetEntityHeading(object, furniture.Heading)
         SetEntityAsMissionEntity(object, true, true)
@@ -144,7 +144,7 @@ if Config.Furniture.Enabled then
     end
     local Position = GetEntityCoords(ESX.PlayerData.ped)
     local PropSpawn = Position - vector3(0.5, 0.5, 1.0)
-    ESX.Game.SpawnLocalObject(PropName, PropSpawn, function(CurrentlyEditing)
+    xLib.game.spawnLocalObject(PropName, PropSpawn, function(CurrentlyEditing)
       CurrentlyEditing = CurrentlyEditing
       NetworkSetObjectForceStaticBlend(CurrentlyEditing, true)
       SetEntityAsMissionEntity(CurrentlyEditing, true, true)
@@ -225,7 +225,7 @@ if Config.Furniture.Enabled then
                 description = TranslateCap("price",Config.FurnitureCatagories[PropCatagory][PropIndex].price), icon = "fas fa-shopping-cart"},
                {title = TranslateCap("yes"), value = "buy", icon = "fas fa-check"}, {title = TranslateCap("no"), icon = "fas fa-minus"}}, function(menu, element)
                 if element.value and element.value == "buy" then
-                  ESX.TriggerServerCallback("esx_property:buyFurniture", function(response)
+                  xLib.callback("esx_property:buyFurniture", false, function(response)
                     if response then
                       DeleteEntity(CurrentlyEditing)
                       ESX.ShowNotification(TranslateCap("bought_furni", Config.FurnitureCatagories[PropCatagory][PropIndex].title), "success")
@@ -237,7 +237,7 @@ if Config.Furniture.Enabled then
                 end
               end)
           else
-            ESX.TriggerServerCallback("esx_property:editFurniture", function(response)
+            xLib.callback("esx_property:editFurniture", false, function(response)
               if response then
                 DeleteEntity(CurrentlyEditing)
                 ESX.ShowNotification(TranslateCap("edited_furni"), "success")
@@ -308,7 +308,7 @@ if Config.Furniture.Enabled then
         FurnitureEditSelect(propertyId)
       end
       if element.value == "delete" then
-        ESX.TriggerServerCallback("esx_property:deleteFurniture", function(response)
+        xLib.callback("esx_property:deleteFurniture", false, function(response)
           if response then
             ESX.ShowNotification(TranslateCap("delete_confirm", Funiture.title), "success")
             FurnitureEditSelect(propertyId)
@@ -375,7 +375,7 @@ if Config.Furniture.Enabled then
         elseif element.value == "edit" then
           FurnitureEditSelect(PropertyId)
         elseif element.value == "reset" then
-          ESX.TriggerServerCallback("esx_property:RemoveAllfurniture", function(Removed)
+          xLib.callback("esx_property:RemoveAllfurniture", false, function(Removed)
             if Removed then
               ESX.ShowNotification(TranslateCap("furni_reset_success"), "success")
             else
@@ -387,9 +387,14 @@ if Config.Furniture.Enabled then
     end)
   end
 
-  ESX.RegisterInput(TranslateCap("furni_command"), TranslateCap("furni_command_desc"), "keyboard", "M", function()
+  xLib.addKeybind({
+    name = TranslateCap("furni_command"),
+    description = TranslateCap("furni_command_desc"),
+    defaultMapper = "keyboard",
+    defaultKey = "M",
+    onPressed = function()
     if InProperty then
-      ESX.TriggerServerCallback('esx_property:CanOpenFurniture', function(Access)
+      xLib.callback('esx_property:CanOpenFurniture', false, function(Access)
         if Access then
           if not inFurniture then
             FurnitureMenu(CurrentId)
@@ -403,5 +408,6 @@ if Config.Furniture.Enabled then
     else
       return
     end
-  end)
+  end,
+})
 end

@@ -217,7 +217,19 @@ export const sendMockData = () => {
         type: 'openGarage',
         payload: {
           garage: mockGarage,
-          vehicles: mockVehicles
+          vehicles: mockVehicles,
+          pagination: {
+            page: 1,
+            pageSize: 30,
+            hasNext: false,
+            hasPrevious: false
+          },
+          stats: {
+            total: mockVehicles.length,
+            stored: mockVehicles.filter(vehicle => vehicle.stored && !vehicle.impounded).length,
+            out: mockVehicles.filter(vehicle => !vehicle.stored && !vehicle.impounded).length,
+            impounded: mockVehicles.filter(vehicle => vehicle.impounded).length
+          }
         }
       }, '*');
     }, 1000);

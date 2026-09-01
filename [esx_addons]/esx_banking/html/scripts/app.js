@@ -1,1036 +1,836 @@
-var LOADED = true;
-class Components {
-  static allComponents = [];
-  static generateAllComponents(generatedData, generateType = "bank") {
-    $("#wrapper").empty();
-    generatedData.forEach((form) => {
-      let objData = {};
-      if (form.elementID.substring(1) == "transfer" && generateType == "bank") {
-        objData = new MultiComponentsForm(form);
-      } else if (form.componentName == "trans" && generateType == "bank") {
-        objData = this.generateTransactionContainer(form);
-      } else if (
-        form.componentName == "pincodePanel" &&
-        generateType == "atm"
-      ) {
-        objData = this.generatePincodeContainer(form);
-      } else if (form.componentName == "moreGraph" && generateType == "bank") {
-        objData = this.generateMainTemplate(form);
-        this.generateMenuTemplate(form);
-      } else if (
-        form.componentName == "atmComponent" &&
-        generateType == "atm"
-      ) {
-        objData = this.generateAtmTemplate(form);
-      } else {
-        if (generateType == "bank") {
-          if (
-            form.componentName == "pincodePanel" ||
-            form.componentName == "atmComponent"
-          ) {
-            return;
-          }
-        } else if (generateType == "atm") {
-          if (
-            form.componentName == "trans" ||
-            form.componentName == "moreGraph"
-          ) {
-            return;
-          }
+(() => {
+  const wrapper = document.getElementById("wrapper");
+  const resourceName = typeof GetParentResourceName === "function" ? GetParentResourceName() : "esx_banking";
+  const quickAmounts = [100, 500, 1000, 5000];
+  const actionLabels = {
+    deposit: "Deposit",
+    withdraw: "Withdraw",
+    transfer: "Transfer",
+    pincode: "PIN"
+  };
+  const transactionLabels = {
+    DEPOSIT: "Deposit",
+    WITHDRAW: "Withdraw",
+    TRANSFER: "Transfer",
+    TRANSFER_RECEIVE: "Transfer received",
+    PINCODE: "PIN updated"
+  };
+
+  let state = {
+    visible: false,
+    unlocked: true,
+    activeAction: "deposit",
+    busy: false,
+    pin: "",
+    pinError: "",
+    formError: "",
+    search: "",
+    data: {
+      accessType: "bank",
+      bankName: "Fleeca Bank",
+      playerName: "Unknown",
+      cash: 0,
+      bank: 0,
+      hasPin: false,
+      transactions: []
+    }
+  };
+
+  function isBrowser() {
+    return typeof GetParentResourceName !== "function";
+  }
+
+  function fetchNui(eventName, data = {}) {
+    return fetch(`https://${resourceName}/${eventName}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=UTF-8"
+      },
+      body: JSON.stringify(data)
+    })
+      .then((response) => response.json().catch(() => ({})))
+      .catch(() => ({}));
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function toNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : 0;
+  }
+
+  function formatMoney(value) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0
+    }).format(toNumber(value));
+  }
+
+  function formatDate(value) {
+    const timestamp = typeof value === "number" ? value : Number(value);
+    const date = Number.isFinite(timestamp) ? new Date(timestamp) : new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return "Unknown time";
+    }
+
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(date);
+  }
+
+  function normalizeType(type) {
+    return String(type || "").toUpperCase();
+  }
+
+  function isOutgoing(type) {
+    return ["WITHDRAW", "TRANSFER"].includes(normalizeType(type));
+  }
+
+  function normalizeTransactions(transactions) {
+    if (!Array.isArray(transactions)) {
+      return [];
+    }
+
+    return transactions.map((transaction) => ({
+      label: String(transaction.label || transaction.type || "Transaction"),
+      type: normalizeType(transaction.type || transaction.label),
+      amount: toNumber(transaction.amount),
+      time: toNumber(transaction.time) || Date.parse(transaction.time) || Date.now(),
+      balance: toNumber(transaction.balance)
+    }));
+  }
+
+  function mergePayload(payload) {
+    const data = payload || {};
+    state.data = {
+      ...state.data,
+      accessType: data.accessType || state.data.accessType,
+      bankName: data.bankName || state.data.bankName,
+      playerName: data.playerName || state.data.playerName,
+      cash: toNumber(data.cash ?? data.money ?? state.data.cash),
+      bank: toNumber(data.bank ?? data.bankMoney ?? state.data.bank),
+      hasPin: typeof data.hasPin === "boolean" ? data.hasPin : state.data.hasPin,
+      transactions: normalizeTransactions(data.transactions || data.transactionHistory || state.data.transactions)
+    };
+  }
+
+  function getAvailableActions() {
+    if (state.data.accessType === "atm") {
+      return ["deposit", "withdraw"];
+    }
+
+    return ["deposit", "withdraw", "transfer", "pincode"];
+  }
+
+  function ensureValidAction() {
+    const actions = getAvailableActions();
+    if (!actions.includes(state.activeAction)) {
+      state.activeAction = actions[0];
+    }
+  }
+
+  function getStats() {
+    return state.data.transactions.reduce(
+      (summary, transaction) => {
+        if (isOutgoing(transaction.type)) {
+          summary.outgoing += transaction.amount;
+        } else {
+          summary.incoming += transaction.amount;
         }
-        objData = new SingleComponentsForm(form);
-      }
-      if (form.componentName != undefined) {
-        this.allComponents[form.componentName] = objData;
-      } else {
-        this.allComponents[form.elementID.substring(1)] = objData;
-      }
+
+        summary.count += 1;
+        return summary;
+      },
+      { incoming: 0, outgoing: 0, count: 0 }
+    );
+  }
+
+  function filteredTransactions() {
+    const search = state.search.trim().toLowerCase();
+    if (!search) {
+      return state.data.transactions;
+    }
+
+    return state.data.transactions.filter((transaction) => {
+      const label = `${transaction.label} ${transaction.type} ${transaction.amount}`.toLowerCase();
+      return label.includes(search);
     });
   }
 
-  static getComponent(componentName) {
-    if (this.allComponents[componentName] != undefined) {
-      return this.allComponents[componentName];
-    }
-    return false;
+  function renderTabs() {
+    return getAvailableActions()
+      .map((action) => {
+        const activeClass = action === state.activeAction ? " active" : "";
+        return `<button class="tab-button${activeClass}" type="button" data-action-tab="${action}">${escapeHtml(actionLabels[action])}</button>`;
+      })
+      .join("");
   }
 
-  static loader(appendedDiv, state) {
-    $(appendedDiv).empty();
-    if (state == "show") {
-      $(appendedDiv).append(`
-			<svg class="circular-loader" viewBox="25 25 50 50">
-				<circle class="loader-path" cx="50" cy="50" r="20"></circle>
-			</svg>`);
-      $(appendedDiv).fadeIn(200);
-      LOADED = true;
-
-      setTimeout(() => {
-        $(`${appendedDiv}`).fadeOut(200);
-        $("#wrapper").fadeIn().css("display", "flex");
-        if (appendedDiv == ".loader")
-          $("#container").fadeIn().css("display", "flex");
-        LOADED = false;
-      }, 2500);
-    } else if (state == "hide") {
-      $(`${appendedDiv}`).fadeOut(200);
-      if (appendedDiv == ".loader") {
-        $("#wrapper").fadeOut(200);
-        $("#container").fadeOut(200);
-      }
-    }
+  function renderQuickAmounts() {
+    return `
+      <div class="quick-amounts">
+        ${quickAmounts
+          .map((amount) => `<button class="amount-chip" type="button" data-quick-amount="${amount}">${formatMoney(amount)}</button>`)
+          .join("")}
+      </div>
+    `;
   }
 
-  static generateTransactionContainer(formData) {
-    $(formData.elementID).empty();
-    return $(formData.elementID).html(`<h3>${formData.title}</h3>
-		<p>${formData.description}</p>
-		<div id="graph-container">
-			<canvas id="smallGraph" width="400" height="400"></canvas>
-		</div>
-		<div id="buttons-container">
-			<button class="accept-button" id="more_history">${formData.moreHistoryText}</button>
-			<button class="accept-button" id="more_graph">${formData.moreGraphText}</button>
-		</div>
-		<div id="transactions-container"></div>`);
+  function renderFormError() {
+    return state.formError ? `<div class="form-error">${escapeHtml(state.formError)}</div>` : "";
   }
 
-  static generatePincodeContainer(formData) {
-    return $(formData.elementID).append(`
-				<div id="pincode-container">
-					<div id="pincode-panel">
-						<h4>${formData.title}</h4>
-						<div class="pincode-input"></div>
-						<div class="pincode-numbers">
-							<div class="deleteButton">${formData.deleteButtonText}</div>
-							<div>${formData.loginButtonText}</div>
-						</div>
-						<div class="button-groups">
-							<button class="pin-button exit-button">${formData.closeButtonText}</button>
-						</div>
-					</div>
-				</div>`);
-  }
-
-  static generateMainTemplate(formData) {
-    return $(formData.elementID).append(`
-			<div id="container">
-					<div id="modal-container">
-						<div id="title-container">
-							<h3>${formData.title}</h3>
-							<button id="close-button">${formData.closeButtonText}</button>
-						</div>
-						<div id="more-modal-container"></div>
-					</div>
-			</div>`);
-  }
-
-  static generateMenuTemplate(formData) {
-    $("#container").append(`
-			<div id="menu">
-				<div id="first-column">
-
-					<h3>${formData.bankTitle}</h3>
-					<div id="bankcard"></div>
-
-					<div id="your-money-panel"></div>
-
-					<div id="info-panel">
-						<div id="cpincode"></div>
-					</div>
-					<hr>
-					<button class="exit-button">${formData.mainExitButtonText}</button>
-
-				</div>
-
-				<div id="second-column">
-					<div id="withdraw"></div>
-
-					<div id="deposit"></div>
-
-					<div id="transfer"></div>
-				</div>
-
-				<div id="third-column">
-					<div id="transactions-container"></div>
-				</div>
-			</div>`);
-  }
-
-  static generateAtmTemplate(formData) {
-    $(formData.elementID).append(`
-			<div id="atm-container">
-				<div class="firstGridColumn">
-					<h3>${formData.title}</h3>
-					<div id="bankcard"></div>
-					<div id="your-money-panel"></div>
-					<hr>
-					<button class="exit-button">${formData.closeButtonText}</button>
-				</div>
-				<div class="secondGridColumn"></div>
-			</div>
-		`);
-
-    return $(`${formData.elementID} #atm-container`);
-  }
-}
-
-class SingleComponentsForm {
-  elementID = "";
-  buttonText = "";
-  inputPlaceholder = "";
-  title = "";
-  description = "";
-  type = "number";
-  template = "";
-  name = "";
-
-  constructor(form) {
-    this.elementID = form.elementID;
-    this.buttonText = form.buttonText;
-    this.inputPlaceholder = form.inputPlaceholder;
-    this.title = form.title;
-    this.description = form.description;
-    this.type = form.type;
-    this.name = form.name;
-    this.renderInputAndButton();
-  }
-
-  setElementId(newElementID) {
-    this.elementID = newElementID;
-  }
-
-  renderInputAndButton() {
-    this.template = `<h3>${this.title}</h3><p>${this.description}</p>`;
-
-    if (this.type == "password") {
-      this.template += `<input type="password" name="pincode" pattern="/^-?\d+\.?\d*$/" onKeyPress="if(this.value.length==4) return false;" placeholder="${this.inputPlaceholder}">`;
-    } else {
-      this.template += `<input type="number" name="${this.name}" pattern="/^-?\d+\.?\d*$/" placeholder="${this.inputPlaceholder}">`;
+  function renderActionForm() {
+    if (state.activeAction === "transfer") {
+      return `
+        <form class="form-stack" data-action-form>
+          <div class="form-row">
+            <input name="amount" type="number" min="1" inputmode="numeric" placeholder="Amount" autocomplete="off" />
+            <input name="target" type="number" min="1" inputmode="numeric" placeholder="Player ID" autocomplete="off" />
+          </div>
+          ${renderQuickAmounts()}
+          <button class="primary-button" type="submit" ${state.busy ? "disabled" : ""}>${state.busy ? "Processing" : "Transfer"}</button>
+          ${renderFormError()}
+        </form>
+      `;
     }
 
-    this.template += `<button class="accept-button disable-button" disabled>
-					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M20.285 2l-11.285 11.567-5.286-5.011-3.714 3.716 9 8.728 15-15.285z"/></svg>
-					${this.buttonText}</button>`;
+    if (state.activeAction === "pincode") {
+      return `
+        <form class="form-stack" data-action-form>
+          <input name="pin" type="password" maxlength="4" inputmode="numeric" placeholder="New 4 digit PIN" autocomplete="off" />
+          <button class="primary-button" type="submit" ${state.busy ? "disabled" : ""}>${state.busy ? "Processing" : "Save PIN"}</button>
+          ${renderFormError()}
+        </form>
+      `;
+    }
 
-    $(this.elementID).append(`<div>${this.template}</div>`);
+    return `
+      <form class="form-stack" data-action-form>
+        <input name="amount" type="number" min="1" inputmode="numeric" placeholder="${state.activeAction === "deposit" ? "Cash to deposit" : "Bank funds to withdraw"}" autocomplete="off" />
+        ${renderQuickAmounts()}
+        <button class="primary-button" type="submit" ${state.busy ? "disabled" : ""}>${state.busy ? "Processing" : escapeHtml(actionLabels[state.activeAction])}</button>
+        ${renderFormError()}
+      </form>
+    `;
   }
 
-  show() {
-    $(this.elementID).fadeIn();
+  function getActionContextRows() {
+    if (state.activeAction === "withdraw") {
+      return [
+        { label: "Source", title: "Bank", value: formatMoney(state.data.bank) },
+        { label: "Destination", title: "Cash", value: formatMoney(state.data.cash) },
+      ];
+    }
+
+    if (state.activeAction === "transfer") {
+      return [
+        { label: "Source", title: "Bank", value: formatMoney(state.data.bank) },
+        { label: "Destination", title: "Player", value: "Player ID" },
+      ];
+    }
+
+    if (state.activeAction === "pincode") {
+      return [
+        { label: "Security", title: "PIN", value: state.data.hasPin ? "Configured" : "Not configured" },
+        { label: "Access", title: state.data.accessType === "atm" ? "ATM" : "Branch", value: "Active" },
+      ];
+    }
+
+    return [
+      { label: "Source", title: "Cash", value: formatMoney(state.data.cash) },
+      { label: "Destination", title: "Bank", value: formatMoney(state.data.bank) },
+    ];
   }
 
-  hide() {
-    $(this.elementID).fadeOut();
-  }
-}
+  function renderActionContext(stats) {
+    const rows = getActionContextRows();
+    const latest = state.data.transactions[0];
+    const net = stats.incoming - stats.outgoing;
+    const netClass = net < 0 ? " negative" : "";
+    const latestOutgoing = latest && isOutgoing(latest.type);
+    const latestClass = latestOutgoing ? " negative" : "";
+    const latestLabel = latest ? transactionLabels[latest.type] || latest.label || "Movement" : "Latest movement";
+    const latestValue = latest
+      ? `${latestOutgoing ? "-" : "+"}${formatMoney(latest.amount)}`
+      : "No history";
 
-class MultiComponentsForm {
-  elementID = "";
-  buttonText = "";
-  inputPlaceholder = "";
-  inputPlaceholder2 = "";
-  title = "";
-  description = "";
-
-  constructor(form) {
-    this.elementID = form.elementID;
-    this.buttonText = form.buttonText;
-    this.inputPlaceholder = form.inputPlaceholder;
-    this.inputPlaceholder2 = form.inputPlaceholder2;
-    this.title = form.title;
-    this.description = form.description;
-    this.renderInputAndButtonGroups();
-  }
-
-  renderInputAndButtonGroups() {
-    $(this.elementID).html(`<h3>${this.title}</h3>
-		<p>${this.description}</p>
-		<div class="input-groups-container">
-			<input type="number" name="moneyAmount" placeholder="${this.inputPlaceholder}">
-			<input type="number" name="playerId" placeholder="${this.inputPlaceholder2}">
-			<button class="accept-button disable-button" disabled>
-				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M20.285 2l-11.285 11.567-5.286-5.011-3.714 3.716 9 8.728 15-15.285z"/></svg>
-				${this.buttonText}
-			</button>
-		</div>`);
-  }
-
-  show() {
-    $(this.elementID).fadeIn();
-  }
-
-  hide() {
-    $(this.elementID).fadeOut();
-  }
-}
-
-class Render {
-  fullRenderData = {};
-  elementID = "";
-  language = "";
-  constructor(elementID) {
-    this.elementID = elementID;
-  }
-  renderBankCard() {
-    const bankData = this.fullRenderData;
-    $("#bankcard").empty();
-    let template = `<div class="title">
-		<h3>${bankData.bankName}</h3>
-		<svg id="bank-svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="11445.527 -3691.757 35 25">
-			<defs>
-			<style>
-				.cls-1 {
-				fill: orange;
-				}
-		
-				.cls-1, .cls-3 {
-				stroke: #6c7679;
-				}
-		
-				.cls-2 {
-				clip-path: url(#clip-path);
-				}
-		
-				.cls-3, .cls-5 {
-				fill: none;
-				}
-		
-				.cls-4 {
-				stroke: none;
-				}
-			</style>
-			<clipPath id="clip-path">
-				<rect id="Rectangle_13866" data-name="Rectangle 13866" class="cls-1" width="35" height="25" rx="2"/>
-			</clipPath>
-			</defs>
-			<g id="Group_11188" data-name="Group 11188" transform="translate(11445.527 -3691.757)">
-			<g id="Mask_Group_274" data-name="Mask Group 274" class="cls-2">
-				<g id="Group_11186" data-name="Group 11186" transform="translate(-1.4 -5.405)">
-				<g id="Rectangle_13856" data-name="Rectangle 13856" class="cls-1" transform="translate(1.4 5.405)">
-					<rect class="cls-4" width="35" height="25" rx="5"/>
-					<rect class="cls-5" x="0.5" y="0.5" width="34" height="24" rx="4.5"/>
-				</g>
-				<g id="Rectangle_13857" data-name="Rectangle 13857" class="cls-1" transform="translate(0 18.919)">
-					<path class="cls-4" d="M3.243,0h7.07A6.486,6.486,0,0,1,16.8,6.486v0a9.73,9.73,0,0,1-9.73,9.73H3.243A3.243,3.243,0,0,1,0,12.973V3.243A3.243,3.243,0,0,1,3.243,0Z"/>
-					<path class="cls-5" d="M3.353.5h6.924A6.023,6.023,0,0,1,16.3,6.523v0a9.193,9.193,0,0,1-9.193,9.193H3.353A2.853,2.853,0,0,1,.5,12.863V3.353A2.853,2.853,0,0,1,3.353.5Z"/>
-				</g>
-				<g id="Rectangle_13858" data-name="Rectangle 13858" class="cls-1" transform="translate(37.8 16.216) rotate(180)">
-					<path class="cls-4" d="M3.243,0h7.07A6.486,6.486,0,0,1,16.8,6.486v0a9.73,9.73,0,0,1-9.73,9.73H3.243A3.243,3.243,0,0,1,0,12.973V3.243A3.243,3.243,0,0,1,3.243,0Z"/>
-					<path class="cls-5" d="M3.353.5h6.924A6.023,6.023,0,0,1,16.3,6.523v0a9.193,9.193,0,0,1-9.193,9.193H3.353A2.853,2.853,0,0,1,.5,12.863V3.353A2.853,2.853,0,0,1,3.353.5Z"/>
-				</g>
-				<g id="Rectangle_13859" data-name="Rectangle 13859" class="cls-1">
-					<path class="cls-4" d="M3.243,0H7.07A9.73,9.73,0,0,1,16.8,9.73v0a6.486,6.486,0,0,1-6.486,6.486H3.243A3.243,3.243,0,0,1,0,12.973V3.243A3.243,3.243,0,0,1,3.243,0Z"/>
-					<path class="cls-5" d="M3.353.5H7.107A9.193,9.193,0,0,1,16.3,9.693v0a6.023,6.023,0,0,1-6.023,6.023H3.353A2.853,2.853,0,0,1,.5,12.863V3.353A2.853,2.853,0,0,1,3.353.5Z"/>
-				</g>
-				<g id="Rectangle_13860" data-name="Rectangle 13860" class="cls-1" transform="translate(37.8 35.135) rotate(180)">
-					<path class="cls-4" d="M3.243,0H7.07A9.73,9.73,0,0,1,16.8,9.73v0a6.486,6.486,0,0,1-6.486,6.486H3.243A3.243,3.243,0,0,1,0,12.973V3.243A3.243,3.243,0,0,1,3.243,0Z"/>
-					<path class="cls-5" d="M3.353.5H7.107A9.193,9.193,0,0,1,16.3,9.693v0a6.023,6.023,0,0,1-6.023,6.023H3.353A2.853,2.853,0,0,1,.5,12.863V3.353A2.853,2.853,0,0,1,3.353.5Z"/>
-				</g>
-				<line id="Line_737" data-name="Line 737" class="cls-3" y2="3.378" transform="translate(11.55 15.878)"/>
-				<line id="Line_738" data-name="Line 738" class="cls-3" y2="3.378" transform="translate(26.25 15.878)"/>
-				</g>
-				<g id="Group_11187" data-name="Group 11187" transform="translate(-1.4 -5.405)">
-				<g id="Rectangle_13861" data-name="Rectangle 13861" class="cls-1" transform="translate(1.4 5.405)">
-					<rect class="cls-4" width="35" height="25" rx="5"/>
-					<rect class="cls-5" x="0.5" y="0.5" width="34" height="24" rx="4.5"/>
-				</g>
-				<g id="Rectangle_13862" data-name="Rectangle 13862" class="cls-1" transform="translate(0 18.919)">
-					<path class="cls-4" d="M3.243,0h7.07A6.486,6.486,0,0,1,16.8,6.486v0a9.73,9.73,0,0,1-9.73,9.73H3.243A3.243,3.243,0,0,1,0,12.973V3.243A3.243,3.243,0,0,1,3.243,0Z"/>
-					<path class="cls-5" d="M3.353.5h6.924A6.023,6.023,0,0,1,16.3,6.523v0a9.193,9.193,0,0,1-9.193,9.193H3.353A2.853,2.853,0,0,1,.5,12.863V3.353A2.853,2.853,0,0,1,3.353.5Z"/>
-				</g>
-				<g id="Rectangle_13863" data-name="Rectangle 13863" class="cls-1" transform="translate(37.8 16.216) rotate(180)">
-					<path class="cls-4" d="M3.243,0h7.07A6.486,6.486,0,0,1,16.8,6.486v0a9.73,9.73,0,0,1-9.73,9.73H3.243A3.243,3.243,0,0,1,0,12.973V3.243A3.243,3.243,0,0,1,3.243,0Z"/>
-					<path class="cls-5" d="M3.353.5h6.924A6.023,6.023,0,0,1,16.3,6.523v0a9.193,9.193,0,0,1-9.193,9.193H3.353A2.853,2.853,0,0,1,.5,12.863V3.353A2.853,2.853,0,0,1,3.353.5Z"/>
-				</g>
-				<g id="Rectangle_13864" data-name="Rectangle 13864" class="cls-1">
-					<rect class="cls-4" width="16.8" height="16.216" rx="3"/>
-					<rect class="cls-5" x="0.5" y="0.5" width="15.8" height="15.216" rx="2.5"/>
-				</g>
-				<g id="Rectangle_13865" data-name="Rectangle 13865" class="cls-1" transform="translate(37.8 35.135) rotate(180)">
-					<rect class="cls-4" width="16.8" height="16.216" rx="3"/>
-					<rect class="cls-5" x="0.5" y="0.5" width="15.8" height="15.216" rx="2.5"/>
-				</g>
-				<line id="Line_739" data-name="Line 739" class="cls-3" y2="3.378" transform="translate(11.55 15.878)"/>
-				<line id="Line_740" data-name="Line 740" class="cls-3" y2="3.378" transform="translate(26.25 15.878)"/>
-				</g>
-			</g>
-			<g id="Rectangle_13867" data-name="Rectangle 13867" class="cls-3">
-				<rect class="cls-4" width="35" height="25" rx="2"/>
-				<rect class="cls-5" x="0.5" y="0.5" width="34" height="24" rx="1.5"/>
-			</g>
-			</g>
-		</svg>
-	</div>
-	<div class="content">
-		<p>Debit Card</p>
-		<div class="card-data">
-			<p>${bankData.name}</p>
-			<p>${bankData.createdDate}</p>
-		</div>
-		<p class="cardnumber">${bankData.cardNumber}</p>
-		</div>`;
-    $(template).appendTo("#bankcard");
+    return `
+      <div class="action-context">
+        <div class="action-context-grid">
+          ${rows
+            .map(
+              (row) => `
+                <div class="action-context-item">
+                  <span>${escapeHtml(row.label)}</span>
+                  <strong>${escapeHtml(row.title)}</strong>
+                  <em>${escapeHtml(row.value)}</em>
+                </div>
+              `
+            )
+            .join("")}
+        </div>
+        <div class="action-context-line">
+          <span>Net flow</span>
+          <strong class="${netClass}">${net >= 0 ? "+" : "-"}${formatMoney(Math.abs(net))}</strong>
+        </div>
+        <div class="action-context-line">
+          <span>${escapeHtml(latestLabel)}</span>
+          <strong class="${latestClass}">${escapeHtml(latestValue)}</strong>
+        </div>
+      </div>
+    `;
   }
 
-  renderMyMoneySection() {
-    const moneyData = this.fullRenderData;
-    $("#your-money-panel").empty();
-    let template = `<h3>${this.language.your_money_title}</h3>
-		<p>${this.language.your_money_desc}</p>
-		<div id="money-containers">`;
-    moneyData.accountsData.forEach((data) => {
-      template += `
-				<div class="money-container">
-					<h4>${this.language[`your_money_${data.name}_label`]}</h4>
-					<span id="money-${data.name}">${this.language.moneyFormat.replace(
-        "__replaceData__",
-        data.amount
-      )}</span>
-				</div>
-			`;
+  function renderChart() {
+    const transactions = state.data.transactions.slice(0, 10).reverse();
+    const stats = getStats();
+    const net = stats.incoming - stats.outgoing;
+    const netClass = net < 0 ? " negative" : "";
+
+    if (!transactions.length) {
+      return `
+        <div class="flow-header">
+          <div>
+            <span class="label">Cash flow</span>
+            <strong>No movement</strong>
+          </div>
+          <span class="flow-pill">0 moves</span>
+        </div>
+        <div class="empty-state">No movement yet</div>
+      `;
+    }
+
+    const width = 520;
+    const height = 150;
+    const padding = 18;
+    const balances = transactions.map((transaction) => transaction.balance || state.data.bank);
+    const minBalance = Math.min(...balances);
+    const maxBalance = Math.max(...balances);
+    const range = Math.max(1, maxBalance - minBalance);
+    const usableWidth = width - padding * 2;
+    const usableHeight = height - padding * 2;
+    const points = balances.map((balance, index) => {
+      const x = transactions.length === 1 ? width / 2 : padding + (index / (transactions.length - 1)) * usableWidth;
+      const y = padding + ((maxBalance - balance) / range) * usableHeight;
+      return [Number(x.toFixed(1)), Number(y.toFixed(1))];
     });
+    const pointString = points.map(([x, y]) => `${x},${y}`).join(" ");
+    const baseline = height - padding;
+    const areaString = `${points[0][0]},${baseline} ${pointString} ${points[points.length - 1][0]},${baseline}`;
+    const firstDate = formatDate(transactions[0].time);
+    const lastDate = formatDate(transactions[transactions.length - 1].time);
 
-    template += "</div>";
-
-    $(template).appendTo("#your-money-panel");
+    return `
+      <div class="flow-header">
+        <div>
+          <span class="label">Cash flow</span>
+          <strong class="flow-net${netClass}">${net >= 0 ? "+" : "-"}${formatMoney(Math.abs(net))}</strong>
+        </div>
+        <span class="flow-pill">${transactions.length} moves</span>
+      </div>
+      <div class="flow-visual">
+        <svg class="flow-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+          <defs>
+            <linearGradient id="flowArea" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#fb9b04" stop-opacity="0.38" />
+              <stop offset="100%" stop-color="#fb9b04" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <line class="flow-grid" x1="${padding}" y1="${padding}" x2="${width - padding}" y2="${padding}" />
+          <line class="flow-grid" x1="${padding}" y1="${height / 2}" x2="${width - padding}" y2="${height / 2}" />
+          <line class="flow-grid" x1="${padding}" y1="${baseline}" x2="${width - padding}" y2="${baseline}" />
+          <polygon class="flow-area" points="${areaString}" />
+          <polyline class="flow-line" points="${pointString}" />
+          ${points.map(([x, y]) => `<circle class="flow-dot" cx="${x}" cy="${y}" r="4" />`).join("")}
+        </svg>
+      </div>
+      <div class="flow-footer">
+        <span>${escapeHtml(firstDate)}</span>
+        <span>${formatMoney(minBalance)} - ${formatMoney(maxBalance)}</span>
+        <span>${escapeHtml(lastDate)}</span>
+      </div>
+    `;
   }
 
-  renderTransactions() {
-    const transactionData = this.fullRenderData;
-    $("#transactions-container").empty();
-    if (transactionData.length == 0) {
+  function renderHistoryItems() {
+    const transactions = filteredTransactions();
+
+    if (!transactions.length) {
+      return '<div class="empty-state">No transactions found</div>';
+    }
+
+    return transactions
+      .map((transaction) => {
+        const outgoing = isOutgoing(transaction.type);
+        const amountClass = outgoing ? " out" : "";
+        const sign = outgoing ? "-" : "+";
+        const label = transactionLabels[transaction.type] || transaction.label;
+
+        return `
+          <div class="transaction-item">
+            <div class="transaction-icon${amountClass}" aria-hidden="true"></div>
+            <div>
+              <div class="transaction-title">${escapeHtml(label)}</div>
+              <div class="transaction-time">${escapeHtml(formatDate(transaction.time))}</div>
+            </div>
+            <div class="transaction-amount${amountClass}">${sign}${formatMoney(transaction.amount)}</div>
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  function renderHistoryList() {
+    const list = wrapper.querySelector("[data-history-list]");
+    if (list) {
+      list.innerHTML = renderHistoryItems();
+    }
+  }
+
+  function renderPinDots() {
+    return Array.from({ length: 4 }, (_, index) => `<span class="pin-dot${index < state.pin.length ? " filled" : ""}"></span>`).join("");
+  }
+
+  function renderPinGate() {
+    const hasPin = state.data.hasPin === true;
+
+    return `
+      <div class="pin-panel">
+        <div class="bank-header">
+          <div class="brand">
+            <div class="brand-mark">$</div>
+            <div>
+              <h1>${escapeHtml(state.data.bankName)}</h1>
+              <p>ATM access</p>
+            </div>
+          </div>
+          <button class="close-button" type="button" data-close-ui aria-label="Close">
+            <span class="close-icon"></span>
+          </button>
+        </div>
+        <div class="pin-content">
+          <div class="pin-title">
+            <h2>${hasPin ? "Enter PIN" : "PIN required"}</h2>
+            <p>${hasPin ? "Unlock this ATM session." : "Set a PIN from a bank branch before using ATMs."}</p>
+          </div>
+          ${
+            hasPin
+              ? `
+                <div class="pin-dots">${renderPinDots()}</div>
+                <div class="pin-grid">
+                  ${[1, 2, 3, 4, 5, 6, 7, 8, 9]
+                    .map((number) => `<button class="pin-key" type="button" data-pin-key="${number}">${number}</button>`)
+                    .join("")}
+                  <button class="pin-key danger" type="button" data-pin-clear>Clear</button>
+                  <button class="pin-key" type="button" data-pin-key="0">0</button>
+                  <button class="pin-key confirm" type="button" data-pin-confirm ${state.busy ? "disabled" : ""}>OK</button>
+                </div>
+              `
+              : ""
+          }
+          <div class="pin-error">${escapeHtml(state.pinError)}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderBanking() {
+    ensureValidAction();
+    const stats = getStats();
+    const total = state.data.cash + state.data.bank;
+    const accessLabel = state.data.accessType === "atm" ? "ATM session" : "Branch session";
+    const pinLabel = state.data.hasPin ? "Configured" : "Not configured";
+
+    return `
+      <main class="bank-shell">
+        <header class="bank-header">
+          <div class="brand">
+            <div class="brand-mark">$</div>
+            <div>
+              <h1>${escapeHtml(state.data.bankName)}</h1>
+              <p>${escapeHtml(accessLabel)}</p>
+            </div>
+          </div>
+          <button class="close-button" type="button" data-close-ui aria-label="Close">
+            <span class="close-icon"></span>
+          </button>
+        </header>
+
+        <div class="bank-layout">
+          <section class="main-panel">
+            <div class="balance-strip">
+              <article class="balance-card accent">
+                <span class="label">Bank balance</span>
+                <strong class="value">${formatMoney(state.data.bank)}</strong>
+                <span class="sub-value">${escapeHtml(state.data.playerName)}</span>
+              </article>
+              <article class="balance-card">
+                <span class="label">Cash</span>
+                <strong class="value">${formatMoney(state.data.cash)}</strong>
+                <span class="sub-value">Available on hand</span>
+              </article>
+              <article class="balance-card">
+                <span class="label">Total funds</span>
+                <strong class="value">${formatMoney(total)}</strong>
+                <span class="sub-value">Cash + bank</span>
+              </article>
+            </div>
+
+            <div class="actions-row">
+              <section class="action-panel">
+                <div class="tabs">${renderTabs()}</div>
+                ${renderActionContext(stats)}
+                ${renderActionForm()}
+              </section>
+
+              <section class="analytics-panel">
+                <div class="mini-stats">
+                  <div class="stat-box">
+                    <span class="label">In</span>
+                    <strong>${formatMoney(stats.incoming)}</strong>
+                  </div>
+                  <div class="stat-box">
+                    <span class="label">Out</span>
+                    <strong>${formatMoney(stats.outgoing)}</strong>
+                  </div>
+                  <div class="stat-box">
+                    <span class="label">Moves</span>
+                    <strong>${stats.count}</strong>
+                  </div>
+                </div>
+                <div class="chart">${renderChart()}</div>
+              </section>
+            </div>
+
+            <section class="history-panel">
+              <div class="section-header">
+                <h2>Recent activity</h2>
+                <input class="history-search" type="text" value="${escapeHtml(state.search)}" placeholder="Search transactions..." data-history-search />
+              </div>
+              <div class="transaction-list" data-history-list>${renderHistoryItems()}</div>
+            </section>
+          </section>
+
+          <aside class="side-panel">
+            <section class="bank-card">
+              <div class="card-shine"></div>
+              <div class="card-top">
+                <span>${escapeHtml(state.data.bankName)}</span>
+              </div>
+              <div class="card-label">Debit card</div>
+              <div class="card-number">2232 2222 2222 2222</div>
+              <div class="card-bottom">
+                <span>
+                  <small>Holder</small>
+                  ${escapeHtml(state.data.playerName)}
+                </span>
+                <span>
+                  <small>Expires</small>
+                  08/28
+                </span>
+              </div>
+            </section>
+
+            <section class="summary-card">
+              <h2>Account</h2>
+              <div class="summary-line">
+                <span>Access</span>
+                <strong>${escapeHtml(accessLabel)}</strong>
+              </div>
+              <div class="summary-line">
+                <span>PIN</span>
+                <strong>${escapeHtml(pinLabel)}</strong>
+              </div>
+              <div class="summary-line">
+                <span>Status</span>
+                <span class="status-pill">Active</span>
+              </div>
+            </section>
+
+            <section class="summary-card">
+              <h2>Activity</h2>
+              <div class="summary-line">
+                <span>Incoming</span>
+                <strong>${formatMoney(stats.incoming)}</strong>
+              </div>
+              <div class="summary-line">
+                <span>Outgoing</span>
+                <strong>${formatMoney(stats.outgoing)}</strong>
+              </div>
+              <div class="summary-line">
+                <span>History</span>
+                <strong>${state.data.transactions.length} rows</strong>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </main>
+    `;
+  }
+
+  function render() {
+    if (!state.visible) {
+      wrapper.classList.remove("visible");
+      wrapper.setAttribute("aria-hidden", "true");
+      wrapper.innerHTML = "";
       return;
     }
 
-    for (let i = 0; i < transactionData.slice(0, 3).length; i++) {
-      let oneRow = `
-				<div class="transaction-container">
-					<div class="transaction">
-						<h4>${transactionData[i].label || transactionData[i].type}</h4>
-						<span>${Utils.dateFormat(transactionData[i].time)}</span>
-					</div>
-					<span class=${
-            transactionData[i].type == this.language.withdraw ||
-            transactionData[i].type == this.language.transfer
-              ? "red-text"
-              : "green-text"
-          }>${
-        transactionData[i].type == this.language.withdraw ||
-        transactionData[i].type == this.language.transfer
-          ? "-"
-          : "+"
-      }${this.language.moneyFormat.replace(
-        "__replaceData__",
-        transactionData[i].amount
-      )}</span>
-				</div>
-			`;
+    wrapper.classList.add("visible");
+    wrapper.setAttribute("aria-hidden", "false");
 
-      $(oneRow).appendTo("#transactions-container");
+    if (state.data.accessType === "atm" && !state.unlocked) {
+      wrapper.innerHTML = renderPinGate();
+      return;
+    }
+
+    wrapper.innerHTML = renderBanking();
+  }
+
+  function openBanking(payload) {
+    mergePayload(payload);
+    state.visible = true;
+    state.busy = false;
+    state.pin = "";
+    state.pinError = "";
+    state.formError = "";
+    state.unlocked = state.data.accessType !== "atm";
+    state.activeAction = getAvailableActions()[0];
+    render();
+  }
+
+  function closeBanking(sendClose = true) {
+    state.visible = false;
+    state.busy = false;
+    state.pin = "";
+    state.pinError = "";
+    state.formError = "";
+    render();
+
+    if (sendClose) {
+      fetchNui("close", {});
     }
   }
 
-  setData(newData, newLanguage) {
-    this.fullRenderData = newData;
-    this.language = newLanguage;
-  }
+  function submitAction(form) {
+    const formData = new FormData(form);
+    const action = state.activeAction;
+    let payload = { action };
 
-  refresh(newData) {
-    switch (this.elementID) {
-      case "your_money":
-        $("#money-cash").html(
-          `${this.language.moneyFormat.replace(
-            "__replaceData__",
-            newData.money
-          )} `
-        );
-        $("#money-bank").html(
-          `${this.language.moneyFormat.replace(
-            "__replaceData__",
-            newData.bankMoney
-          )}`
-        );
-        break;
-      case "transaction":
-        this.fullRenderData = newData;
-        this.renderTransactions();
-        break;
-      default:
-        break;
-    }
-  }
-}
-
-class Pincode {
-  elementID = "";
-  pincode = "";
-  constructor(elementID) {
-    this.elementID = elementID;
-    this.renderPinInputs();
-    this.renderPassCode();
-    this.hide(false);
-  }
-
-  setPincode(newPincode) {
-    this.pincode += newPincode;
-  }
-
-  getPincode() {
-    return this.pincode;
-  }
-
-  renderPassCode() {
-    $("#container").fadeOut();
-    this.pincode = "";
-    $(`${this.elementID} .pincode-input`).empty();
-    for (let i = 0; i < 4; i++) {
-      $(`${this.elementID} .pincode-input`).append(`<span></span>`);
-    }
-    $(".pincode-numbers div:nth-child(12)").addClass("disable-button");
-    $(".pincode-numbers div:nth-child(12)").prop("disabled", true);
-  }
-
-  renderPinInputs() {
-    let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
-    numbers.forEach((number) => {
-      $(`<div>${number}</div>`).insertBefore(`.pincode-numbers .deleteButton`);
-    });
-  }
-
-  show() {
-    $(this.elementID).fadeIn(100);
-  }
-
-  hide(anim = true) {
-    if (anim) {
-      $(this.elementID).fadeOut(200);
-    } else {
-      $(this.elementID).hide();
-    }
-  }
-}
-
-var timeZone = "";
-class Utils {
-  static dateFormat(date) {
-    if (typeof date == "number") {
-      var newDate = new Date(date);
-    } else {
-      var newDate = date;
-    }
-    return newDate
-      .toLocaleString([Utils.getTimeZone()], {
-        weekday: "long",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-      .capitalize();
-  }
-
-  static setCardData(value) {
-    if (localStorage.getItem("CARD_DATA") == null) {
-      localStorage.setItem("CARD_DATA", JSON.stringify(value));
-    }
-  }
-
-  static getCardData() {
-    return JSON.parse(localStorage.getItem("CARD_DATA"));
-  }
-
-  static genMonth() {
-    var date = new Date();
-    var arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-    var rNum = Math.floor(Math.random() * arr.length);
-    var year = date.getFullYear().toString();
-    year = year.substr(2, year.length);
-    year = parseInt(parseInt(year) + 2);
-    return parseInt(rNum + 1) + "/" + year;
-  }
-
-  static genCardNumber() {
-    let char = "0123456789";
-    let genNum = "";
-    for (let i = 0; i < 16; i++) {
-      var rnum = Math.floor(Math.random() * char.length);
-      genNum += char.substring(rnum, rnum + 1);
-      if ((i + 1) % 4 == 0) {
-        genNum += " ";
-      }
-    }
-    return genNum;
-  }
-
-  static setTimeZone(newTimeZone) {
-    timeZone = newTimeZone;
-  }
-
-  static getTimeZone() {
-    return timeZone;
-  }
-}
-
-class Graph {
-  transData = {};
-  graphData = {
-    type: "line",
-    data: {
-      labels: [],
-      datasets: [
-        {
-          label: "BALANCE",
-          data: [],
-          backgroundColor: ["rgba(75, 192, 192, 0.2)"],
-          borderColor: ["rgba(75, 192, 192, 1)"],
-          borderWidth: 1,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          beginAtZero: true,
-        },
-      },
-    },
-  };
-
-  constructor(transData, title, color) {
-    this.graphData.data.datasets[0].label = title;
-    this.transData = transData;
-    this.calculateGraphData();
-  }
-
-  refreshGraphData(newTransData) {
-    this.transData = newTransData;
-    this.calculateGraphData();
-    this.renderSmallGraph();
-  }
-
-  renderSmallGraph() {
-    const ctx = $("#smallGraph");
-    let chartStatus = Chart.getChart("smallGraph");
-
-    if (chartStatus != undefined) {
-      chartStatus.destroy();
-    }
-
-    return new Chart(ctx, this.graphData);
-  }
-
-  renderBigGraph() {
-    const ctx = $("#moreGraph");
-    let chartStatus = Chart.getChart("moreGraph");
-
-    if (chartStatus != undefined) {
-      chartStatus.destroy();
-    }
-
-    return new Chart(ctx, this.graphData);
-  }
-
-  calculateGraphData() {
-    this.graphData.data.labels = [];
-    this.graphData.data.datasets[0].data = [];
-    this.graphData.data.datasets[0].borderColor = [
-      getComputedStyle(document.body).getPropertyValue("--graphLineColor"),
-    ];
-    this.graphData.data.datasets[0].backgroundColor = [
-      getComputedStyle(document.body).getPropertyValue(
-        "--graphLineBackgroundColor"
-      ),
-    ];
-    for (let transaction of [...this.transData].slice(0, 50).reverse()) {
-      this.graphData.data.labels.push(Utils.dateFormat(transaction.time));
-      this.graphData.data.datasets[0].data.push(transaction.balance);
-    }
-  }
-}
-
-class GlobalStore {
-  storedData = {};
-
-  constructor(newStoredData) {
-    this.storedData = newStoredData;
-  }
-
-  setStoredData(newStoredData) {
-    this.storedData = newStoredData;
-  }
-
-  getStoredData() {
-    return this.storedData;
-  }
-}
-
-Object.defineProperty(String.prototype, "capitalize", {
-  value: function () {
-    return this.charAt(0).toUpperCase() + this.slice(1);
-  },
-  enumerable: false,
-});
-
-$(document).ready(function () {
-  var formData;
-  var language;
-  $.getJSON("config.json", function (data) {
-    let lang = "EN";
-    if (data[data.lang] != null) {
-      lang = data.lang;
-    }
-    Utils.setTimeZone(lang == "HU" ? "hu-HU" : "en-GB");
-    formData = new GlobalStore(data[lang]["DYNAMIC_FORM_DATA"]);
-    language = new GlobalStore(data[lang]["LAUNGAGE"]);
-  }).fail(function (error) {
-    console.log("Can't load JSON file! " + error);
-  });
-
-  var inputData = new GlobalStore({});
-  var transactionData;
-
-  let yourMoney = new Render("your_money");
-  let transaction = new Render("transaction");
-  let bankcard = new Render("bankcard");
-  let graph = "";
-  var pincode = "";
-  var type = "";
-
-  Utils.setCardData({
-    cardNumber: Utils.genCardNumber(),
-    cardExpiry: Utils.genMonth(),
-  });
-
-  function bankRender() {
-    Components.generateAllComponents(formData.getStoredData());
-  }
-
-  function ATMRender() {
-    Components.generateAllComponents(formData.getStoredData(), "atm");
-    pincode = new Pincode("#pincode-container");
-    Components.getComponent("atmComponent").fadeOut();
-    Components.getComponent("withdraw").setElementId(".secondGridColumn");
-    Components.getComponent("withdraw").renderInputAndButton();
-    Components.getComponent("deposit").setElementId(".secondGridColumn");
-    Components.getComponent("deposit").renderInputAndButton();
-
-    pincode.show();
-  }
-
-  function handleTransactionLabel(label, languageText){
-    const defaultLabelList = {
-      WITHDRAW: languageText.withdraw,
-      DEPOSIT: languageText.deposit,
-      TRANSFER_RECEIVE: languageText.transferReceive
-    }
-
-    return defaultLabelList[label.toUpperCase()] ?? label ?? languageText.transfer
-  }
-
-  $(document).on("click", ".pincode-numbers div", function () {
-    if (pincode.getPincode().length + 1 == 4) {
-      $(".pincode-numbers div:nth-child(12)").removeClass("disable-button");
-      $(".pincode-numbers div:nth-child(12)").prop("disabled", false);
-    }
-
-    let currentNumber = $(this).text();
-    $(".pincode-input span").each(function () {
-      let spanText = $(this).attr("number");
-      if (!spanText) {
-        $(this).attr("number", currentNumber);
-        $(this).addClass("circleBackground");
-        pincode.setPincode(currentNumber);
-        return false;
-      }
-    });
-  });
-
-  $(document).on("click", ".pincode-numbers div:nth-child(11)", function () {
-    pincode.renderPassCode();
-  });
-
-  $(document).on("click", ".pincode-numbers div:nth-child(12)", function () {
-    $.post(
-      "https://esx_banking/checkPincode",
-      JSON.stringify(pincode.getPincode())
-    ).then((response) => {
-      if (response.success) {
-        Components.loader("#pincode-container", "show");
-        setTimeout(() => {
-          Components.getComponent("atmComponent").fadeIn(200);
-        }, 2800);
-      } else if (response.error) {
-        pincode.renderPassCode();
-      }
-    });
-  });
-
-  window.addEventListener("message", ({ data }) => {
-    const languageText = language.getStoredData();
-    if (data.showMenu) {
-      const datas = data.datas;
-
-      transactionData = new GlobalStore(datas.transactionsData);
-      const transData = transactionData.getStoredData();
-      transData.map((trans) => {
-        trans.id = trans.time;
-        trans.time = Utils.dateFormat(trans.time);
-        const currentLabel = handleTransactionLabel(trans.label, languageText)
-        trans.label = currentLabel;
-        switch (trans.type) {
-          case "WITHDRAW":
-            trans.type = languageText.withdraw;
-            break;
-          case "DEPOSIT":
-            trans.type = languageText.deposit;
-            break;
-          case "TRANSFER_RECEIVE":
-            trans.type = languageText.transferReceive;
-            break;
-          default:
-            trans.type = languageText.transfer;
-            break;
-        }
-        return trans;
-      });
-
-      graph = new Graph(transData, languageText.graphTitle);
-
-      if (data.openATM) {
-        ATMRender();
-        type = "ATM";
-        transaction.setData(transData, languageText);
-      } else {
-        type = "BANK";
-        bankRender();
-        graph.renderSmallGraph();
-
-        transaction.setData(transData, languageText);
-        transaction.renderTransactions();
-      }
-
-      const bankData = Utils.getCardData();
-      datas.bankCardData.cardNumber = bankData.cardNumber;
-      datas.bankCardData.createdDate = bankData.cardExpiry;
-      bankcard.setData(datas.bankCardData);
-      bankcard.renderBankCard();
-
-      yourMoney.setData(datas.your_money_panel, languageText);
-      yourMoney.renderMyMoneySection();
-
-      Components.loader(".loader", "show");
-    } else if (data.updateData) {
-      const currentInputValues = inputData.getStoredData();
-      const updateTransData = transactionData.getStoredData();
-
-      let info;
-      if ((amount = currentInputValues.withdraw)) {
-        info = { label: languageText.withdraw, amount: amount };
-      } else if ((amount = currentInputValues.deposit)) {
-        info = { label: languageText.deposit, amount: amount };
-      } else if ((amount = currentInputValues.transfer?.moneyAmount)) {
-        info = { label: languageText.transfer, amount: amount };
-      } else if (currentInputValues.pincode) {
-        return;
-      }
-      updateTransData.unshift({
-        time: Utils.dateFormat(new Date()),
-        id: new Date().getTime(),
-        label: info.label.toUpperCase(),
-        amount: info.amount,
-        type: info.label.toUpperCase(),
-        balance: data.data.bankMoney,
-      });
-      yourMoney.refresh(data.data);
-      transaction.refresh(updateTransData);
-      if (type == "BANK") graph.refreshGraphData(updateTransData);
-    }
-  });
-
-  function resetContainerAndSetTitle(title) {
-    $("#menu").fadeOut();
-    $("#title-container h3").text(title);
-    $("#more-modal-container").empty();
-  }
-
-  $(document).on("click", "#more_graph", function () {
-    resetContainerAndSetTitle(language.getStoredData().moreGraphTitle);
-    $("#modal-container").fadeIn();
-    $("#more-modal-container").html('<canvas id="moreGraph"></canvas>');
-    graph.renderBigGraph();
-  });
-
-  $(document).on("click", "#more_history", function () {
-    const lang = language.getStoredData();
-    resetContainerAndSetTitle(lang.moreHistoryTitle);
-    $("#more-modal-container").html(`
-		<table id="example" class="display" style="width:100%">
-			<thead>
-				<tr>
-					<th>id</th>
-          <th>label</th>
-					<th>type</th>
-					<th>balance</th>
-					<th>amount</th>
-					<th>time</th>
-				</tr>
-			</thead>
-		</table>`);
-    $("#example").DataTable({
-      responsive: true,
-      data: transactionData.getStoredData(),
-      columns: [
-        { data: "id" },
-        { data: "label", title: lang.tableLang.transactionLabel },
-        { data: "type", title: lang.tableLang.typeLabel },
-        { data: "balance", title: lang.tableLang.balanceLabel },
-        { data: "amount", title: lang.tableLang.amountLabel },
-        { data: "time", title: lang.tableLang.timeLabel },
-      ],
-      columnDefs: [
-        {
-          target: 0,
-          visible: false,
-          searchable: false,
-        },
-        {
-          target: 5,
-          orderable: false,
-        },
-      ],
-      createdRow: function (row, data, index) {
-        let parseType = data.type.replace(/[\$,]/g, "");
-        $("td", row).eq(2).text(`$${data.balance}`);
-        if (parseType == lang.deposit || parseType == lang.transferReceive) {
-          $("td", row).eq(3).addClass("greenTableText");
-          $("td", row)
-            .eq(3)
-            .html(
-              `+${lang.moneyFormat.replace("__replaceData__", data.amount)}`
-            );
-        } else if (parseType == lang.withdraw || parseType == lang.transfer) {
-          $("td", row).eq(3).addClass("redTableText");
-          $("td", row)
-            .eq(3)
-            .html(
-              `-${lang.moneyFormat.replace("__replaceData__", data.amount)}`
-            );
-        }
-      },
-      order: [[0, "desc"]],
-      scrollY: "450px",
-      scrollX: true,
-      scrollCollapse: true,
-      fixedColumns: {
-        heightMatch: "none",
-      },
-      language: {
-        url: `https://cdn.datatables.net/plug-ins/9dcbecd42ad/i18n/${lang.tableLang.tableFullLanguage}.json`,
-        search: "",
-        searchPlaceholder: lang.tableLang.searchInputPlaceholder,
-      },
-    });
-
-    $("#modal-container").fadeIn();
-  });
-
-  let inputs = {
-    first: false,
-    second: false,
-  };
-
-  $(document).on(
-    "keyup",
-    'input[type="number"] , input[type="password"]',
-    function () {
-      let buttonGroup = $(this)
-        .closest(".input-groups-container")
-        .find("button");
-
-      if (buttonGroup.length > 0) {
-        let name = $(this).attr("name");
-        if (name == "moneyAmount") {
-          inputs.first = $(this).val() != "";
-        } else {
-          inputs.second = $(this).val() != "";
-        }
-
-        if (inputs.first && inputs.second) {
-          buttonGroup.removeClass("disable-button");
-          buttonGroup.prop("disabled", false);
-        } else {
-          buttonGroup.addClass("disable-button");
-          buttonGroup.prop("disabled", true);
-        }
-
+    if (action === "pincode") {
+      const pin = String(formData.get("pin") || "").trim();
+      if (!/^\d{4}$/.test(pin)) {
+        state.formError = "PIN must be 4 digits";
+        render();
         return;
       }
 
-      let button = $(this).next("button");
+      payload.pin = pin;
+    } else {
+      const amount = Number(formData.get("amount"));
+      if (!Number.isFinite(amount) || amount <= 0) {
+        state.formError = "Enter a valid amount";
+        render();
+        return;
+      }
 
-      if ($(this).val() != "") {
-        if ($(this).attr("name") == "pincode" && $(this).val().length < 4) {
+      payload.amount = Math.round(amount);
+
+      if (action === "transfer") {
+        const target = Number(formData.get("target"));
+        if (!Number.isInteger(target) || target <= 0) {
+          state.formError = "Enter a valid player ID";
+          render();
           return;
         }
 
-        button.removeClass("disable-button");
-        button.prop("disabled", false);
-      } else {
-        button.addClass("disable-button");
-        button.prop("disabled", true);
+        payload.target = target;
       }
     }
-  );
 
-  $(document).on("click", ".accept-button", function () {
-    let buttonGroup = $(this).closest(".input-groups-container").find("button");
-    let inputValues = {};
-    if (buttonGroup.length > 0) {
-      inputValues["transfer"] = {};
-      $(".input-groups-container input").each(function () {
-        inputValues["transfer"][$(this).attr("name")] = $(this).val();
-        $(this).val(null);
-        inputs.first = false;
-        inputs.second = false;
+    state.busy = true;
+    state.formError = "";
+    render();
+
+    fetchNui("clickButton", payload).finally(() => {
+      setTimeout(() => {
+        state.busy = false;
+        render();
+      }, 900);
+    });
+  }
+
+  function submitPin() {
+    if (state.pin.length !== 4 || state.busy) {
+      return;
+    }
+
+    state.busy = true;
+    state.pinError = "";
+    render();
+
+    fetchNui("checkPincode", state.pin).then((response) => {
+      state.busy = false;
+
+      if (response && response.success) {
+        state.unlocked = true;
+        state.pin = "";
+        render();
+        return;
+      }
+
+      state.pin = "";
+      state.pinError = "Invalid PIN";
+      render();
+    });
+  }
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const closeButton = target.closest("[data-close-ui]");
+    if (closeButton) {
+      closeBanking(true);
+      return;
+    }
+
+    const tabButton = target.closest("[data-action-tab]");
+    if (tabButton) {
+      state.activeAction = tabButton.getAttribute("data-action-tab") || "deposit";
+      state.formError = "";
+      render();
+      return;
+    }
+
+    const quickAmount = target.closest("[data-quick-amount]");
+    if (quickAmount) {
+      const input = wrapper.querySelector('input[name="amount"]');
+      if (input) {
+        input.value = quickAmount.getAttribute("data-quick-amount") || "";
+        input.focus();
+      }
+      return;
+    }
+
+    const pinKey = target.closest("[data-pin-key]");
+    if (pinKey && state.pin.length < 4) {
+      state.pin += pinKey.getAttribute("data-pin-key") || "";
+      state.pinError = "";
+      render();
+      return;
+    }
+
+    if (target.closest("[data-pin-clear]")) {
+      state.pin = "";
+      state.pinError = "";
+      render();
+      return;
+    }
+
+    if (target.closest("[data-pin-confirm]")) {
+      submitPin();
+    }
+  });
+
+  document.addEventListener("submit", (event) => {
+    const form = event.target;
+    if (form instanceof HTMLFormElement && form.matches("[data-action-form]")) {
+      event.preventDefault();
+      submitAction(form);
+    }
+  });
+
+  document.addEventListener("input", (event) => {
+    const target = event.target;
+    if (target instanceof HTMLInputElement && target.matches("[data-history-search]")) {
+      state.search = target.value;
+      renderHistoryList();
+    }
+  });
+
+  document.addEventListener("keyup", (event) => {
+    if (event.key === "Escape" && state.visible) {
+      closeBanking(true);
+    }
+  });
+
+  window.addEventListener("message", ({ data }) => {
+    if (!data || typeof data !== "object") {
+      return;
+    }
+
+    if (data.action === "openBanking") {
+      openBanking(data.payload || {});
+      return;
+    }
+
+    if (data.action === "closeBanking" || data.showMenu === false) {
+      closeBanking(false);
+      return;
+    }
+
+    if (data.action === "updateBanking") {
+      mergePayload(data.payload || {});
+      state.busy = false;
+      render();
+      return;
+    }
+
+    if (data.showMenu && data.datas) {
+      const accounts = data.datas.your_money_panel?.accountsData || [];
+      const cash = accounts.find((account) => account.name === "cash")?.amount || 0;
+      const bank = accounts.find((account) => account.name === "bank")?.amount || 0;
+
+      openBanking({
+        accessType: data.openATM ? "atm" : "bank",
+        bankName: data.datas.bankCardData?.bankName,
+        playerName: data.datas.bankCardData?.name,
+        cash,
+        bank,
+        hasPin: true,
+        transactions: data.datas.transactionsData || []
       });
-    } else {
-      let inputValue = $(this).prev("input").val();
-      if (inputValue == undefined) {
-        return;
-      }
-      if (inputValue.length == 0 && inputValue <= 0) {
-        return;
-      }
-
-      inputValues[$(this).prev("input").attr("name")] = inputValue;
-
-      $(this).prev("input").val(null);
+      return;
     }
 
-    inputData.setStoredData(inputValues);
-    $.post("https://esx_banking/clickButton", JSON.stringify(inputValues));
-
-    $(this).addClass("disable-button");
-    $(this).prop("disabled", true);
-  });
-
-  $(document).on("click", "#close-button", function () {
-    $("#modal-container").fadeOut();
-    $("#menu").fadeIn();
-  });
-
-  $(document).on("click", ".exit-button", function () {
-    Components.loader(".loader", "hide");
-    $.post("https://esx_banking/close", JSON.stringify({}));
-  });
-
-  $(document).keyup(function (e) {
-    if (e.which == 27) {
-      if (!LOADED) {
-        Components.loader(".loader", "hide");
-        $.post("https://esx_banking/close", JSON.stringify({}));
-      }
+    if (data.updateData) {
+      mergePayload(data.data || {});
+      state.busy = false;
+      render();
     }
   });
-});
+
+  if (isBrowser()) {
+    openBanking({
+      accessType: "bank",
+      bankName: "Fleeca Bank",
+      playerName: "Development User",
+      cash: 12850,
+      bank: 76400,
+      hasPin: true,
+      transactions: [
+        { label: "Paycheck", type: "DEPOSIT", amount: 2500, time: Date.now() - 900000, balance: 76400 },
+        { label: "Vehicle repair", type: "WITHDRAW", amount: 650, time: Date.now() - 3400000, balance: 73900 },
+        { label: "Transfer", type: "TRANSFER", amount: 1200, time: Date.now() - 8600000, balance: 74550 },
+        { label: "Transfer received", type: "TRANSFER_RECEIVE", amount: 4200, time: Date.now() - 14800000, balance: 75750 },
+        { label: "Store purchase", type: "WITHDRAW", amount: 180, time: Date.now() - 24000000, balance: 71550 }
+      ]
+    });
+  }
+})();

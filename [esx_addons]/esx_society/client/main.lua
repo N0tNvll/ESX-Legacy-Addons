@@ -4,7 +4,7 @@ function OpenBossMenu(society, close, options)
 		{unselectable = true, icon = "fas fa-user", title = TranslateCap('boss_menu')}
 	}
 
-	ESX.TriggerServerCallback('esx_society:isBoss', function(isBoss)
+	xLib.callback('esx_society:isBoss', false, function(isBoss)
 		if isBoss then
 			local defaultOptions = {
 				checkBal = true,
@@ -13,7 +13,8 @@ function OpenBossMenu(society, close, options)
 				wash = true,
 				employees = true,
 				salary = true,
-				grades = true
+				grades = true,
+				uniforms = Config.EnableUniformManagement == true
 			}
 
 			for k,v in pairs(defaultOptions) do
@@ -42,6 +43,9 @@ function OpenBossMenu(society, close, options)
 			end
 			if options.grades then
 				elements[#elements+1] = {icon = "fas fa-scroll", title = TranslateCap('grade_management'), value = "manage_grades"}
+			end
+			if options.uniforms then
+				elements[#elements+1] = {icon = "fas fa-shirt", title = TranslateCap('uniform_management'), value = "manage_uniforms"}
 			end
 
 			ESX.OpenContext("right", elements, function(menu,element)
@@ -101,6 +105,8 @@ function OpenBossMenu(society, close, options)
 					OpenManageSalaryMenu(society, options)
 				elseif element.value == "manage_grades" then
 					OpenManageGradesMenu(society, options)
+				elseif element.value == "manage_uniforms" then
+					OpenManageUniformsMenu(society, options)
 				elseif element.value == "return" then
 					OpenBossMenu(society, nil, options)
 				end
@@ -130,7 +136,7 @@ function OpenManageEmployeesMenu(society, options)
 end
 
 function OpenEmployeeList(society, options)
-	ESX.TriggerServerCallback('esx_society:getEmployees', function(employees)
+	xLib.callback('esx_society:getEmployees', false, function(employees)
 		local elements = {
 			{unselectable = true, icon = "fas fa-user", title = TranslateCap('employees_title')}
 		}
@@ -161,7 +167,7 @@ function OpenEmployeeList(society, options)
 					elseif element2.value == "fire" then
 						ESX.ShowNotification(TranslateCap('you_have_fired', employee.name))
 
-						ESX.TriggerServerCallback('esx_society:setJob', function()
+						xLib.callback('esx_society:setJob', false, function()
 							OpenEmployeeList(society, options)
 						end, employee.identifier, 'unemployed', 0, 'fire')
 					elseif element2.value == "return" then
@@ -174,7 +180,7 @@ function OpenEmployeeList(society, options)
 end
 
 function OpenRecruitMenu(society, options)
-	ESX.TriggerServerCallback('esx_society:getOnlinePlayers', function(players)
+	xLib.callback('esx_society:getOnlinePlayers', false, function(players)
 		local elements = {
 			{unselectable = true, icon = "fas fa-user", title = TranslateCap('recruiting')}
 		}
@@ -200,18 +206,18 @@ function OpenRecruitMenu(society, options)
 					if element2.value == "yes" then
 						ESX.ShowNotification(TranslateCap('you_have_hired', element.name))
 
-						ESX.TriggerServerCallback('esx_society:setJob', function()
+						xLib.callback('esx_society:setJob', false, function()
 							OpenRecruitMenu(society, options)
 						end, element.identifier, society, 0, 'hire')
 					end
 				end)
 			end
 		end)
-	end)
+	end, society)
 end
 
 function OpenPromoteMenu(society, employee, options)
-	ESX.TriggerServerCallback('esx_society:getJob', function(job)
+	xLib.callback('esx_society:getJob', false, function(job)
 		if not job then
 			return
 		end
@@ -234,7 +240,7 @@ function OpenPromoteMenu(society, employee, options)
 			else
 				ESX.ShowNotification(TranslateCap('you_have_promoted', employee.name, element.title))
 
-				ESX.TriggerServerCallback('esx_society:setJob', function()
+				xLib.callback('esx_society:setJob', false, function()
 					OpenEmployeeList(society, options)
 				end, employee.identifier, society, element.value, 'promote')
 			end
@@ -245,7 +251,7 @@ function OpenPromoteMenu(society, employee, options)
 end
 
 function OpenManageSalaryMenu(society, options)
-	ESX.TriggerServerCallback('esx_society:getJob', function(job)
+	xLib.callback('esx_society:getJob', false, function(job)
 		if not job then
 			return
 		end
@@ -269,7 +275,7 @@ function OpenManageSalaryMenu(society, options)
 		ESX.OpenContext("right", elements, function(menu,element)
 			local elements = {
 				{unselectable = true, icon = "fas fa-wallet", title = element.title, description = TranslateCap('change_salary_description'), value = element.value},
-				{icon = "fas fa-wallet", title = TranslateCap('amount_title'), input = true, inputType = "number", inputPlaceholder = TranslateCap('change_salary_placeholder'), inputMin = 1, inputMax = Config.MaxSalary, name = "gradesalary"},
+				{icon = "fas fa-wallet", title = TranslateCap('amount_title'), input = true, inputType = "number", inputPlaceholder = TranslateCap('change_salary_placeholder'), inputMin = 0, inputMax = Config.MaxSalary, name = "gradesalary"},
 				{icon = "fas fa-check", title = TranslateCap('confirm'), value = "confirm"}, 
 				{icon = "fas fa-arrow-left", title = TranslateCap('return'), value = "return"}
 			}
@@ -286,7 +292,7 @@ function OpenManageSalaryMenu(society, options)
 					OpenManageSalaryMenu(society, options)
 				else
 					ESX.CloseContext()
-					ESX.TriggerServerCallback('esx_society:setJobSalary', function()
+					xLib.callback('esx_society:setJobSalary', false, function()
 						OpenManageSalaryMenu(society, options)
 					end, society, menu.eles[1].value, amount)
 				end
@@ -298,7 +304,7 @@ function OpenManageSalaryMenu(society, options)
 end
 
 function OpenManageGradesMenu(society, options)
-	ESX.TriggerServerCallback('esx_society:getJob', function(job)
+	xLib.callback('esx_society:getJob', false, function(job)
 		if not job then
 			return
 		end
@@ -328,7 +334,7 @@ function OpenManageGradesMenu(society, options)
 				if menu.eles[2].inputValue then
 					local label = tostring(menu.eles[2].inputValue)
 
-					ESX.TriggerServerCallback('esx_society:setJobLabel', function()
+					xLib.callback('esx_society:setJobLabel', false, function()
 					OpenManageGradesMenu(society, options)
 				end, society, menu.eles[1].value, label)
 				else
@@ -337,6 +343,70 @@ function OpenManageGradesMenu(society, options)
 				end
 			elseif element.value == "return" then
 				OpenBossMenu(society, nil, options)
+			end
+		end)
+	end, society)
+end
+
+local function getWornUniform(skin)
+	if type(skin) ~= 'table' or (skin.sex ~= 0 and skin.sex ~= 1) then
+		return nil
+	end
+
+	local uniform = {sex = skin.sex}
+
+	for i = 1, #Config.UniformComponents do
+		local component = Config.UniformComponents[i]
+		uniform[component] = skin[component]
+	end
+
+	return uniform
+end
+
+function OpenManageUniformsMenu(society, options)
+	xLib.callback('esx_society:getJob', false, function(job)
+		if not job then
+			return
+		end
+
+		local elements = {
+			{unselectable = true, icon = "fas fa-shirt", title = TranslateCap('uniform_management')},
+			{icon = "fas fa-shirt", title = TranslateCap('uniform_all_grades'), value = -1}
+		}
+
+		for i=1, #job.grades, 1 do
+			local gradeLabel = (job.grades[i].label == '' and job.label or job.grades[i].label)
+
+			elements[#elements+1] = {icon = "fas fa-shirt", title = gradeLabel, value = job.grades[i].grade}
+		end
+
+		elements[#elements+1] = {icon = "fas fa-arrow-left", title = TranslateCap('return'), value = "return"}
+
+		ESX.OpenContext("right", elements, function(menu,element)
+			if element.value == "return" then
+				OpenBossMenu(society, nil, options)
+			elseif element.value == "confirm" then
+				ESX.CloseContext()
+				xLib.callback('esx_society:setJobUniform', false, function()
+					OpenManageUniformsMenu(society, options)
+				end, society, menu.eles[1].value, menu.eles[1].uniform)
+			else
+				TriggerEvent('skinchanger:getSkin', function(skin)
+					local uniform = getWornUniform(skin)
+
+					if not uniform then
+						ESX.ShowNotification(TranslateCap('uniform_failed'))
+						return
+					end
+
+					local sexLabel = uniform.sex == 0 and TranslateCap('uniform_male') or TranslateCap('uniform_female')
+
+					ESX.RefreshContext({
+						{unselectable = true, icon = "fas fa-shirt", title = element.title, description = TranslateCap('uniform_confirm_description', sexLabel, element.title), value = element.value, uniform = uniform},
+						{icon = "fas fa-check", title = TranslateCap('confirm'), value = "confirm"},
+						{icon = "fas fa-arrow-left", title = TranslateCap('return'), value = "return"}
+					})
+				end)
 			end
 		end)
 	end, society)

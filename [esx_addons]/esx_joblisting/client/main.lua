@@ -2,7 +2,7 @@ local menuIsShowed, isNear, TextUIdrawing = false, false, false
 
 function ShowJobListingMenu()
   menuIsShowed = true
-  ESX.TriggerServerCallback('esx_joblisting:getJobsList', function(jobs)
+  xLib.callback('esx_joblisting:getJobsList', false, function(jobs)
     local elements = {{unselectable = "true", title = TranslateCap('job_center'), icon = "fas fa-briefcase"}}
 
     for i = 1, #(jobs) do
@@ -42,7 +42,7 @@ CreateThread(function()
         isInMarker = true
 
         if isNear and not TextUIdrawing then
-          ESX.TextUI(TranslateCap('access_job_center', ESX.GetInteractKey()))
+          ESX.TextUI(TranslateCap('access_job_center', xLib.interactions.getInteractKey()))
           TextUIdrawing = true
         else
           if not isNear and TextUIdrawing then
@@ -81,7 +81,7 @@ if Config.Blip.Enabled then
   end)
 end
 
-ESX.RegisterInteraction("open_joblisting", function()
+xLib.interactions.register("open_joblisting", function()
   ShowJobListingMenu()
 end, function()
   return isNear and not menuIsShowed

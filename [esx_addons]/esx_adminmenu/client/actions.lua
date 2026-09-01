@@ -456,6 +456,17 @@ local function watchGodmodeVehicle()
 	end)
 end
 
+local function watchGodmodePed()
+	startToggleLoop("godmodePed", function()
+		return godmodeActive
+	end, 500, function()
+		SetPlayerInvincible(PlayerId(), true)
+		SetEntityInvincible(PlayerPedId(), true)
+	end, function()
+		restoreInvincibility()
+	end)
+end
+
 local function watchInvisibleVehicle()
 	startToggleLoop("invisibleVehicle", function()
 		return invisibleActive
@@ -637,7 +648,10 @@ function ClientActions.ToggleGodmode()
 	applyGodmodeVehicle(vehicle)
 
 	if godmodeActive then
+		watchGodmodePed()
 		watchGodmodeVehicle()
+	else
+		restoreInvincibility()
 	end
 
 	return godmodeActive
@@ -796,12 +810,24 @@ function ClientActions.FlipVehicle()
 	return true
 end
 
+local function markDeletedVehicleImpounded(vehicle)
+	if not DoesEntityExist(vehicle) then
+		return
+	end
+
+	local plate = trimString(GetVehicleNumberPlateText(vehicle))
+	if plate ~= "" then
+		TriggerServerEvent("esx-adminmenu:server:impoundDeletedVehicle", plate)
+	end
+end
+
 function ClientActions.DeleteVehicle()
 	local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
 	if vehicle == 0 then
 		return false, "You must be in a vehicle."
 	end
 
+	markDeletedVehicleImpounded(vehicle)
 	SetEntityAsMissionEntity(vehicle, true, true)
 	DeleteEntity(vehicle)
 
@@ -827,6 +853,7 @@ function ClientActions.SpawnVehicle(data)
 	local deleteCurrent = true
 
 	if currentVehicle ~= 0 and deleteCurrent then
+		markDeletedVehicleImpounded(currentVehicle)
 		SetEntityAsMissionEntity(currentVehicle, true, true)
 		DeleteEntity(currentVehicle)
 	end
@@ -1205,6 +1232,7 @@ RegisterNetEvent("esx:onPlayerSpawn", function()
 	local ped = PlayerPedId()
 
 	if godmodeActive then
+		SetPlayerInvincible(PlayerId(), true)
 		SetEntityInvincible(ped, true)
 	end
 
@@ -1297,7 +1325,7 @@ function Spectate(targetId, targetCoords)
 			if IsDisabledControlJustPressed(0, 322) and GetGameTimer() >= escCooldownUntil then
 				escCooldownUntil = GetGameTimer() + escCooldown
 
-				ESX.TriggerServerCallback("esx-adminmenu:server:spectate:stop", function(res)
+				xLib.callback("esx-adminmenu:server:spectate:stop", false, function(res)
 					if not res or res.err then
 						print("[esx-adminmenu]", res and res.err)
 						return

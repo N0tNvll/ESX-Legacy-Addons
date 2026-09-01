@@ -5,6 +5,7 @@ Locales['sr'] = {
   ['vehicle_list']              = 'Lista vozila',
   ['work_wear']                 = 'Radno odelo',
   ['civ_wear']                  = 'Civilno odelo',
+  ['no_outfit']                 = 'uniforma mehaničara nije podešena',
   ['deposit_stock']             = 'Ostavite novac',
   ['withdraw_stock']            = 'Podignite novac',
   ['boss_actions']              = 'Upravljanje kompjuterom',

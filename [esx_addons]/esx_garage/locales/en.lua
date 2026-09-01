@@ -1,4 +1,4 @@
-Locales["en"] = {
+return {
     ["parking_blip_name"] = 'Garage',
     ["Impound_blip_name"] = 'Impound',
     ["access_parking"] = 'press [E] to access the car park.',
@@ -25,5 +25,6 @@ Locales["en"] = {
     ['not_in_vehicle'] = 'you are not in a vehicle.',
     ['cannot_store'] = 'unable to store this vehicle.',
     ['cannot_access_garage'] = 'you cannot access this garage.',
-    ['received_vehicle'] = 'you received a vehicle (plate: %s).'
+    ['received_vehicle'] = 'you received a vehicle (plate: %s).',
+    ['open_garage'] = 'Open garage'
 }

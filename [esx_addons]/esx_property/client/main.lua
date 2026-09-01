@@ -110,7 +110,7 @@ RegisterNetEvent("esx_property:syncProperties", function(properties, lastPropert
     if Properties[lastProperty.id] and (Properties[lastProperty.id].Owner == ESX.PlayerData.identifier or PlayerKeys[lastProperty.id]) then
       AttemptHouseEntry(lastProperty.id)
     else
-      ESX.TriggerServerCallback('esx_property:RemoveLastProperty', function()
+      xLib.callback('esx_property:RemoveLastProperty', false, function()
         SetEntityCoords(ESX.PlayerData.ped, vector3(lastProperty.coords.x, lastProperty.coords.y, lastProperty.coords.z))
       end)
     end
@@ -118,8 +118,29 @@ RegisterNetEvent("esx_property:syncProperties", function(properties, lastPropert
   RefreshBlips()
 end)
 
+RegisterNetEvent("esx_property:receivePropertyOffer", function(token, sellerName, propertyName, price)
+  local Elements = {
+    {unselectable = true, title = propertyName, description = ("Offer from %s for $%s"):format(sellerName, ESX.Math.GroupDigits(ESX.Round(price)))},
+    {title = "Accept", icon = "fas fa-check", value = "accept"},
+    {title = "Decline", icon = "fas fa-times", value = "decline"}
+  }
+
+  ESX.OpenContext("right", Elements, function(menu, element)
+    if element.value == "accept" or element.value == "decline" then
+      ESX.CloseContext()
+      xLib.callback("esx_property:respondToSaleOffer", false, function(Success)
+        if Success then
+          ESX.ShowNotification("Property purchased.", "success")
+        elseif element.value == "accept" then
+          ESX.ShowNotification(TranslateCap("cannot_sell"), "error")
+        end
+      end, token, element.value == "accept")
+    end
+  end)
+end)
+
 RegisterNetEvent("esx_property:giveKeyAccess", function(Property)
-  ESX.TriggerServerCallback("esx_property:ShouldHaveKey", function(Should)
+  xLib.callback("esx_property:ShouldHaveKey", false, function(Should)
     if Should then
       PlayerKeys[Property] = true
     end
@@ -153,7 +174,7 @@ function OpenInteractionMenu(PropertyId, Interaction)
 end
 
 function GiveKeysMenu(Property)
-  ESX.TriggerServerCallback("esx_property:GetInsidePlayers", function(Players)
+  xLib.callback("esx_property:GetInsidePlayers", false, function(Players)
     local Elements = {{unselectable = true, title = TranslateCap("nearby"), icon = "fas fa-user-plus"},
                       {title = TranslateCap("back"), icon = "fas fa-arrow-left", value = "go_back"}}
     for i = 1, #Players, 1 do
@@ -163,7 +184,7 @@ function GiveKeysMenu(Property)
       if element.value == "go_back" then
         ManageKeys(Property)
       elseif element.value == "user" then
-        ESX.TriggerServerCallback("esx_property:GiveKey", function(KeyGiven)
+        xLib.callback("esx_property:GiveKey", false, function(KeyGiven)
           if KeyGiven then
             ESX.ShowNotification(TranslateCap("gave_key",element.title), "success")
             ESX.CloseContext()
@@ -177,7 +198,7 @@ function GiveKeysMenu(Property)
 end
 
 function RemoveKeysMenu(Property)
-  ESX.TriggerServerCallback("esx_property:GetPlayersWithKeys", function(Players)
+  xLib.callback("esx_property:GetPlayersWithKeys", false, function(Players)
     local Elements = {{unselectable = true, title = TranslateCap("remove_title"), icon = "fas fa-user-plus"},
                       {title = TranslateCap("back"), icon = "fas fa-arrow-left", value = "go_back"}}
     for k, v in pairs(Players) do
@@ -189,7 +210,7 @@ function RemoveKeysMenu(Property)
       if element.value == "go_back" then
         ManageKeys(Property)
       elseif element.value == "user" then
-        ESX.TriggerServerCallback("esx_property:RemoveKey", function(KeyGiven)
+        xLib.callback("esx_property:RemoveKey", false, function(KeyGiven)
           if KeyGiven then
             ESX.ShowNotification(TranslateCap("key_revoke_success", element.title), "success")
             ESX.CloseContext()
@@ -230,7 +251,7 @@ function SetPropertyName(Property)
 
   ESX.OpenContext("right", Elements, function(menu, element)
     if element.name == "confirm" then
-      ESX.TriggerServerCallback("esx_property:SetPropertyName", function(Set)
+      xLib.callback("esx_property:SetPropertyName", false, function(Set)
         if Set then
           ESX.ShowNotification(TranslateCap("name_edit_success",menu.eles[2].inputValue), "success")
           ESX.CloseContext()
@@ -325,7 +346,7 @@ function OpenPropertyMenu(PropertyId)
 
   ESX.OpenContext("right", elements, function(menu, element)
     if element.value == "property_unlock" then
-      ESX.TriggerServerCallback("esx_property:toggleLock", function(IsUnlocked)
+      xLib.callback("esx_property:toggleLock", false, function(IsUnlocked)
         if IsUnlocked then
           local eles = PropertyMenuElements(PropertyId)
           exports["esx_context"]:Refresh(eles)
@@ -335,7 +356,7 @@ function OpenPropertyMenu(PropertyId)
       end, PropertyId)
     end
     if element.value == "property_lock" then
-      ESX.TriggerServerCallback("esx_property:toggleLock", function(IsUnlocked)
+      xLib.callback("esx_property:toggleLock", false, function(IsUnlocked)
         if IsUnlocked then
           local eles = PropertyMenuElements(PropertyId)
           exports["esx_context"]:Refresh(eles)
@@ -348,7 +369,7 @@ function OpenPropertyMenu(PropertyId)
       CCTV(PropertyId)
     end
     if element.value == "property_raid" then
-      ESX.TriggerServerCallback("esx_property:CanRaid", function(CanRaid)
+      xLib.callback("esx_property:CanRaid", false, function(CanRaid)
         if CanRaid then
           ESX.Progressbar(TranslateCap("prep_raid"), 15000, {FreezePlayer = true, animation = Config.Raiding.Animation, onFinish = function()
             ESX.ShowNotification(TranslateCap("raiding"), "success")
@@ -388,7 +409,7 @@ function OpenPropertyMenu(PropertyId)
         if IsControlJustPressed(0, 47) then
           SettingValue = ""
           ESX.HideUI()
-          ESX.TriggerServerCallback("esx_property:SetInventoryPosition", function(Success)
+          xLib.callback("esx_property:SetInventoryPosition", false, function(Success)
             if Success then
               ESX.ShowNotification(TranslateCap("storage_pos_success"), "success")
             else
@@ -410,7 +431,7 @@ function OpenPropertyMenu(PropertyId)
         if IsControlJustPressed(0, 47) then
           SettingValue = ""
           ESX.HideUI()
-          ESX.TriggerServerCallback("esx_property:SetWardrobePosition", function(Success)
+          xLib.callback("esx_property:SetWardrobePosition", false, function(Success)
             if Success then
               ESX.ShowNotification(TranslateCap("wardrobe_pos_success"), "success")
             else
@@ -430,7 +451,7 @@ function OpenPropertyMenu(PropertyId)
       end
     end
     if element.value == "property_buy" then
-      ESX.TriggerServerCallback("esx_property:buyProperty", function(IsBought)
+      xLib.callback("esx_property:buyProperty", false, function(IsBought)
         if IsBought then
           local eles = PropertyMenuElements(PropertyId)
           exports["esx_context"]:Refresh(eles)
@@ -441,7 +462,7 @@ function OpenPropertyMenu(PropertyId)
     end
     if element.value == "property_sell_re" then
       local Elements = {{unselectable = true, title = TranslateCap("select_player")}}
-      ESX.TriggerServerCallback("esx_property:GetNearbyPlayers", function(Players)
+      xLib.callback("esx_property:GetNearbyPlayers", false, function(Players)
         if Players then
           for i = 1, #Players do
             Elements[#Elements + 1] = {title = Players[i].name, value = Players[i].source}
@@ -449,7 +470,7 @@ function OpenPropertyMenu(PropertyId)
 
           ESX.OpenContext("right", Elements, function(menu, element)
             if element.value then
-              ESX.TriggerServerCallback("esx_property:attemptSellToPlayer", function(IsBought)
+              xLib.callback("esx_property:attemptSellToPlayer", false, function(IsBought)
                 if IsBought then
                   local eles = PropertyMenuElements(PropertyId)
                   exports["esx_context"]:Refresh(eles)
@@ -464,14 +485,14 @@ function OpenPropertyMenu(PropertyId)
     end
     if element.value == "property_knock" then
       ESX.ShowNotification(TranslateCap("knock_on_door"), "success")
-      ESX.TriggerServerCallback("esx_property:KnockOnDoor", function(HasKnocked)
+      xLib.callback("esx_property:KnockOnDoor", false, function(HasKnocked)
         if not HasKnocked then
           ESX.ShowNotification(TranslateCap("nobody_home"), "error")
         end
       end, PropertyId)
     end
     if element.value == "property_sell" then
-      ESX.TriggerServerCallback("esx_property:sellProperty", function(IsSold)
+      xLib.callback("esx_property:sellProperty", false, function(IsSold)
         if IsSold then
           local eles = PropertyMenuElements(PropertyId)
           exports["esx_context"]:Refresh(eles)
@@ -542,7 +563,7 @@ function AttemptHouseEntry(PropertyId)
   DoScreenFadeOut(1500)
   Wait(1500)
   if Interior.type == "shell" then
-    ESX.Streaming.RequestModel(joaat(Property.Interior), function()
+    xLib.streaming.requestModel(joaat(Property.Interior), function()
       if Shell then
         DeleteObject(Shell)
         Shell = nil
@@ -558,7 +579,7 @@ function AttemptHouseEntry(PropertyId)
   end
   if Properties[PropertyId].furniture then
     for k, v in pairs(Properties[PropertyId].furniture) do
-      ESX.Game.SpawnLocalObject(v.Name, v.Pos, function(object)
+      xLib.game.spawnLocalObject(v.Name, v.Pos, function(object)
         SetEntityCoordsNoOffset(object, v.Pos.x, v.Pos.y, v.Pos.z)
         SetEntityHeading(object, v.Heading)
         SetEntityAsMissionEntity(object, true, true)
@@ -704,9 +725,9 @@ end
 function StoreVehicle(PropertyId)
   local Vehicle = GetVehiclePedIsIn(ESX.PlayerData.ped, false)
   if Vehicle then
-    local VehProperties = ESX.Game.GetVehicleProperties(Vehicle)
+    local VehProperties = xLib.game.getVehicleProperties(Vehicle)
     VehProperties.DisplayName = GetLabelText(GetDisplayNameFromVehicleModel(VehProperties.model))
-    ESX.TriggerServerCallback("esx_property:StoreVehicle", function(result)
+    xLib.callback("esx_property:StoreVehicle", false, function(result)
       if result then
         SetEntityAsMissionEntity(Vehicle, true, true)
         DeleteVehicle(Vehicle)
@@ -721,7 +742,7 @@ function StoreVehicle(PropertyId)
 end
 
 function AccessGarage(PropertyId)
-  ESX.TriggerServerCallback("esx_property:AccessGarage", function(Vehicles)
+  xLib.callback("esx_property:AccessGarage", false, function(Vehicles)
     if Vehicles then
       local elements = {{unselectable = true, icon = "fas fa-warehouse", title = TranslateCap("property_garage")}}
       for k, v in pairs(Vehicles) do
@@ -731,12 +752,12 @@ function AccessGarage(PropertyId)
         if element.Properties then
           ESX.CloseContext()
           ESX.ShowNotification(TranslateCap("retriving_notify",element.Properties.DisplayName))
-          if ESX.Game.IsSpawnPointClear(vector3(Properties[PropertyId].garage.pos.x, Properties[PropertyId].garage.pos.y,
+          if xLib.game.isSpawnPointClear(vector3(Properties[PropertyId].garage.pos.x, Properties[PropertyId].garage.pos.y,
             Properties[PropertyId].garage.pos.z), 3.0) then
-            ESX.Game.SpawnVehicle(element.Properties.model, Properties[PropertyId].garage.pos, Properties[PropertyId].garage.Heading,
+            xLib.game.spawnVehicle(element.Properties.model, Properties[PropertyId].garage.pos, Properties[PropertyId].garage.Heading,
               function(vehicle)
                 SetEntityAsMissionEntity(vehicle, true, true)
-                ESX.Game.SetVehicleProperties(vehicle, element.Properties)
+                xLib.game.setVehicleProperties(vehicle, element.Properties)
                 TaskWarpPedIntoVehicle(ESX.PlayerData.ped, vehicle, -1)
                 SetModelAsNoLongerNeeded(element.Properties.model)
                 TriggerServerEvent("esx_property:SetVehicleOut", PropertyId, element.index)
@@ -833,7 +854,7 @@ function OpenPMQuickMenu(Action)
   if Action == "Entrance" then
     DoScreenFadeOut(1500)
     Wait(1500)
-    ESX.TriggerServerCallback("esx_property:PMenterOffice", function(HasEntered)
+    xLib.callback("esx_property:PMenterOffice", false, function(HasEntered)
       if HasEntered then
         ESX.ShowNotification(TranslateCap("enter_office"), "success")
       else
@@ -845,7 +866,7 @@ function OpenPMQuickMenu(Action)
   elseif Action == "Exit" then
     DoScreenFadeOut(1500)
     Wait(1500)
-    ESX.TriggerServerCallback("esx_property:PMexitOffice", function(HasExited)
+    xLib.callback("esx_property:PMexitOffice", false, function(HasExited)
       if HasExited then
         ESX.ShowNotification(TranslateCap("exit_office"), "success")
       else
@@ -879,13 +900,19 @@ function OpenPMQuickMenu(Action)
   end
 end
 
-ESX.RegisterInput(TranslateCap("realestate_command"), TranslateCap("realestate_command_desc"), "keyboard", "F5", function()
-  ESX.TriggerServerCallback('esx_property:CanAccessRealEstateMenu', function(Access)
+xLib.addKeybind({
+    name = TranslateCap("realestate_command"),
+    description = TranslateCap("realestate_command_desc"),
+    defaultMapper = "keyboard",
+    defaultKey = "F5",
+    onPressed = function()
+  xLib.callback('esx_property:CanAccessRealEstateMenu', false, function(Access)
     if Access then
       OpenPMQuickMenu("ActionsMenu")
     end
   end)
-end)
+end,
+})
 
 local PMdrawing = {Entrance = false, Exit = false}
 CreateThread(function()
@@ -931,7 +958,7 @@ end)
 local HouseData = {}
 
 RegisterNetEvent("esx_property:CreateProperty", function()
-  ESX.TriggerServerCallback('esx_property:CanCreateProperty', function(data)
+  xLib.callback('esx_property:CanCreateProperty', false, function(data)
     if data then
       local GetEntityCoords = GetEntityCoords
       local GetStreetNameAtCoord = GetStreetNameAtCoord
@@ -1117,12 +1144,12 @@ RegisterNetEvent("esx_property:CreateProperty", function()
 end)
 
 RegisterNetEvent("esx_property:AdminMenu", function()
-  ESX.TriggerServerCallback('esx_property:IsAdmin', function(data)
+  xLib.callback('esx_property:IsAdmin', false, function(data)
     if data then
 
       function ManageProperty(currentProperty)
         local Interior = GetInteriorValues(Properties[currentProperty].Interior)
-        ESX.TriggerServerCallback('esx_property:IsAdmin', function(data)
+        xLib.callback('esx_property:IsAdmin', false, function(data)
           if data then
             local opos = {}
             local function GetData()
@@ -1171,7 +1198,7 @@ RegisterNetEvent("esx_property:AdminMenu", function()
             ESX.OpenContext("right", GetData(), function(menu, element)
               if element.value then
                 if element.value == "lock" then
-                  ESX.TriggerServerCallback("esx_property:toggleLock", function(IsUnlocked)
+                  xLib.callback("esx_property:toggleLock", false, function(IsUnlocked)
                     if IsUnlocked then
                       ESX.ShowNotification("Lock Toggled!", "success")
                       exports["esx_context"]:Refresh(GetData())
@@ -1184,7 +1211,7 @@ RegisterNetEvent("esx_property:AdminMenu", function()
                   AttemptHouseEntry(currentProperty)
                 end
                 if element.value == "removeowner" then
-                  ESX.TriggerServerCallback("esx_property:evictOwner", function(Evicted)
+                  xLib.callback("esx_property:evictOwner", false, function(Evicted)
                     if Evicted then
                       ESX.ShowNotification("Owner Evicted!", "success")
                       exports["esx_context"]:Refresh(GetData())
@@ -1229,7 +1256,7 @@ RegisterNetEvent("esx_property:AdminMenu", function()
                   exports["esx_context"]:Refresh(opos, "right")
                 end
                 if element.value == "ToggleGarage" then
-                  ESX.TriggerServerCallback("esx_property:toggleGarage", function(IsUnlocked, enabled)
+                  xLib.callback("esx_property:toggleGarage", false, function(IsUnlocked, enabled)
                     if IsUnlocked then
                       ESX.ShowNotification("Garage Toggled!", "success")
                       local status = enabled and TranslateCap("enabled") or TranslateCap("disabled")
@@ -1254,7 +1281,7 @@ RegisterNetEvent("esx_property:AdminMenu", function()
                   end, currentProperty)
                 end
                 if element.value == "ToggleCCTV" then
-                  ESX.TriggerServerCallback("esx_property:toggleCCTV", function(IsUnlocked, enabled)
+                  xLib.callback("esx_property:toggleCCTV", false, function(IsUnlocked, enabled)
                     if IsUnlocked then
                       ESX.ShowNotification("CCTV Toggled!", "success")
                       local status = enabled and TranslateCap("enabled") or TranslateCap("disabled")
@@ -1285,7 +1312,7 @@ RegisterNetEvent("esx_property:AdminMenu", function()
                   while SettingValue ~= "" do
                     Wait(0)
                     if IsControlJustPressed(0, 38) then
-                      ESX.TriggerServerCallback("esx_property:SetGaragePos", function(IsChanged)
+                      xLib.callback("esx_property:SetGaragePos", false, function(IsChanged)
                         if IsChanged then
                           ESX.HideUI()
                           SettingValue = ""
@@ -1318,7 +1345,7 @@ RegisterNetEvent("esx_property:AdminMenu", function()
                         stage = "maxleft"
                       elseif stage == "maxleft" then
                         Angles.maxleft = GetGameplayCamRot(2).z
-                        ESX.TriggerServerCallback("esx_property:SetCCTVangle", function(IsChanged)
+                        xLib.callback("esx_property:SetCCTVangle", false, function(IsChanged)
                           if IsChanged then
                             SettingValue = ""
                             stage = nil
@@ -1335,7 +1362,7 @@ RegisterNetEvent("esx_property:AdminMenu", function()
                   end
                 end
                 if element.value == "remove_custom_name" then
-                  ESX.TriggerServerCallback("esx_property:RemoveCustomName", function(Cleared)
+                  xLib.callback("esx_property:RemoveCustomName", false, function(Cleared)
                     if Cleared then
                       ESX.ShowNotification("Property Name Reset!", "success")
                       exports["esx_context"]:Refresh(GetData())
@@ -1345,7 +1372,7 @@ RegisterNetEvent("esx_property:AdminMenu", function()
                   end, currentProperty)
                 end
                 if element.value == "refurni" then
-                  ESX.TriggerServerCallback("esx_property:RemoveAllfurniture", function(Removed)
+                  xLib.callback("esx_property:RemoveAllfurniture", false, function(Removed)
                     if Removed then
                       ESX.ShowNotification("Furniture Reset!", "success")
                       exports["esx_context"]:Refresh(GetData())
@@ -1355,7 +1382,7 @@ RegisterNetEvent("esx_property:AdminMenu", function()
                   end, currentProperty)
                 end
                 if element.value == "restorage" then
-                  ESX.TriggerServerCallback("esx_property:SetInventoryPosition", function(Reset)
+                  xLib.callback("esx_property:SetInventoryPosition", false, function(Reset)
                     if Reset then
                       ESX.ShowNotification("~b~Storage~s~ Position Reset!", "success")
                       exports["esx_context"]:Refresh(GetData())
@@ -1365,7 +1392,7 @@ RegisterNetEvent("esx_property:AdminMenu", function()
                   end, currentProperty, Interior.positions.Storage, true)
                 end
                 if element.value == "rewardrobe" then
-                  ESX.TriggerServerCallback("esx_property:SetWardrobePosition", function(Reset)
+                  xLib.callback("esx_property:SetWardrobePosition", false, function(Reset)
                     if Reset then
                       ESX.ShowNotification("~b~Wardrobe~s~ Position Reset!", "success")
                       exports["esx_context"]:Refresh(GetData())
@@ -1383,7 +1410,7 @@ RegisterNetEvent("esx_property:AdminMenu", function()
                 if element.value == "price" then
                   ESX.UI.Menu.Open('dialog', GetCurrentResourceName(), 'PropertyPrice', {title = "Property Price"}, function(data4, menu4)
                     if data4.value then
-                      ESX.TriggerServerCallback("esx_property:ChangePrice", function(IsChanged)
+                      xLib.callback("esx_property:ChangePrice", false, function(IsChanged)
                         if IsChanged then
                           ESX.ShowNotification("Price Changed!", "success")
                           menu4.close()
@@ -1410,7 +1437,7 @@ RegisterNetEvent("esx_property:AdminMenu", function()
                       end
                       ESX.OpenContext("right", elements, function(menu, element)
                         if element.value then
-                          ESX.TriggerServerCallback("esx_property:ChangeInterior", function(IsChanged)
+                          xLib.callback("esx_property:ChangeInterior", false, function(IsChanged)
                             if IsChanged then
                               ESX.ShowNotification("Interior Changed!", "success")
                               ESX.CloseContext()
@@ -1426,7 +1453,7 @@ RegisterNetEvent("esx_property:AdminMenu", function()
                   end)
                 end
                 if element.value == "entrance" then
-                  ESX.TriggerServerCallback("esx_property:ChangeEntrance", function(IsChanged)
+                  xLib.callback("esx_property:ChangeEntrance", false, function(IsChanged)
                     if IsChanged then
                       ESX.ShowNotification("Entrance Changed!", "success")
                     else
@@ -1441,7 +1468,7 @@ RegisterNetEvent("esx_property:AdminMenu", function()
       end
 
       function AdminOptions(currentProperty)
-        ESX.TriggerServerCallback('esx_property:IsAdmin', function(data)
+        xLib.callback('esx_property:IsAdmin', false, function(data)
           if data then
             local elements = {{unselectable = true, icon = "fas fa-home", title = "Property Options"},
                               {title = TranslateCap("back"), icon = "fas fa-arrow-left", value = "back"},
@@ -1465,7 +1492,7 @@ RegisterNetEvent("esx_property:AdminMenu", function()
                   AdminMenu()
                 end
                 if element.value == "delete" then
-                  ESX.TriggerServerCallback("esx_property:deleteProperty", function(response)
+                  xLib.callback("esx_property:deleteProperty", false, function(response)
                     if response then
                       ESX.ShowNotification("Property Deleted!", "success")
                       ESX.CloseContext()
@@ -1485,7 +1512,7 @@ RegisterNetEvent("esx_property:AdminMenu", function()
       end
 
       function AdminMenu()
-        ESX.TriggerServerCallback('esx_property:IsAdmin', function(data)
+        xLib.callback('esx_property:IsAdmin', false, function(data)
           if data then
             local elements = {{unselectable = true, icon = "fas fa-home", title = "Properties Management"}}
             for i = 1, #(Properties) do
@@ -1516,4 +1543,3 @@ RegisterNetEvent("esx_property:AdminMenu", function()
     end
   end)
 end)
-
