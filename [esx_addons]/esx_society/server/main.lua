@@ -84,13 +84,13 @@ local function isGradeUpdateLimited(source, job, action)
 end
 
 local function refreshJobOrFallback(job)
-	if type(ESX.RefreshJob) == 'function' and ESX.RefreshJob(job) then
+	if ESX.IsFunctionReference(ESX.RefreshJob) and ESX.RefreshJob(job) then
 		return true
 	end
 
 	print(('[^3WARNING^7] Failed to refresh job ^5%s^7, falling back to RefreshJobs!'):format(tostring(job)))
 
-	if type(ESX.RefreshJobs) == 'function' then
+	if ESX.IsFunctionReference(ESX.RefreshJobs) then
 		ESX.RefreshJobs()
 	end
 
@@ -659,7 +659,7 @@ local function getUniformComponentBounds(component)
 	return 0, Config.UniformDrawableMax or 2000
 end
 
-local function getAuthoritativeSkinSex(xPlayer)
+local function getIdentitySex(xPlayer)
 	local identitySex = xPlayer.get('sex')
 	if type(identitySex) == 'string' then
 		identitySex = identitySex:lower()
@@ -669,11 +669,6 @@ local function getAuthoritativeSkinSex(xPlayer)
 		return 0
 	elseif identitySex == 'f' or identitySex == 1 then
 		return 1
-	end
-
-	local skin = decodeJsonObject(MySQL.scalar.await('SELECT skin FROM users WHERE identifier = ?', {xPlayer.getIdentifier()}), {})
-	if skin.sex == 0 or skin.sex == 1 then
-		return skin.sex
 	end
 
 	return nil
@@ -745,7 +740,8 @@ xLib.callback.registerCompat('esx_society:setJobUniform', function(source, cb, j
 		return cb(false)
 	end
 
-	if getAuthoritativeSkinSex(xPlayer) ~= skin.sex then
+	local identitySex = getIdentitySex(xPlayer)
+	if identitySex and identitySex ~= skin.sex then
 		xPlayer.showNotification(TranslateCap('uniform_failed'))
 		return cb(false)
 	end
