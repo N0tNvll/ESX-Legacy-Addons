@@ -6,7 +6,7 @@ description 'Modern Garage System with React UI'
 use_experimental_fxv2_oal 'true'
 
 version '2.0.0'
-legacyversion '1.14.2'
+legacyversion '1.15.0'
 
 lua54 'yes'
 

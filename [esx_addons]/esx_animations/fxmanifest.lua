@@ -4,7 +4,7 @@ lua54 'yes'
 
 description 'Allows Players to play animations'
 version '1.0'
-legacyversion '1.14.1'
+legacyversion '1.15.0'
 
 shared_script '@esx_lib/imports.lua'
 dependency 'es_extended'

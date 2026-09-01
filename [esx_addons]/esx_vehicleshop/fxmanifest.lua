@@ -3,7 +3,7 @@ game 'gta5'
 lua54 'yes'
 description 'Allows Players to buy & sell vehicles'
 version '1.0'
-legacyversion '1.14.1'
+legacyversion '1.15.0'
 
 shared_scripts {
 	'@esx_lib/imports.lua',

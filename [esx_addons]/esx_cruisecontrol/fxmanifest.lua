@@ -4,7 +4,7 @@ game 'gta5'
 description 'CruiseControl / Seatbelt System for ESX Legacy'
 
 version '1.2'
-legacyversion '1.14.1'
+legacyversion '1.15.0'
 
 lua54 'yes'
 

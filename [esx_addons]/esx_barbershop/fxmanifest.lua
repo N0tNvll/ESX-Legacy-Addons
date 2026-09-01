@@ -5,7 +5,7 @@ game 'gta5'
 description 'Allows Players to pay to change their hairstyle'
 lua54 'yes'
 version '1.0'
-legacyversion '1.14.1'
+legacyversion '1.15.0'
 
 shared_script '@es_extended/imports.lua'
 

@@ -5,7 +5,7 @@ game 'gta5'
 description 'Allows Players to use LS Customs to customise their cars'
 lua54 'yes'
 version '1.0'
-legacyversion '1.14.1'
+legacyversion '1.15.0'
 
 shared_scripts {
 	'@esx_lib/imports.lua',
