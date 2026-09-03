@@ -131,12 +131,27 @@ local function shouldRecord(action)
     return not (ignore and ignore[action])
 end
 
--- Per-source sliding window. Server callbacks are reachable by any client, so
--- without this a non-admin could spam denied attempts until the bounded queue
--- evicted every real entry.
-local rateWindow = 0
-local rateCounts = {}
+-- Server callbacks are reachable by any client, so non-admin floods are
+-- rate-limited before they can evict real entries from the bounded log queue.
+local rateLimiter
+local rateLimit
 local rateMuted = {}
+
+local function getRateLimiter(limit)
+    if rateLimiter and rateLimit == limit then
+        return rateLimiter
+    end
+
+    rateLimit = limit
+    rateMuted = {}
+    rateLimiter = xLib.rateLimiter({
+        capacity = limit,
+        refill = limit,
+        interval = 60000,
+    })
+
+    return rateLimiter
+end
 
 local function withinRate(actor)
     local limit = tonumber(config().MaxPerMinutePerActor) or 120
@@ -145,23 +160,21 @@ local function withinRate(actor)
     end
 
     local key = tostring(actor or "unknown")
-    local window = math.floor(os.time() / 60)
+    local allowed, retryAfter = getRateLimiter(limit):consume(key)
 
-    if window ~= rateWindow then
-        rateWindow = window
-        rateCounts = {}
-        rateMuted = {}
-    end
-
-    local count = (rateCounts[key] or 0) + 1
-    rateCounts[key] = count
-
-    if count > limit then
-        -- Announce the mute once per window rather than on every dropped entry.
+    if not allowed then
+        -- Announce the mute once per refill period rather than on every drop.
         if not rateMuted[key] then
             rateMuted[key] = true
             print(("[esx-adminmenu] Log rate limit hit for %s, muted for this minute"):format(key))
+
+            if retryAfter and retryAfter < math.huge then
+                SetTimeout(math.max(1000, retryAfter), function()
+                    rateMuted[key] = nil
+                end)
+            end
         end
+
         return false
     end
 

@@ -1,4 +1,9 @@
-local playerPurchaseCooldowns = {}
+local purchaseLimiter = xLib.rateLimiter({
+	capacity = Config.PurchaseRateLimitCapacity or 3,
+	refill = Config.PurchaseRateLimitRefill or 1,
+	interval = Config.PurchaseRateLimitIntervalMs or Config.PurchaseCooldownMs or 500,
+	staleMs = Config.CooldownExpiryMs,
+})
 
 ---Checks if player is rate limited and auto-expires old entries
 ---@param source number Player source
@@ -9,32 +14,13 @@ function IsPlayerRateLimited(source)
 		return false, 0
 	end
 
-	local currentTime = GetGameTimer()
-	local lastPurchase = playerPurchaseCooldowns[source]
-
-	if not lastPurchase then
-		return false, 0
-	end
-
-	local timeSinceLastPurchase = currentTime - lastPurchase
-
-	if timeSinceLastPurchase > Config.CooldownExpiryMs then
-		playerPurchaseCooldowns[source] = nil
-		return false, 0
-	end
-
-	if timeSinceLastPurchase < Config.PurchaseCooldownMs then
-		return true, Config.PurchaseCooldownMs - timeSinceLastPurchase
-	end
-
-	return false, 0
+	local allowed, retryAfter = purchaseLimiter:consume(source)
+	return not allowed, retryAfter
 end
 
----Updates player's last purchase time
+---Kept for compatibility; the token bucket consumes at request entry.
 ---@param source number Player source
 function UpdatePurchaseTimestamp(source)
-	if not Verify(source, {'number', 'string'}) then return end
-	playerPurchaseCooldowns[source] = GetGameTimer()
 end
 
 ---Finds item in shop zone and returns its data

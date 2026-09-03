@@ -1,4 +1,14 @@
 local spawnedPeds, netIdTable = {}, {}
+local actionLimiter = xLib.rateLimiter({
+    capacity = 5,
+    refill = 5,
+    interval = 1000,
+})
+local dataLimiter = xLib.rateLimiter({
+    capacity = 8,
+    refill = 4,
+    interval = 1000,
+})
 
 -- get keys utils
 local function get_key(t)
@@ -35,7 +45,11 @@ AddEventHandler('esx_banking:doingType', function(typeData)
     if (typeData == nil) then return end
 
     local source = source
+    if not actionLimiter:consume(source) then return end
+
     local xPlayer = ESX.Player(source)
+    if not xPlayer then return end
+
     local identifier = xPlayer.getIdentifier()
     local money = xPlayer.getAccount('money').money
     local bankMoney = xPlayer.getAccount('bank').money
@@ -106,7 +120,15 @@ end)
 
 -- register callbacks
 ESX.RegisterServerCallback("esx_banking:getPlayerData", function(source, cb)
+    if not dataLimiter:consume(source) then
+        return cb(nil)
+    end
+
     local xPlayer = ESX.Player(source)
+    if not xPlayer then
+        return cb(nil)
+    end
+
     local identifier = xPlayer.getIdentifier()
     local weekAgo = (os.time() - 604800) * 1000
     local transactionHistory = MySQL.Sync.fetchAll(
@@ -122,7 +144,15 @@ ESX.RegisterServerCallback("esx_banking:getPlayerData", function(source, cb)
 end)
 
 ESX.RegisterServerCallback("esx_banking:checkPincode", function(source, cb, inputPincode)
+    if not dataLimiter:consume(source) then
+        return cb(false)
+    end
+
     local xPlayer = ESX.Player(source)
+    if not xPlayer then
+        return cb(false)
+    end
+
     local identifier = xPlayer.getIdentifier()
     local pincode = MySQL.Sync.fetchScalar('SELECT COUNT(1) AS pincode FROM users WHERE identifier = ? AND pincode = ?',
         {identifier, inputPincode})

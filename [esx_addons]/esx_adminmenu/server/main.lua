@@ -149,7 +149,11 @@ end)
 local MAX_RESULTS = tonumber(Config.AdminLimits and Config.AdminLimits.OfflineSearchResults) or 25
 local MIN_QUERY_LENGTH = math.max(3, math.floor(tonumber(Config.AdminLimits and Config.AdminLimits.MinOfflineSearchLength) or 3))
 local OFFLINE_SEARCH_COOLDOWN_MS = math.max(0, math.floor(tonumber(Config.AdminLimits and Config.AdminLimits.OfflineSearchCooldownMs) or 500))
-local offlineSearchCooldowns = {}
+local offlineSearchLimiter = xLib.rateLimiter({
+	capacity = tonumber(Config.AdminLimits and Config.AdminLimits.OfflineSearchRateCapacity) or 3,
+	refill = tonumber(Config.AdminLimits and Config.AdminLimits.OfflineSearchRateRefill) or 1,
+	interval = OFFLINE_SEARCH_COOLDOWN_MS > 0 and OFFLINE_SEARCH_COOLDOWN_MS or 1000,
+})
 
 local SEARCH_COLUMNS = [[SELECT identifier, firstname, lastname, sex, job, job_grade, accounts, metadata,
 	last_seen, created_at, phone_number, `group`, disabled
@@ -184,32 +188,13 @@ local function getBase(identifier)
 	return base
 end
 
-local function getNowMs()
-	if type(GetGameTimer) == "function" then
-		return GetGameTimer()
-	end
-
-	return math.floor(os.clock() * 1000)
-end
-
 local function isOfflineSearchRateLimited(src)
 	if OFFLINE_SEARCH_COOLDOWN_MS <= 0 then
 		return false
 	end
 
-	local now = getNowMs()
-	local last = offlineSearchCooldowns[src] or 0
-	if last > 0 and now >= last and now - last < OFFLINE_SEARCH_COOLDOWN_MS then
-		return true
-	end
-
-	offlineSearchCooldowns[src] = now
-	return false
+	return not offlineSearchLimiter:consume(src)
 end
-
-AddEventHandler("playerDropped", function()
-	offlineSearchCooldowns[source] = nil
-end)
 
 local function buildOfflineEntry(row, canSeeSensitive)
 	local accounts = decodeJson(row.accounts)

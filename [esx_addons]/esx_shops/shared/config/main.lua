@@ -77,11 +77,15 @@ Config.SleepFar = 1500      -- Far away
 -- SECURITY CONFIGURATION
 -- ════════════════════════════════════════════════════════════════
 
--- Rate limiting: cooldown between purchases (ms)
+-- Purchase rate limiting uses a token bucket, so short legitimate bursts are allowed.
 Config.PurchaseCooldownMs = 500
 
--- Auto-expire rate limit entries (ms)
+-- Backwards compatible idle cleanup setting for the purchase limiter.
 Config.CooldownExpiryMs = 10000
+
+Config.PurchaseRateLimitCapacity = 3
+Config.PurchaseRateLimitRefill = 1
+Config.PurchaseRateLimitIntervalMs = Config.PurchaseCooldownMs
 
 -- Maximum quantity per item per transaction
 Config.MaxQuantityPerItem = 999

@@ -7,6 +7,7 @@ description("ESX Admin Menu")
 version("0.3.2")
 
 shared_scripts({
+	"@esx_lib/imports.lua",
 	"@es_extended/imports.lua",
 	"@es_extended/locale.lua",
 	"locales/*.lua",
@@ -41,6 +42,7 @@ files({
 })
 
 dependencies({
+	"esx_lib",
 	"es_extended",
 	"oxmysql",
 })

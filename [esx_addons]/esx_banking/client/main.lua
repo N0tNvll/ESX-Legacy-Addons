@@ -134,6 +134,15 @@ local playerLoaded, uiActive, inMenu = false, false, false
             return
         end
         ESX.TriggerServerCallback('esx_banking:getPlayerData', function(data)
+            if not data then
+                SetNuiFocus(false, false)
+                inMenu = false
+                SendNUIMessage({
+                    showMenu = false
+                })
+                return
+            end
+
             SendNUIMessage({
                 showMenu = true,
                 openATM = atm,
