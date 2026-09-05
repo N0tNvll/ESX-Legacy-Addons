@@ -188,9 +188,9 @@ ESX.RegisterServerCallback('esx_ambulancejob:removeItemsAfterRPDeath', function(
 	end
 
 	if Config.RemoveItemsAfterRPDeath then
-		for i = 1, #xPlayer.inventory, 1 do
-			if xPlayer.inventory[i].count > 0 then
-				xPlayer.setInventoryItem(xPlayer.inventory[i].name, 0)
+		for itemName, item in pairs(xPlayer.inventory) do
+			if item.count > 0 then
+				xPlayer.setInventoryItem(itemName, 0)
 			end
 		end
 	end
