@@ -1,17 +1,49 @@
-RegisterNetEvent('esx_barbershop:pay', function()
-	local src = source
-	local xPlayer = ESX.Player(src)
-		
-	if not xPlayer and src then return print(('^3[WARNING]^0 xPlayer for Id %s, couldn`t be found.'):format(src)) end
+local function isNearBarberShop(source)
+	local ped = GetPlayerPed(source)
+	if ped <= 0 then return false end
 
-	xPlayer.removeMoney(Config.Price, "Haircut")
-	TriggerClientEvent('esx:showNotification', src, TranslateCap('you_paid', ESX.Math.GroupDigits(Config.Price)))
-end)
+	local coords = GetEntityCoords(ped)
+	for i = 1, #Config.Shops do
+		if #(coords - Config.Shops[i]) <= (Config.ShopDistance or 3.0) then
+			return true
+		end
+	end
 
-ESX.RegisterServerCallback('esx_barbershop:checkMoney', function(source, cb)
+	return false
+end
+
+local function payHaircut(source)
 	local xPlayer = ESX.Player(source)
 		
-	if not xPlayer and source then return print(('^3[WARNING]^0 xPlayer for Id %s, couldn`t be found.'):format(source)) end
+	if not xPlayer then
+		print(('^3[WARNING]^0 xPlayer for Id %s, couldn`t be found.'):format(source))
+		return false
+	end
+
+	if not isNearBarberShop(source) or xPlayer.getMoney() < Config.Price then
+		return false
+	end
+
+	xPlayer.removeMoney(Config.Price, "Haircut")
+	TriggerClientEvent('esx:showNotification', source, TranslateCap('you_paid', ESX.Math.GroupDigits(Config.Price)))
+	return true
+end
+
+RegisterNetEvent('esx_barbershop:pay', function()
+	payHaircut(source)
+end)
+
+xLib.callback.registerCompat('esx_barbershop:pay', function(source, cb)
+	cb(payHaircut(source))
+end)
+
+xLib.callback.registerCompat('esx_barbershop:checkMoney', function(source, cb)
+	local xPlayer = ESX.Player(source)
 		
-	cb(xPlayer.getMoney() >= Config.Price)
+	if not xPlayer then
+		print(('^3[WARNING]^0 xPlayer for Id %s, couldn`t be found.'):format(source))
+		return cb(false)
+	end
+		
+	cb(isNearBarberShop(source) and xPlayer.getMoney() >= Config.Price)
 end)

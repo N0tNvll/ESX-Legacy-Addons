@@ -5,6 +5,7 @@ Locales['es'] = {
   ['vehicle_list']              = 'Lista de vehículos',
   ['work_wear']                 = 'Ropa de trabajo',
   ['civ_wear']                  = 'Ropa de civil',
+  ['no_outfit']                 = 'No hay uniforme de mecánico configurado',
   ['deposit_stock']             = 'Depositar stock',
   ['withdraw_stock']            = 'Retirar stock',
   ['boss_actions']              = 'Acciones del jefe',

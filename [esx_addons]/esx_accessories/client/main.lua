@@ -17,7 +17,7 @@ function OpenAccessoryMenu()
 end
 
 function SetUnsetAccessory(accessory)
-	ESX.TriggerServerCallback('esx_accessories:get', function(hasAccessory, accessorySkin)
+	xLib.callback('esx_accessories:get', false, function(hasAccessory, accessorySkin)
 		local _accessory = string.lower(accessory)
 
 		if hasAccessory then
@@ -62,10 +62,9 @@ function OpenShopMenu(accessory)
 
 		ESX.OpenContext("right", elements, function(menu,element)
 			if element.value == "yes" then
-				ESX.TriggerServerCallback('esx_accessories:checkMoney', function(hasEnoughMoney)
-					if hasEnoughMoney then
+				xLib.callback('esx_accessories:buy', false, function(bought)
+					if bought then
 						ESX.CloseContext()
-						TriggerServerEvent('esx_accessories:pay')
 						TriggerEvent('skinchanger:getSkin', function(skin)
 							TriggerServerEvent('esx_accessories:save', skin, accessory)
 						end)
@@ -86,7 +85,7 @@ function OpenShopMenu(accessory)
 						end
 						ESX.ShowNotification(TranslateCap('not_enough_money'))
 					end
-				end)
+				end, accessory)
 			elseif element.value == "no" then
 				local player = PlayerPedId()
 				TriggerEvent('esx_skin:getLastSkin', function(skin)
@@ -224,9 +223,15 @@ CreateThread(function()
 end)
 
 if Config.EnableControls then
-	ESX.RegisterInput('accessory', TranslateCap('keymap'), 'keyboard', 'j', function()
+	xLib.addKeybind({
+    name = 'accessory',
+    description = TranslateCap('keymap'),
+    defaultMapper = 'keyboard',
+    defaultKey = 'j',
+    onPressed = function()
 		if not ESX.PlayerData.dead then
 			OpenAccessoryMenu()
 		end
-	end)
+	end,
+})
 end

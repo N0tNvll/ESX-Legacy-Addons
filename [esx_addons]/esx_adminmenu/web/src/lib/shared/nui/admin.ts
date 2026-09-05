@@ -38,6 +38,7 @@ type RadioPlayersResponse = NuiSuccess & {
 
 const VEHICLE_PAGE_SIZE = 100;
 const BAN_PAGE_SIZE = 100;
+let vehiclePageRequestId = 0;
 
 // Admin Actions
 export const bringPlayer = (playerId: number) => fetchNui<NuiSuccess>("bring", { id: playerId });
@@ -100,7 +101,7 @@ export const impoundVehicle = async (plate: string, impoundName: string) => {
 	const res = await fetchNui<NuiSuccess>("vehicle:impound", { plate, impoundName });
 
 	if (res?.success) {
-		uiState.updateVehicleImpoundState(plate, true);
+		uiState.updateVehicleImpoundState(plate, true, impoundName);
 	}
 };
 
@@ -137,18 +138,24 @@ export const runPlayerAction = (playerId: number | string | undefined, action: s
 };
 
 export const fetchVehiclePage = async (options: { reset?: boolean; search?: string } = {}) => {
-	if (uiState.vehicleLoading) return false;
+	const search = (options.search ?? "").trim();
+	const isSearch = search !== "";
+
+	if (uiState.vehicleLoading && !options.reset) return false;
+	if (isSearch && !options.reset) return false;
 	if (!options.reset && !uiState.vehicleHasMore) return false;
 
+	const requestId = ++vehiclePageRequestId;
 	uiState.vehicleLoading = true;
 
 	try {
 		const res = await fetchNui<VehiclePageResponse>("getVehicles", {
-			offset: options.reset ? 0 : uiState.vehicleNextOffset,
+			offset: options.reset || isSearch ? 0 : uiState.vehicleNextOffset,
 			limit: VEHICLE_PAGE_SIZE,
-			search: options.search ?? "",
+			search,
 		});
 
+		if (requestId !== vehiclePageRequestId) return false;
 		if (!res?.success) return false;
 
 		const vehicles = res.vehicles ?? [];
@@ -163,7 +170,9 @@ export const fetchVehiclePage = async (options: { reset?: boolean; search?: stri
 
 		return true;
 	} finally {
-		uiState.vehicleLoading = false;
+		if (requestId === vehiclePageRequestId) {
+			uiState.vehicleLoading = false;
+		}
 	}
 };
 
@@ -212,9 +221,9 @@ export const getRadioChannelPlayers = async (channel: number) => {
 };
 
 type AdminLogPageResponse = NuiSuccess & {
-	logs?: AdminLog[];
-	hasMore?: boolean;
-	nextOffset?: number;
+    logs?: AdminLog[];
+    hasMore?: boolean;
+    nextCursor?: number | null;
 };
 
 // The log page owns its own state instead of a shared store: it is read-only
@@ -225,7 +234,7 @@ export const fetchAdminLogs = async (filters: AdminLogFilters = {}) => {
 	return {
 		logs: res?.success ? (res.logs ?? []) : [],
 		hasMore: res?.hasMore === true,
-		nextOffset: res?.nextOffset ?? 0,
+		nextCursor: res?.nextCursor ?? null,
 		ok: res?.success === true,
 	};
 };

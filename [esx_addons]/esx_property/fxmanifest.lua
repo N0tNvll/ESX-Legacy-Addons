@@ -23,9 +23,9 @@ lua54 'yes'
 author 'ESX-Framework'
 description 'Allows players to buy/sell houses, aswell as furnish them'
 version '2.0'
-legacyversion '1.14.1'
+legacyversion '1.15.0'
 
-shared_scripts { '@es_extended/imports.lua', '@es_extended/locale.lua', 'locales/*.lua' }
+shared_scripts { '@esx_lib/imports.lua', '@es_extended/imports.lua', '@es_extended/locale.lua', 'locales/*.lua' }
 file "client/html/copy.html"
 ui_page "client/html/copy.html"
 

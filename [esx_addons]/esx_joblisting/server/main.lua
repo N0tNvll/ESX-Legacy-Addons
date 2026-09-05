@@ -9,7 +9,7 @@ function getJobs()
   return availableJobs
 end
 
-ESX.RegisterServerCallback('esx_joblisting:getJobsList', function(source, cb)
+xLib.callback.registerCompat('esx_joblisting:getJobsList', function(source, cb)
   cb(getJobs())
 end)
 

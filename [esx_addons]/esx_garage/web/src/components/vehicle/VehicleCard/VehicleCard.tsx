@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { MdStarBorder, MdEdit } from 'react-icons/md';
+import { MdStar, MdStarBorder, MdEdit } from 'react-icons/md';
 import type { Vehicle } from '@/types/vehicle.types';
 import { useGarageStore } from '@/store/garage.store';
 import { getVehicleImagePath } from '@/utils/vehicle';
@@ -153,15 +153,6 @@ const StatusIndicator = styled.div<{ $impounded?: boolean }>`
   margin-left: auto;
 `;
 
-const PriceTag = styled.div`
-  background: ${(props) => props.theme.colors.secondary};
-  color: ${(props) => props.theme.colors.text.primary};
-  padding: 0.25rem 0.5rem;
-  border-radius: ${(props) => props.theme.sizes.borderRadius.sm};
-  font-size: 0.625rem;
-  font-weight: ${(props) => props.theme.fonts.weights.bold};
-`;
-
 const RenameInput = styled.input`
   background: ${(props) => props.theme.colors.backgroundSecondary};
   border: 1px solid ${(props) => props.theme.colors.primary};
@@ -203,10 +194,10 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onClick }) =>
     }
   };
 
-  const formatMileage = (mileage: number) => {
-    // Convert to miles (1 km = 0.621371 miles)
-    const miles = (mileage * 0.621371) / 1000;
-    return `${miles.toFixed(1)} miles`;
+  const formatMileage = (mileage: number, unit: 'mi' | 'km' = 'mi') => {
+    const value = Number(mileage);
+    const distance = Number.isFinite(value) ? value : 0;
+    return `${distance.toFixed(1)} ${unit}`;
   };
 
   return (
@@ -247,7 +238,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onClick }) =>
               <DetailText>{vehicle.plate}</DetailText>
             </DetailBadge>
             <DetailBadge>
-              <DetailText>{formatMileage(vehicle.mileage)}</DetailText>
+              <DetailText>{formatMileage(vehicle.mileage, vehicle.mileageUnit)}</DetailText>
             </DetailBadge>
           </VehicleDetails>
         </VehicleInfo>
@@ -258,7 +249,7 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onClick }) =>
             onClick={handleFavoriteClick}
             title="Toggle Favorite"
           >
-            <MdStarBorder />
+            {vehicle.isFavorite ? <MdStar /> : <MdStarBorder />}
           </ActionButton>
           <ActionButton onClick={handleRenameClick} title="Rename Vehicle">
             <MdEdit />
@@ -267,7 +258,6 @@ export const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle, onClick }) =>
       </InfoContainer>
 
       <BottomContainer>
-        {(vehicle.impoundFee ?? 0) > 0 && <PriceTag>${vehicle.impoundFee}</PriceTag>}
         {vehicle.impounded ? (
           <StatusIndicator $impounded>Impounded</StatusIndicator>
         ) : (

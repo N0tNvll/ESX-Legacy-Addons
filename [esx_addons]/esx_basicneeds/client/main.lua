@@ -80,7 +80,7 @@ local function handleAnimation(itemType, propName, anim, pos, rot)
     AttachEntityToEntity(prop, playerPed, boneIndex, pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, true, true, false, true, 1, true)
 
     CreateThread(function()
-        ESX.Streaming.RequestAnimDict(anim.dict, function()
+        xLib.streaming.requestAnimDict(anim.dict, function()
             TaskPlayAnim(playerPed, anim.dict, anim.name, table.unpack(anim.settings))
             RemoveAnimDict(anim.dict)
 

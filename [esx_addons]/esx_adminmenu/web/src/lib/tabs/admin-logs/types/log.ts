@@ -28,5 +28,5 @@ export interface AdminLogFilters {
 	namespace?: string;
 	days?: number;
 	limit?: number;
-	offset?: number;
+	beforeId?: number;
 }

@@ -17,6 +17,7 @@ exports("SeatbeltState", SetSeatbeltState)
 if not Config.Disable.Vehicle then
     local vehicleType, playerPos
     local currentMileage = 0
+    local currentMileageLoaded = false
 
     HUD.Data.Driver = false
 
@@ -28,6 +29,14 @@ if not Config.Disable.Vehicle then
     local function driverCheck(currentVehicle)
         return DoesEntityExist(currentVehicle) and (GetPedInVehicleSeat(currentVehicle, -1) == ESX.PlayerData.ped)
     end
+
+    exports("GetCurrentMileage", function()
+        if not currentMileageLoaded then
+            return nil, Config.Default.Kmh, false
+        end
+
+        return currentMileage, Config.Default.Kmh, true
+    end)
 
     CreateThread(function()
         while true do
@@ -145,6 +154,7 @@ if not Config.Disable.Vehicle then
         end
 
         if HUD.Data.Driver then
+            currentMileageLoaded = false
             TriggerServerEvent("esx_hud:EnteredVehicle", currentPlate, Config.Default.Kmh)
         end
         values.show = true
@@ -172,11 +182,13 @@ if not Config.Disable.Vehicle then
             TriggerServerEvent("esx_hud:ExitedVehicle", currentPlate, currentMileage, Config.Default.Kmh)
         end
         currentMileage = 0
+        currentMileageLoaded = false
         isPassenger = false
     end)
 
     RegisterNetEvent("esx_hud:UpdateMileage", function(mileage)
-        currentMileage = mileage
+        currentMileage = tonumber(mileage) or 0
+        currentMileageLoaded = true
     end)
 
     AddEventHandler("esx_hud:UnitChanged", function(state)

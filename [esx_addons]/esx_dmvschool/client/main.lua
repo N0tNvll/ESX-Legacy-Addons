@@ -26,7 +26,7 @@ function StartTheoryTest()
 		openQuestion = true
 	})
 
-	ESX.SetTimeout(200, function()
+	xLib.timeout.setTimeout(200, function()
 		SetNuiFocus(true, true)
 	end)
 
@@ -51,7 +51,7 @@ function StopTheoryTest(success)
 end
 
 function StartDriveTest(type)
-	ESX.Game.SpawnVehicle(Config.VehicleModels[type], vector3(Config.Zones.VehicleSpawnPoint.Pos.x, Config.Zones.VehicleSpawnPoint.Pos.y, Config.Zones.VehicleSpawnPoint.Pos.z), Config.Zones.VehicleSpawnPoint.Pos.h, function(vehicle)
+	xLib.game.spawnVehicle(Config.VehicleModels[type], vector3(Config.Zones.VehicleSpawnPoint.Pos.x, Config.Zones.VehicleSpawnPoint.Pos.y, Config.Zones.VehicleSpawnPoint.Pos.z), Config.Zones.VehicleSpawnPoint.Pos.h, function(vehicle)
 		CurrentTest       = 'drive'
 		CurrentTestType   = type
 		CurrentCheckPoint = 0
@@ -137,7 +137,7 @@ function OpenDMVSchoolMenu()
 
 	ESX.OpenContext("right", elements, function(menu,element)
 		if element.value == "theory_test" then
-			ESX.TriggerServerCallback('esx_dmvschool:canYouPay', function(haveMoney)
+			xLib.callback('esx_dmvschool:canYouPay', false, function(haveMoney)
 				if haveMoney then
 					ESX.CloseContext()
 					StartTheoryTest()
@@ -146,7 +146,7 @@ function OpenDMVSchoolMenu()
 				end
 			end, 'dmv')
 		elseif element.value == "drive_test" then
-			ESX.TriggerServerCallback('esx_dmvschool:canYouPay', function(haveMoney)
+			xLib.callback('esx_dmvschool:canYouPay', false, function(haveMoney)
 				if haveMoney then
 					ESX.CloseContext()
 					StartDriveTest(element.type)

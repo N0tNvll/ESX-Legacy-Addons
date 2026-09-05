@@ -30,13 +30,13 @@ function OpenBoatShop(shop)
 			if element2.val == "view" then
 				DeleteSpawnedVehicles()
 
-				ESX.Game.SpawnLocalVehicle(element.model, shop.Inside, shop.Inside.w, function (vehicle)
+				xLib.game.spawnLocalVehicle(element.model, shop.Inside, shop.Inside.w, function (vehicle)
 					table.insert(spawnedVehicles, vehicle)
 					TaskWarpPedIntoVehicle(playerPed, vehicle, -1)
 					FreezeEntityPosition(vehicle, true)
 
 					if element.props then
-						ESX.Game.SetVehicleProperties(vehicle, element.props)
+						xLib.game.setVehicleProperties(vehicle, element.props)
 					end
 
 					local elements3 = {
@@ -49,10 +49,10 @@ function OpenBoatShop(shop)
 						if element3.value == "buy" then
 							local plate = exports['esx_vehicleshop']:GeneratePlate()
 							local vehicle = GetVehiclePedIsIn(playerPed, false)
-							local props = ESX.Game.GetVehicleProperties(vehicle)
+							local props = xLib.game.getVehicleProperties(vehicle)
 							props.plate = plate
 
-							ESX.TriggerServerCallback('esx_boat:buyBoat', function(bought)
+							xLib.callback('esx_boat:buyBoat', false, function(bought)
 								if bought then
 									ESX.ShowNotification(TranslateCap('boat_shop_bought', element.name, ESX.Math.GroupDigits(element.price)))
 
@@ -91,7 +91,7 @@ function OpenBoatShop(shop)
 end
 
 function OpenBoatGarage(garage)
-	ESX.TriggerServerCallback('esx_boat:getGarage', function (ownedBoats)
+	xLib.callback('esx_boat:getGarage', false, function (ownedBoats)
 		if #ownedBoats == 0 then
 			ESX.ShowNotification(TranslateCap('garage_noboats'))
 		else
@@ -113,13 +113,13 @@ function OpenBoatGarage(garage)
 				local playerPed = PlayerPedId()
 				local vehicleProps = element.vehicleProps
 
-				if ESX.Game.IsSpawnPointClear(garage.SpawnPoint, 4.0) then
+				if xLib.game.isSpawnPointClear(garage.SpawnPoint, 4.0) then
 					TriggerServerEvent('esx_boat:takeOutVehicle', vehicleProps.plate)
 					ESX.ShowNotification(TranslateCap('garage_taken'))
 
-					ESX.Game.SpawnVehicle(vehicleProps.model, garage.SpawnPoint, garage.SpawnPoint.w, function(vehicle)
+					xLib.game.spawnVehicle(vehicleProps.model, garage.SpawnPoint, garage.SpawnPoint.w, function(vehicle)
 						TaskWarpPedIntoVehicle(playerPed, vehicle, -1)
-						ESX.Game.SetVehicleProperties(vehicle, vehicleProps)
+						xLib.game.setVehicleProperties(vehicle, vehicleProps)
 					end)
 
 					ESX.CloseContext()
@@ -154,7 +154,7 @@ function OpenLicenceMenu(shop)
                 return;
             end
 
-			ESX.TriggerServerCallback('esx_boat:buyBoatLicense', function (boughtLicense)
+			xLib.callback('esx_boat:buyBoatLicense', false, function (boughtLicense)
 				if boughtLicense then
 					ESX.ShowNotification(TranslateCap('license_bought', ESX.Math.GroupDigits(Config.LicensePrice)))
 					ESX.CloseContext()
@@ -175,15 +175,15 @@ function OpenLicenceMenu(shop)
 end
 
 function StoreBoatInGarage(vehicle, teleportCoords)
-	local vehicleProps = ESX.Game.GetVehicleProperties(vehicle)
+	local vehicleProps = xLib.game.getVehicleProperties(vehicle)
 
-	ESX.TriggerServerCallback('esx_boat:storeVehicle', function (rowsChanged)
+	xLib.callback('esx_boat:storeVehicle', false, function (rowsChanged)
 		if rowsChanged > 0 then
-			ESX.Game.DeleteVehicle(vehicle)
+			xLib.game.deleteVehicle(vehicle)
 			ESX.ShowNotification(TranslateCap('garage_stored'))
 			local playerPed = PlayerPedId()
 
-			ESX.Game.Teleport(playerPed, teleportCoords, function()
+			xLib.entity.Teleport(playerPed, teleportCoords, function()
 				SetEntityHeading(playerPed, teleportCoords.w)
 			end)
 		else
@@ -210,7 +210,7 @@ function DeleteSpawnedVehicles()
 	while #spawnedVehicles > 0 do
 		local vehicle = spawnedVehicles[1]
 		if DoesEntityExist(vehicle) then
-			ESX.Game.DeleteVehicle(vehicle)
+			xLib.game.deleteVehicle(vehicle)
 		end
 		table.remove(spawnedVehicles, 1)
 	end

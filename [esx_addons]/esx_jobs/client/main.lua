@@ -28,11 +28,11 @@ function OpenMenu()
 		if element.value == "citizen_wear" then
 			onDuty = false
 			ESX.ShowNotification(TranslateCap('offduty'), "success")
-			ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin, jobSkin)
+			xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
 				local isMale = skin.sex == 0
 
 				TriggerEvent('skinchanger:loadDefaultModel', isMale, function()
-					ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin)
+					xLib.callback('esx_skin:getPlayerSkin', false, function(skin)
 						TriggerEvent('skinchanger:loadSkin', skin)
 					end)
 				end)
@@ -40,15 +40,15 @@ function OpenMenu()
 		elseif element.value == "job_wear" then
 			onDuty = true
 			ESX.ShowNotification(TranslateCap('onduty'), "success")
-			ESX.TriggerServerCallback('esx_skin:getPlayerSkin', function(skin, jobSkin)
+			xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
 				if skin.sex == 0 then
-					if ESX.Table.SizeOf(jobSkin.skin_male) >= 1 then
+					if xLib.table.sizeOf(jobSkin.skin_male) >= 1 then
 						TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_male)
 					else
 						ESX.ShowNotification(TranslateCap('no_male_clothing'), "error")
 					end
 				else
-					if ESX.Table.SizeOf(jobSkin.skin_female) >= 1 then
+					if xLib.table.sizeOf(jobSkin.skin_female) >= 1 then
 						TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_female)
 					else
 						ESX.ShowNotification(TranslateCap('no_female_clothing'), "error")
@@ -93,7 +93,7 @@ AddEventHandler('esx_jobs:action', function(job, zone, zoneKey)
 			end
 		end
 
-		if ESX.Game.IsSpawnPointClear(spawnPoint.Pos, 5.0) then
+		if xLib.game.isSpawnPointClear(spawnPoint.Pos, 5.0) then
 			spawnVehicle(spawnPoint, vehicle, zone.Caution)
 		else
 			ESX.ShowNotification(TranslateCap('spawn_blocked'))
@@ -124,7 +124,7 @@ AddEventHandler('esx_jobs:action', function(job, zone, zoneKey)
 										DeleteVehicle(GetVehiclePedIsIn(playerPed, false))
 
 										if w.Teleport ~= 0 then
-											ESX.Game.Teleport(playerPed, w.Teleport)
+											xLib.entity.Teleport(playerPed, w.Teleport)
 										end
 
 										table.remove(myPlate, i)
@@ -253,9 +253,9 @@ end
 RegisterNetEvent('esx_jobs:spawnJobVehicle', function(spawnPoint, vehicle)
 	local playerPed = PlayerPedId()
 
-	ESX.Game.SpawnVehicle(vehicle.Hash, spawnPoint.Pos, spawnPoint.Heading, function(spawnedVehicle)
+	xLib.game.spawnVehicle(vehicle.Hash, spawnPoint.Pos, spawnPoint.Heading, function(spawnedVehicle)
 		if vehicle.Trailer ~= "none" then
-			ESX.Game.SpawnVehicle(vehicle.Trailer, spawnPoint.Pos, spawnPoint.Heading, function(trailer)
+			xLib.game.spawnVehicle(vehicle.Trailer, spawnPoint.Pos, spawnPoint.Heading, function(trailer)
 				AttachVehicleToTrailer(spawnedVehicle, trailer, 1.1)
 			end)
 		end
@@ -353,7 +353,7 @@ CreateThread(function()
 				ESX.ShowHelpNotification(v.Hint)
 				hintIsShowed = true
 				if IsControlJustReleased(0, 38) then
-					ESX.Game.Teleport(PlayerPedId(), v.Teleport)
+					xLib.entity.Teleport(PlayerPedId(), v.Teleport)
 				end
 			end
 		end

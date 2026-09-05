@@ -7,17 +7,204 @@ end
 TriggerEvent('esx_phone:registerNumber', 'police', TranslateCap('alert_police'), true, true)
 TriggerEvent('esx_society:registerSociety', 'police', TranslateCap('society_police'), 'society_police', 'society_police', 'society_police', {type = 'public'})
 
+local cuffedPlayers = {}
+local JobVehicleNumberCharset, JobVehicleCharset = {}, {}
+
+for i = 48, 57 do JobVehicleNumberCharset[#JobVehicleNumberCharset + 1] = string.char(i) end
+for i = 65, 90 do JobVehicleCharset[#JobVehicleCharset + 1] = string.char(i) end
+
+local function getValidCount(count)
+	count = tonumber(count)
+	if not count then
+		return nil
+	end
+
+	count = ESX.Math.Round(count)
+	if count <= 0 then
+		return nil
+	end
+
+	return count
+end
+
+local function isPolice(xPlayer)
+	return xPlayer and xPlayer.getJob().name == 'police'
+end
+
+local function isPoliceOnDuty(xPlayer)
+	local job = xPlayer and xPlayer.getJob()
+	return job and job.name == 'police' and job.onDuty ~= false
+end
+
+local function getRandomPlateChunk(charset, length)
+	local value = ''
+
+	for i = 1, length do
+		value = value .. charset[math.random(1, #charset)]
+	end
+
+	return value
+end
+
+local function generateJobVehiclePlate()
+	for i = 1, 30 do
+		local plate = ('POL%s%s'):format(getRandomPlateChunk(JobVehicleCharset, 2), getRandomPlateChunk(JobVehicleNumberCharset, 3))
+		local exists = MySQL.scalar.await('SELECT plate FROM owned_vehicles WHERE plate = ?', {plate})
+		if not exists then return plate end
+	end
+
+	return nil
+end
+
+local function isNearPlayer(source, target, distance)
+	target = tonumber(target)
+	if not target or source == target then
+		return false
+	end
+
+	local sourcePed = GetPlayerPed(source)
+	local targetPed = GetPlayerPed(target)
+	if not sourcePed or sourcePed == 0 or not targetPed or targetPed == 0 then
+		return false
+	end
+
+	return #(GetEntityCoords(sourcePed) - GetEntityCoords(targetPed)) <= distance
+end
+
+local function isNearPoliceArmory(source)
+	local ped = GetPlayerPed(source)
+	if not ped or ped == 0 then
+		return false
+	end
+
+	local coords = GetEntityCoords(ped)
+	for _, station in pairs(Config.PoliceStations) do
+		for i = 1, #(station.Armories or {}) do
+			if #(coords - station.Armories[i]) <= 8.0 then
+				return true
+			end
+		end
+	end
+
+	return false
+end
+
+local function normalizeImpoundPlate(plate)
+	if type(plate) ~= 'string' then
+		return nil
+	end
+
+	plate = plate:gsub("^%s+", ""):gsub("%s+$", "")
+	if plate == "" then
+		return nil
+	end
+
+	return plate
+end
+
+local function impoundPlateKey(plate)
+	return plate:gsub("^%s+", ""):gsub("%s+$", ""):upper()
+end
+
+local function isNearImpoundVehicle(source, plate)
+	local ped = GetPlayerPed(source)
+	if not ped or ped == 0 then
+		return false
+	end
+
+	local plateKey = impoundPlateKey(plate)
+	local vehicle = GetVehiclePedIsIn(ped, false)
+
+	if vehicle ~= 0 and impoundPlateKey(GetVehicleNumberPlateText(vehicle) or '') == plateKey then
+		return true
+	end
+
+	local coords = GetEntityCoords(ped)
+	local vehicles = GetAllVehicles()
+
+	for i = 1, #vehicles do
+		vehicle = vehicles[i]
+
+		if impoundPlateKey(GetVehicleNumberPlateText(vehicle) or '') == plateKey
+			and #(GetEntityCoords(vehicle) - coords) <= 8.0 then
+			return true
+		end
+	end
+
+	return false
+end
+
+local function isNearPoliceVehicleShop(source, type)
+	local ped = GetPlayerPed(source)
+	if not ped or ped == 0 then return false end
+
+	local coords = GetEntityCoords(ped)
+	local shopKey = type == 'helicopter' and 'Helicopters' or 'Vehicles'
+
+	for _, station in pairs(Config.PoliceStations) do
+		for i = 1, #(station[shopKey] or {}) do
+			local shopCoords = station[shopKey][i].InsideShop or station[shopKey][i].Spawner
+			if shopCoords and #(coords - vector3(shopCoords.x, shopCoords.y, shopCoords.z)) <= 35.0 then
+				return true
+			end
+		end
+	end
+
+	return false
+end
+
+local function getAuthorizedVehicle(vehicleHash, jobGrade, type)
+	local vehicles = Config.AuthorizedVehicles[type]?[jobGrade] or {}
+
+	for i = 1, #vehicles do
+		local vehicle = vehicles[i]
+		if GetHashKey(vehicle.model) == vehicleHash then
+			return vehicle
+		end
+	end
+
+	return nil
+end
+
+RegisterNetEvent('esx_policejob:impoundOwnedVehicle')
+AddEventHandler('esx_policejob:impoundOwnedVehicle', function(plate)
+	local source = source
+	local xPlayer = ESX.Player(source)
+
+	if not xPlayer or xPlayer.getJob().name ~= 'police' then
+		print(('[^3WARNING^7] Player ^5%s^7 Attempted To Exploit Vehicle Impound!'):format(source))
+		return
+	end
+
+	plate = normalizeImpoundPlate(plate)
+	if not plate then
+		return
+	end
+
+	if not isNearImpoundVehicle(source, plate) then
+		return
+	end
+
+	pcall(function()
+		exports['esx_garage']:impoundVehicle(plate)
+	end)
+end)
+
 RegisterNetEvent('esx_policejob:confiscatePlayerItem')
 AddEventHandler('esx_policejob:confiscatePlayerItem', function(target, itemType, itemName, amount)
 	local source = source
 	local sourceXPlayer = ESX.Player(source)
 	local targetXPlayer = ESX.Player(target)
-	local job = sourceXPlayer.getJob()
+	if not isPolice(sourceXPlayer) or not targetXPlayer or not isNearPlayer(source, target, 5.0) or not cuffedPlayers[tonumber(target)] then
+		print(('[^3WARNING^7] Player ^5%s^7 Attempted To Exploit The Confuscation System!'):format(source))
+		return
+	end
+
 	local sourceXPlayerName = sourceXPlayer.getName()
 	local targetXPlayerName = targetXPlayer.getName()
-	if job.name ~= 'police' then
-		print(('[^3WARNING^7] Player ^5%s^7 Attempted To Exploit The Confuscation System!'):format(sourceXPlayer.src))
-		return
+	amount = itemType == 'item_weapon' and ESX.Math.Round(tonumber(amount) or 0) or getValidCount(amount)
+	if amount == nil or amount < 0 then
+		return sourceXPlayer.showNotification(TranslateCap('quantity_invalid'))
 	end
 
 	if itemType == 'item_standard' then
@@ -74,10 +261,21 @@ RegisterNetEvent('esx_policejob:handcuff')
 AddEventHandler('esx_policejob:handcuff', function(target)
 	local xPlayer = ESX.Player(source)
 
-	if xPlayer.getJob().name == 'police' then
+	if isPolice(xPlayer) and isNearPlayer(source, target, 5.0) then
+		target = tonumber(target)
+		cuffedPlayers[target] = not cuffedPlayers[target]
+		Player(target).state:set('isHandcuffed', cuffedPlayers[target], true)
+		if cuffedPlayers[target] and Config.EnableHandcuffTimer then
+			SetTimeout(Config.HandcuffTimer, function()
+				if cuffedPlayers[target] then
+					cuffedPlayers[target] = nil
+					Player(target).state:set('isHandcuffed', false, true)
+				end
+			end)
+		end
 		TriggerClientEvent('esx_policejob:handcuff', target)
 	else
-		print(('[^3WARNING^7] Player ^5%s^7 Attempted To Exploit Handcuffs!'):format(xPlayer.src))
+		print(('[^3WARNING^7] Player ^5%s^7 Attempted To Exploit Handcuffs!'):format(source))
 	end
 end)
 
@@ -85,10 +283,10 @@ RegisterNetEvent('esx_policejob:drag')
 AddEventHandler('esx_policejob:drag', function(target)
 	local xPlayer = ESX.Player(source)
 
-	if xPlayer.getJob().name == 'police' then
+	if isPolice(xPlayer) and cuffedPlayers[tonumber(target)] and isNearPlayer(source, target, 5.0) then
 		TriggerClientEvent('esx_policejob:drag', target, source)
 	else
-		print(('[^3WARNING^7] Player ^5%s^7 Attempted To Exploit Dragging!'):format(xPlayer.src))
+		print(('[^3WARNING^7] Player ^5%s^7 Attempted To Exploit Dragging!'):format(source))
 	end
 end)
 
@@ -96,10 +294,10 @@ RegisterNetEvent('esx_policejob:putInVehicle')
 AddEventHandler('esx_policejob:putInVehicle', function(target)
 	local xPlayer = ESX.Player(source)
 
-	if xPlayer.getJob().name == 'police' then
+	if isPolice(xPlayer) and cuffedPlayers[tonumber(target)] and isNearPlayer(source, target, 5.0) then
 		TriggerClientEvent('esx_policejob:putInVehicle', target)
 	else
-		print(('[^3WARNING^7] Player ^5%s^7 Attempted To Exploit Garage!'):format(xPlayer.src))
+		print(('[^3WARNING^7] Player ^5%s^7 Attempted To Exploit Garage!'):format(source))
 	end
 end)
 
@@ -107,17 +305,27 @@ RegisterNetEvent('esx_policejob:OutVehicle')
 AddEventHandler('esx_policejob:OutVehicle', function(target)
 	local xPlayer = ESX.Player(source)
 
-	if xPlayer.getJob().name == 'police' then
+	if isPolice(xPlayer) and cuffedPlayers[tonumber(target)] and isNearPlayer(source, target, 8.0) then
 		TriggerClientEvent('esx_policejob:OutVehicle', target)
 	else
-		print(('[^3WARNING^7] Player ^5%s^7 Attempted To Exploit Dragging Out Of Vehicle!'):format(xPlayer.src))
+		print(('[^3WARNING^7] Player ^5%s^7 Attempted To Exploit Dragging Out Of Vehicle!'):format(source))
 	end
+end)
+
+AddEventHandler('playerDropped', function()
+	cuffedPlayers[source] = nil
 end)
 
 RegisterNetEvent('esx_policejob:getStockItem')
 AddEventHandler('esx_policejob:getStockItem', function(itemName, count)
 	local source = source
 	local xPlayer = ESX.Player(source)
+	count = getValidCount(count)
+
+	if not count or not isPolice(xPlayer) or not isNearPoliceArmory(source) then
+		print(('[^3WARNING^7] Player ^5%s^7 attempted invalid police stock withdrawal!'):format(source))
+		return
+	end
 
 	TriggerEvent('esx_addoninventory:getSharedInventory', 'society_police', function(inventory)
 		local inventoryItem = inventory.getItem(itemName)
@@ -141,8 +349,15 @@ end)
 
 RegisterNetEvent('esx_policejob:putStockItems')
 AddEventHandler('esx_policejob:putStockItems', function(itemName, count)
+	local source = source
 	local xPlayer = ESX.Player(source)
 	local sourceItem = xPlayer.getInventoryItem(itemName)
+	count = getValidCount(count)
+
+	if not count or not isPolice(xPlayer) or not isNearPoliceArmory(source) then
+		print(('[^3WARNING^7] Player ^5%s^7 attempted invalid police stock deposit!'):format(source))
+		return
+	end
 
 	TriggerEvent('esx_addoninventory:getSharedInventory', 'society_police', function(inventory)
 		local inventoryItem = inventory.getItem(itemName)
@@ -158,49 +373,52 @@ AddEventHandler('esx_policejob:putStockItems', function(itemName, count)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_policejob:getOtherPlayerData', function(source, cb, target, notify)
+xLib.callback.registerCompat('esx_policejob:getOtherPlayerData', function(source, cb, target, notify)
+	local sourceXPlayer = ESX.Player(source)
 	local xPlayer = ESX.Player(target)
+	if not isPolice(sourceXPlayer) or not xPlayer or not isNearPlayer(source, target, 5.0) or not cuffedPlayers[tonumber(target)] then
+		return cb({})
+	end
+
 	local job = xPlayer.getJob()
 	if notify then
 		xPlayer.showNotification(TranslateCap('being_searched'))
 	end
 
-	if xPlayer then
-		local data = {
-			name = xPlayer.getName(),
-			job = job.label,
-			grade = job.grade_label,
-			inventory = xPlayer.getInventory(),
-			accounts = xPlayer.getAccounts(),
-			weapons = xPlayer.getLoadout()
-		}
+	local data = {
+		name = xPlayer.getName(),
+		job = job.label,
+		grade = job.grade_label,
+		inventory = xPlayer.getInventory(),
+		accounts = xPlayer.getAccounts(),
+		weapons = xPlayer.getLoadout()
+	}
 
-		if Config.EnableESXIdentity then
-			data.dob = xPlayer.get('dateofbirth')
-			data.height = xPlayer.get('height')
+	if Config.EnableESXIdentity then
+		data.dob = xPlayer.get('dateofbirth')
+		data.height = xPlayer.get('height')
 
-			if xPlayer.get('sex') == 'm' then data.sex = 'male' else data.sex = 'female' end
+		if xPlayer.get('sex') == 'm' then data.sex = 'male' else data.sex = 'female' end
+	end
+
+	TriggerEvent('esx_status:getStatus', target, 'drunk', function(status)
+		if status then
+			data.drunk = ESX.Math.Round(status.percent)
 		end
+	end)
 
-		TriggerEvent('esx_status:getStatus', target, 'drunk', function(status)
-			if status then
-				data.drunk = ESX.Math.Round(status.percent)
-			end
-		end)
-
-		if Config.EnableLicenses then
-			TriggerEvent('esx_license:getLicenses', target, function(licenses)
-				data.licenses = licenses
-				cb(data)
-			end)
-		else
+	if Config.EnableLicenses then
+		TriggerEvent('esx_license:getLicenses', target, function(licenses)
+			data.licenses = licenses
 			cb(data)
-		end
+		end)
+	else
+		cb(data)
 	end
 end)
 
 local fineList = {}
-ESX.RegisterServerCallback('esx_policejob:getFineList', function(source, cb, category)
+xLib.callback.registerCompat('esx_policejob:getFineList', function(source, cb, category)
 	if not fineList[category] then
 		MySQL.query('SELECT * FROM fine_types WHERE category = ?', {category},
 		function(fines)
@@ -214,7 +432,14 @@ ESX.RegisterServerCallback('esx_policejob:getFineList', function(source, cb, cat
 end)
 
 
-ESX.RegisterServerCallback('esx_policejob:getVehicleInfos', function(source, cb, plate)
+xLib.callback.registerCompat('esx_policejob:getVehicleInfos', function(source, cb, plate)
+	local xPlayer = ESX.Player(source)
+	plate = normalizeImpoundPlate(plate)
+
+	if not isPoliceOnDuty(xPlayer) or not plate or (not isNearImpoundVehicle(source, plate) and not isNearPoliceArmory(source)) then
+		return cb({plate = plate})
+	end
+
 	local retrivedInfo = {
 		plate = plate
 	}
@@ -240,7 +465,12 @@ ESX.RegisterServerCallback('esx_policejob:getVehicleInfos', function(source, cb,
 	end
 end)
 
-ESX.RegisterServerCallback('esx_policejob:getArmoryWeapons', function(source, cb)
+xLib.callback.registerCompat('esx_policejob:getArmoryWeapons', function(source, cb)
+	local xPlayer = ESX.Player(source)
+	if not isPolice(xPlayer) or not isNearPoliceArmory(source) then
+		return cb({})
+	end
+
 	TriggerEvent('esx_datastore:getSharedDataStore', 'society_police', function(store)
 		local weapons = store.get('weapons')
 
@@ -252,8 +482,11 @@ ESX.RegisterServerCallback('esx_policejob:getArmoryWeapons', function(source, cb
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_policejob:addArmoryWeapon', function(source, cb, weaponName, removeWeapon)
+xLib.callback.registerCompat('esx_policejob:addArmoryWeapon', function(source, cb, weaponName, removeWeapon)
 	local xPlayer = ESX.Player(source)
+	if not isPolice(xPlayer) or not isNearPoliceArmory(source) or not xPlayer.hasWeapon(weaponName) then
+		return cb(false)
+	end
 
 	if removeWeapon then
 		xPlayer.removeWeapon(weaponName)
@@ -279,13 +512,15 @@ ESX.RegisterServerCallback('esx_policejob:addArmoryWeapon', function(source, cb,
 		end
 
 		store.set('weapons', weapons)
-		cb()
+		cb(true)
 		end)
 end)
 
-ESX.RegisterServerCallback('esx_policejob:removeArmoryWeapon', function(source, cb, weaponName)
+xLib.callback.registerCompat('esx_policejob:removeArmoryWeapon', function(source, cb, weaponName)
 	local xPlayer = ESX.Player(source)
-	xPlayer.addWeapon(weaponName, 500)
+	if not isPolice(xPlayer) or not isNearPoliceArmory(source) then
+		return cb(false)
+	end
 
 	TriggerEvent('esx_datastore:getSharedDataStore', 'society_police', function(store)
 		local weapons = store.get('weapons') or {}
@@ -293,28 +528,33 @@ ESX.RegisterServerCallback('esx_policejob:removeArmoryWeapon', function(source, 
 		local foundWeapon = false
 
 		for i=1, #weapons, 1 do
-			if weapons[i].name == weaponName then
-				weapons[i].count = (weapons[i].count > 0 and weapons[i].count - 1 or 0)
+			if weapons[i].name == weaponName and weapons[i].count > 0 then
+				weapons[i].count = weapons[i].count - 1
 				foundWeapon = true
 				break
 			end
 		end
 
 		if not foundWeapon then
-			table.insert(weapons, {
-				name = weaponName,
-				count = 0
-			})
+			return cb(false)
 		end
 
+		xPlayer.addWeapon(weaponName, 500)
 		store.set('weapons', weapons)
-		cb()
+		cb(true)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_policejob:buyWeapon', function(source, cb, weaponName, type, componentNum)
+xLib.callback.registerCompat('esx_policejob:buyWeapon', function(source, cb, weaponName, type, componentNum)
 	local xPlayer = ESX.Player(source)
+	if not isPolice(xPlayer) or not isNearPoliceArmory(source) then
+		return cb(false)
+	end
+
 	local authorizedWeapons, selectedWeapon = Config.AuthorizedWeapons[xPlayer.getJob().grade_name]
+	if not authorizedWeapons then
+		return cb(false)
+	end
 
 	for k,v in ipairs(authorizedWeapons) do
 		if v.weapon == weaponName then
@@ -361,31 +601,48 @@ ESX.RegisterServerCallback('esx_policejob:buyWeapon', function(source, cb, weapo
 	end
 end)
 
-ESX.RegisterServerCallback('esx_policejob:buyJobVehicle', function(source, cb, vehicleProps, type)
+xLib.callback.registerCompat('esx_policejob:buyJobVehicle', function(source, cb, vehicleProps, type)
 	local xPlayer = ESX.Player(source)
-	local job = xPlayer.getJob()
-	local price = getPriceFromHash(vehicleProps.model, job.grade_name, type)
+	local job = xPlayer and xPlayer.getJob()
+	local model = _G.type(vehicleProps) == 'table' and tonumber(vehicleProps.model)
+	local authorizedVehicle = job and model and getAuthorizedVehicle(model, job.grade_name, type)
+	local price = authorizedVehicle and tonumber(authorizedVehicle.price) or 0
 
 	-- vehicle model not found
-	if price == 0 then
-		print(('[^3WARNING^7] Player ^5%s^7 Attempted To Buy Invalid Vehicle - ^5%s^7!'):format(source, vehicleProps.model))
-		cb(false)
-	else
-		if xPlayer.getMoney() >= price then
-			xPlayer.removeMoney(price, "Job Vehicle Bought")
+	if not isPoliceOnDuty(xPlayer) or price == 0 or not isNearPoliceVehicleShop(source, type) then
+		print(('[^3WARNING^7] Player ^5%s^7 Attempted To Buy Invalid Vehicle - ^5%s^7!'):format(source, tostring(model)))
+		return cb(false)
+	end
 
-			MySQL.insert('INSERT INTO owned_vehicles (owner, vehicle, plate, type, job, `stored`) VALUES (?, ?, ?, ?, ?, ?)', { xPlayer.getIdentifier(), json.encode(vehicleProps), vehicleProps.plate, type, job.name, true},
-			function (rowsChanged)
-				cb(true)
-			end)
-		else
-			cb(false)
+	if xPlayer.getMoney() < price then return cb(false) end
+
+	local plate = generateJobVehiclePlate()
+	if not plate then return cb(false) end
+
+	local storedProps = {model = model, plate = plate}
+	if _G.type(authorizedVehicle.props) == 'table' then
+		for key, value in pairs(authorizedVehicle.props) do
+			storedProps[key] = value
 		end
 	end
+
+	xPlayer.removeMoney(price, "Job Vehicle Bought")
+
+	MySQL.insert('INSERT INTO owned_vehicles (owner, vehicle, plate, type, job, `stored`) VALUES (?, ?, ?, ?, ?, ?)', { xPlayer.getIdentifier(), json.encode(storedProps), plate, type, job.name, true},
+	function (insertId)
+		if not insertId then
+			xPlayer.addMoney(price, "Job Vehicle Refund")
+			return cb(false)
+		end
+
+		cb(true)
+	end)
 end)
 
-ESX.RegisterServerCallback('esx_policejob:storeNearbyVehicle', function(source, cb, plates)
+xLib.callback.registerCompat('esx_policejob:storeNearbyVehicle', function(source, cb, plates)
 	local xPlayer = ESX.Player(source)
+	if not isPoliceOnDuty(xPlayer) or type(plates) ~= 'table' or #plates == 0 then return cb(false) end
+
 	local job = xPlayer.getJob()
 	local identifier = xPlayer.getIdentifier()
 	local plate = MySQL.scalar.await('SELECT plate FROM owned_vehicles WHERE owner = ? AND plate IN (?) AND job = ?', {identifier, plates, job.name})
@@ -417,14 +674,23 @@ function getPriceFromHash(vehicleHash, jobGrade, type)
 	return 0
 end
 
-ESX.RegisterServerCallback('esx_policejob:getStockItems', function(source, cb)
+xLib.callback.registerCompat('esx_policejob:getStockItems', function(source, cb)
+	local xPlayer = ESX.Player(source)
+	if not isPolice(xPlayer) or not isNearPoliceArmory(source) then
+		return cb({})
+	end
+
 	TriggerEvent('esx_addoninventory:getSharedInventory', 'society_police', function(inventory)
 		cb(inventory.items)
 	end)
 end)
 
-ESX.RegisterServerCallback('esx_policejob:getPlayerInventory', function(source, cb)
+xLib.callback.registerCompat('esx_policejob:getPlayerInventory', function(source, cb)
 	local xPlayer = ESX.Player(source)
+	if not isPolice(xPlayer) or not isNearPoliceArmory(source) then
+		return cb({items = {}})
+	end
+
 	local items   = xPlayer.getInventory(false)
 
 	cb({items = items})

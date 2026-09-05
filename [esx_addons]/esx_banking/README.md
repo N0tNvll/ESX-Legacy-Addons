@@ -42,15 +42,6 @@ Run the banking.sql into your database. Done.
 
 
 ```lua
--- Client side
--- The event is used client side
-
-TriggerServerEvent("esx_banking:logTransaction",label,logType,amount)
-
--- For example:
-TriggerServerEvent("esx_banking:logTransaction","TAX", "DEPOSIT", 2000)
-
-
 -- Server side
 -- The export is used server side
 exports["esx_banking"]:logTransaction(source,label,logType,amount)

@@ -121,7 +121,7 @@ function OpenBuyLicenseMenu(licenseName)
 	}
 
 	ESX.OpenContext("right", elements, function(menu,element)
-		ESX.TriggerServerCallback('esx_drugs:buyLicense', function(boughtLicense)
+		xLib.callback('esx_drugs:buyLicense', false, function(boughtLicense)
 			if boughtLicense then
 				ESX.CloseContext()
 				ESX.ShowNotification(TranslateCap('license_bought', element.licenseName, ESX.Math.GroupDigits(element.price)))

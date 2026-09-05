@@ -4,7 +4,7 @@ export const en: LocaleTranslations = {
   garage: {
     title: 'Garage',
     subtitle: 'Vehicle Management',
-    search: 'Search by plate, model or name...',
+    search: 'Search by plate or name...',
     noVehicles: 'No vehicles found',
     loading: 'Loading vehicles...'
   },

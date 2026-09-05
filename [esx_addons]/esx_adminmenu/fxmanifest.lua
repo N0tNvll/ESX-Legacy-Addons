@@ -5,6 +5,7 @@ lua54("yes")
 author("ESX (Zox)")
 description("ESX Admin Menu")
 version("0.3.2")
+legacyversion("1.15.0")
 
 shared_scripts({
 	"@esx_lib/imports.lua",
