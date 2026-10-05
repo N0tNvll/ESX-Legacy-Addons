@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESX Chat</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <svg class="svg-sprite" aria-hidden="true" focusable="false">
+        <symbol id="i-system" viewBox="0 0 24 24"><path d="M19.14 12.94a7.43 7.43 0 0 0 .05-.94 7.43 7.43 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.4 7.4 0 0 0-1.62-.94L14.39 2.8a.5.5 0 0 0-.49-.4h-3.8a.5.5 0 0 0-.49.4l-.36 2.52c-.58.24-1.12.55-1.62.94L5.24 5.3a.5.5 0 0 0-.61.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.43 7.43 0 0 0-.05.94c0 .32.02.63.05.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.12.22.38.31.61.22l2.39-.96c.5.39 1.04.7 1.62.94l.36 2.52c.04.24.24.4.49.4h3.8c.25 0 .45-.16.49-.4l.36-2.52c.58-.24 1.12-.55 1.62-.94l2.39.96c.23.09.49 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5Z"/></symbol>
+        <symbol id="i-discord" viewBox="0 0 24 24"><path d="M19.54 5.33A16.8 16.8 0 0 0 15.34 4l-.5 1.03a15.5 15.5 0 0 0-5.67 0L8.66 4c-1.47.25-2.88.7-4.2 1.33C1.8 9.26 1.08 13.1 1.44 16.89a17.25 17.25 0 0 0 5.15 2.59l1.24-1.7c-.68-.26-1.33-.58-1.94-.96l.48-.37c3.74 1.73 7.8 1.73 11.5 0l.48.37c-.62.38-1.27.7-1.95.96l1.24 1.7a17.2 17.2 0 0 0 5.15-2.59c.43-4.4-.74-8.2-3.25-11.56ZM8.15 14.56c-1.13 0-2.05-1.04-2.05-2.32 0-1.28.9-2.33 2.05-2.33 1.14 0 2.07 1.05 2.05 2.33 0 1.28-.91 2.32-2.05 2.32Zm7.7 0c-1.13 0-2.05-1.04-2.05-2.32 0-1.28.9-2.33 2.05-2.33 1.14 0 2.07 1.05 2.05 2.33 0 1.28-.9 2.32-2.05 2.32Z"/></symbol>
+        <symbol id="i-user" viewBox="0 0 24 24"><path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5.33 0-8 2.67-8 5v3h16v-3c0-2.33-2.67-5-8-5Z"/></symbol>
+        <symbol id="i-message" viewBox="0 0 24 24"><path d="M3 3h18v14H8l-5 4V3Zm4 5h10v2H7V8Zm0 4h7v2H7v-2Z"/></symbol>
+        <symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-4.67 0-7 2.33-7 4.5V21h10.2a7.6 7.6 0 0 1-.2-1.75c0-2.43 1.13-4.6 2.9-6A13.2 13.2 0 0 0 10 13Zm9-1v3h3v2h-3v3h-2v-3h-3v-2h3v-3h2Z"/></symbol>
+        <symbol id="i-smile" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-3.5 7A1.5 1.5 0 1 1 8.5 12a1.5 1.5 0 0 1 0-3Zm7 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 18c-2.5 0-4.63-1.55-5.5-3.75h2.06A3.98 3.98 0 0 0 12 16a3.98 3.98 0 0 0 3.44-1.75h2.06A5.98 5.98 0 0 1 12 18Z"/></symbol>
+        <symbol id="i-send" viewBox="0 0 24 24"><path d="m3 3 18 9-18 9 2.2-7.2L14 12 5.2 10.2 3 3Zm4.02 8.2.46 1.5 6.52-.7-6.52-.7-.46-.1Z"/></symbol>
+    </svg>
+
+    <main class="chat-shell" id="chatShell">
+        <section class="message-list" id="messages" aria-live="polite"></section>
+
+        <section class="composer" id="composer">
+            <nav class="mode-tabs" aria-label="Chat mode">
+                <button class="mode-tab is-active" data-mode="ooc" type="button"><span>OOC</span></button>
+                <button class="mode-tab" data-mode="rp" type="button"><span>RP</span></button>
+                <button class="mode-tab" data-mode="job" type="button"><span>Job</span></button>
+                <button class="mode-tab" data-mode="pm" type="button"><span>PM</span></button>
+            </nav>
+
+            <section class="rp-panel" id="rpPanel" aria-label="Roleplay commands">
+                <div class="rp-panel-label">RP COMMANDS</div>
+                <div class="rp-command-list" id="rpCommandList"></div>
+            </section>
+
+            <form class="input-row" id="chatForm" autocomplete="off">
+                <div class="input-wrap">
+                    <input id="chatInput" type="text" spellcheck="false" maxlength="280" placeholder="Out of character message..." aria-label="Chat message" />
+                    <button class="emoji-button" id="emojiButton" type="button" aria-label="Open emoji picker" aria-expanded="false"><svg><use href="#i-smile"></use></svg></button>
+                </div>
+                <button class="send-button" type="submit" aria-label="Send message"><svg><use href="#i-send"></use></svg></button>
+            </form>
+
+            <section class="emoji-picker" id="emojiPicker" aria-label="Emoji picker">
+                <header class="emoji-picker-header">
+                    <span>EMOJIS</span>
+                    <span class="emoji-picker-hint">Choose a category</span>
+                </header>
+                <nav class="emoji-categories" id="emojiCategories" aria-label="Emoji categories"></nav>
+                <div class="emoji-grid" id="emojiGrid"></div>
+            </section>
+
+            <section class="command-panel" id="commandPanel" aria-label="Command suggestions">
+                <header class="command-header"><span>SUGGESTIONS</span></header>
+                <div id="commandRows"></div>
+            </section>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
