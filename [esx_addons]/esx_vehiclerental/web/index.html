@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ESX Vehicle Rental</title>
+        <link rel="stylesheet" href="styles.css" />
+        <script src="app.js" defer></script>
+    </head>
+    <body>
+        <main id="app" class="overlay hidden" aria-hidden="true">
+            <section class="rental-window" aria-labelledby="brand-title">
+                <header class="topbar">
+                    <div class="header-left">
+                        <div class="brand">
+                            <img class="brand-logo" src="assets/esx-logo.png" alt="ESX" />
+                            <h1 id="brand-title" class="brand-title">Vehicle Rental</h1>
+                        </div>
+                        <div class="branch-location">
+                            <span class="location-dot"></span><span id="branch"></span>
+                        </div>
+                    </div>
+                    <div class="topbar-right">
+                        <label class="search header-search">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="10.5" cy="10.5" r="6.5"></circle>
+                                <path d="m16 16 5 5"></path>
+                            </svg>
+                            <input id="search" autocomplete="off" aria-label="Search the fleet" />
+                        </label>
+                        <button id="close" class="close-button" type="button" aria-label="Close">
+                            <span class="close-icon" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                </header>
+                <div class="workspace">
+                    <section class="fleet-section">
+                        <nav id="filters" class="filters" aria-label="Vehicle categories"></nav>
+                        <div id="vehicles" class="vehicle-grid"></div>
+                        <p id="empty" class="empty hidden"></p>
+                    </section>
+                    <aside class="booking">
+                        <div id="selection-panel">
+                            <div class="selection-hero">
+                                <img id="selected-image" alt="" />
+                            </div>
+                            <span id="selected-category" class="vehicle-category"></span>
+                            <h2 id="selected-name"></h2>
+                            <div class="booking-divider"></div>
+                            <h3 id="duration-label"></h3>
+                            <div id="plans" class="plans"></div>
+                            <h3 id="payment-label"></h3>
+                            <div id="accounts" class="accounts"></div>
+                            <div class="price-row">
+                                <span id="total-label"></span><strong id="total"></strong>
+                            </div>
+                            <button
+                                id="rent"
+                                class="primary-button rental-confirm"
+                                type="button"
+                                aria-busy="false"
+                            >
+                                <span id="rent-label"></span>
+                            </button>
+                            <p id="terms" class="terms"></p>
+                        </div>
+                        <div id="active-panel" class="active-panel hidden">
+                            <span id="contract-section-label" class="section-number"></span>
+                            <div class="contract-icon" aria-hidden="true">✓</div>
+                            <h2 id="active-title"></h2>
+                            <h3 id="active-name"></h3>
+                            <div id="active-plate" class="plate"></div>
+                            <p id="active-location"></p>
+                            <div class="remaining-block">
+                                <span id="remaining-label"></span><strong id="remaining"></strong>
+                            </div>
+                            <button id="collect" class="primary-button"></button>
+                            <p id="return-hint" class="terms"></p>
+                        </div>
+                    </aside>
+                </div>
+                <div id="message" class="toast hidden" role="alert"></div>
+            </section>
+        </main>
+        <section id="hud" class="rental-hud hidden" aria-live="polite">
+            <span class="hud-icon" aria-hidden="true">↗</span>
+            <div><span id="hud-label"></span><strong id="hud-model"></strong></div>
+            <div class="hud-time"><strong id="hud-time"></strong><span id="hud-plate"></span></div>
+        </section>
+    </body>
+</html>
