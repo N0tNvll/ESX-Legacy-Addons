@@ -1,10 +1,26 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
+local DISPLAY_MODES = { always = true, onMessage = true, hidden = true }
+local DISPLAY_ORDER = { 'always', 'onMessage', 'hidden' }
+local DISPLAY_KVP = 'esx_chat:displayMode'
+
 local chatOpen = false
+local nuiReady = false
 local suggestions = {}
 local templates = {}
-local normalizeLegacyMessage
+
+local function getDisplayMode()
+    local stored = GetResourceKvpString(DISPLAY_KVP)
+
+    if stored and DISPLAY_MODES[stored] then
+        return stored
+    end
+
+    return DISPLAY_MODES[Config.DefaultDisplayMode] and Config.DefaultDisplayMode or 'onMessage'
+end
+
+local displayMode = getDisplayMode()
 
 local function getClockTime()
     if Config.UseGameClock then
@@ -12,30 +28,6 @@ local function getClockTime()
     end
 
     return nil
-end
-
-local function pushMessage(message)
-    if type(message) == 'table' and (message.args or message.template) and normalizeLegacyMessage then
-        message = normalizeLegacyMessage(message) or message
-    end
-
-    if type(message) ~= 'table' then
-        message = {
-            type = 'system',
-            title = 'SYSTEM',
-            text = tostring(message),
-            icon = 'system'
-        }
-    end
-
-    if not message.time then
-        message.time = getClockTime()
-    end
-
-    SendNUIMessage({
-        action = 'message',
-        message = message
-    })
 end
 
 local function inferType(title)
@@ -60,11 +52,11 @@ local function inferType(title)
     return 'global'
 end
 
-normalizeLegacyMessage = function(message)
+local function normalizeLegacyMessage(message)
     if type(message) == 'string' then
         return {
             type = 'system',
-            title = 'SYSTEM',
+            title = TranslateCap('title_system'),
             text = message,
             icon = 'system'
         }
@@ -96,22 +88,41 @@ normalizeLegacyMessage = function(message)
     if message.template and templates[message.template] then
         local rendered = templates[message.template]
         for index, value in ipairs(args) do
-            rendered = rendered:gsub('{' .. (index - 1) .. '}', tostring(value))
+            rendered = rendered:gsub('{' .. (index - 1) .. '}', function()
+                return tostring(value)
+            end)
         end
         text = rendered:gsub('<.->', '')
-        title = title ~= '' and title or 'SYSTEM'
+        title = title ~= '' and title or TranslateCap('title_system')
     end
 
-    local kind = message.esxType or message.type or inferType(title)
-
     return {
-        type = kind,
+        type = message.esxType or message.type or inferType(title),
         title = title,
         text = text,
         color = message.color,
         multiline = message.multiline,
         icon = message.icon
     }
+end
+
+local function pushMessage(message)
+    if type(message) == 'table' and (message.args or message.template) then
+        message = normalizeLegacyMessage(message) or message
+    end
+
+    if type(message) ~= 'table' then
+        message = normalizeLegacyMessage(tostring(message))
+    end
+
+    if not message.time then
+        message.time = getClockTime()
+    end
+
+    SendNUIMessage({
+        action = 'message',
+        message = message
+    })
 end
 
 local function setFocus(value)
@@ -124,36 +135,112 @@ local function setFocus(value)
     })
 end
 
+local function setDisplayMode(mode, notify)
+    if not DISPLAY_MODES[mode] then
+        return false
+    end
+
+    displayMode = mode
+    SetResourceKvp(DISPLAY_KVP, mode)
+    SendNUIMessage({ action = 'displayMode', mode = mode })
+
+    if notify then
+        pushMessage({
+            type = 'system',
+            title = TranslateCap('title_system'),
+            text = _U('display_mode_set', _(('ui_display_%s'):format(mode))),
+            icon = 'system'
+        })
+    end
+
+    return true
+end
+
+local function nextDisplayMode()
+    for index, mode in ipairs(DISPLAY_ORDER) do
+        if mode == displayMode then
+            return DISPLAY_ORDER[index % #DISPLAY_ORDER + 1]
+        end
+    end
+
+    return DISPLAY_ORDER[1]
+end
+
+local function getRPCommands()
+    local commands = {}
+
+    for _, command in ipairs(Config.Commands) do
+        if command.enabled ~= false and command.rp then
+            commands[#commands + 1] = {
+                name = ('/%s'):format(command.name),
+                description = command.description or _(('command_%s'):format(command.name))
+            }
+        end
+    end
+
+    return commands
+end
+
+local LOCALE_KEYS = {
+    'ui_tab_ooc', 'ui_tab_rp', 'ui_tab_job', 'ui_tab_pm',
+    'ui_placeholder_ooc', 'ui_placeholder_rp', 'ui_placeholder_job', 'ui_placeholder_pm',
+    'ui_rp_commands', 'ui_suggestions', 'ui_emojis', 'ui_emoji_hint', 'ui_send',
+    'ui_display_always', 'ui_display_onMessage', 'ui_display_hidden'
+}
+
+local function getUILocale()
+    local strings = {}
+
+    for _, key in ipairs(LOCALE_KEYS) do
+        strings[key] = _(key)
+    end
+
+    return strings
+end
+
+local function sendInit()
+    SendNUIMessage({
+        action = 'init',
+        config = {
+            maxVisibleMessages = Config.MaxVisibleMessages,
+            keepMessages = Config.KeepMessages,
+            autoHideAfter = Config.AutoHideAfter,
+            maxMessageLength = Config.MaxMessageLength,
+            displayMode = displayMode,
+            rpCommands = getRPCommands(),
+            locale = getUILocale(),
+            theme = xLib.colors.getESXTheme()
+        }
+    })
+
+    for _, suggestion in pairs(suggestions) do
+        SendNUIMessage({ action = 'suggestion:add', suggestion = suggestion })
+    end
+end
+
+local function addSuggestion(name, help, params)
+    if type(name) ~= 'string' then
+        return
+    end
+
+    suggestions[name] = {
+        name = name,
+        description = help or '',
+        params = params or {}
+    }
+
+    if nuiReady then
+        SendNUIMessage({
+            action = 'suggestion:add',
+            suggestion = suggestions[name]
+        })
+    end
+end
+
 RegisterNetEvent('esx_chat:pushMessage', function(message)
     pushMessage(message)
 end)
 
-RegisterNetEvent('esx_chat:pushProximity', function(serverId, message)
-    local target = GetPlayerFromServerId(serverId)
-    if target == -1 then
-        return
-    end
-
-    local localPlayer = PlayerId()
-    if target == localPlayer then
-        pushMessage(message)
-        return
-    end
-
-    local localPed = PlayerPedId()
-    local targetPed = GetPlayerPed(target)
-
-    if targetPed == 0 then
-        return
-    end
-
-    local distance = #(GetEntityCoords(localPed) - GetEntityCoords(targetPed))
-    if distance <= Config.ProximityDistance then
-        pushMessage(message)
-    end
-end)
-
--- Compatibility with the standard FiveM chat events.
 RegisterNetEvent('chat:addMessage', function(message)
     local normalized = normalizeLegacyMessage(message)
     if normalized then
@@ -176,22 +263,7 @@ RegisterNetEvent('chat:addTemplate', function(id, html)
     end
 end)
 
-RegisterNetEvent('chat:addSuggestion', function(name, help, params)
-    if type(name) ~= 'string' then
-        return
-    end
-
-    suggestions[name] = {
-        name = name,
-        description = help or '',
-        params = params or {}
-    }
-
-    SendNUIMessage({
-        action = 'suggestion:add',
-        suggestion = suggestions[name]
-    })
-end)
+RegisterNetEvent('chat:addSuggestion', addSuggestion)
 
 RegisterNetEvent('chat:addSuggestions', function(items)
     if type(items) ~= 'table' then
@@ -199,12 +271,8 @@ RegisterNetEvent('chat:addSuggestions', function(items)
     end
 
     for _, item in ipairs(items) do
-        if type(item) == 'table' and type(item.name) == 'string' then
-            suggestions[item.name] = item
-            SendNUIMessage({
-                action = 'suggestion:add',
-                suggestion = item
-            })
+        if type(item) == 'table' then
+            addSuggestion(item.name, item.help or item.description, item.params)
         end
     end
 end)
@@ -229,14 +297,35 @@ end, false)
 RegisterCommand('-esxchat', function()
 end, false)
 
-RegisterKeyMapping('+esxchat', 'Open ESX chat', 'keyboard', Config.OpenKey)
+RegisterKeyMapping('+esxchat', _('key_open'), 'keyboard', Config.OpenKey)
 
 RegisterCommand('clear', function()
     SendNUIMessage({ action = 'clear' })
     pushMessage({
         type = 'system',
-        title = 'SYSTEM',
-        text = 'The chat has been cleared.',
+        title = TranslateCap('title_system'),
+        text = _U('chat_cleared'),
+        icon = 'system'
+    })
+end, false)
+
+RegisterCommand('chatmode', function(_, args)
+    local mode = args[1]
+
+    if not mode then
+        return setDisplayMode(nextDisplayMode(), true)
+    end
+
+    for value in pairs(DISPLAY_MODES) do
+        if value:lower() == mode:lower() then
+            return setDisplayMode(value, true)
+        end
+    end
+
+    pushMessage({
+        type = 'system',
+        title = TranslateCap('title_system'),
+        text = _U('display_mode_usage'),
         icon = 'system'
     })
 end, false)
@@ -246,19 +335,22 @@ RegisterNUICallback('close', function(_, cb)
     cb({ ok = true })
 end)
 
+RegisterNUICallback('cycleDisplayMode', function(_, cb)
+    setDisplayMode(nextDisplayMode(), false)
+    cb({ ok = true, mode = displayMode })
+end)
+
 RegisterNUICallback('submit', function(data, cb)
     local text = type(data) == 'table' and tostring(data.text or '') or ''
     local mode = type(data) == 'table' and tostring(data.mode or 'ooc') or 'ooc'
 
-    text = text:gsub('[\r\n]', ' '):gsub('^%s*(.-)%s*$', '%1')
+    text = text:gsub('[\r\n]', ' '):match('^%s*(.*%S)') or ''
 
     if text ~= '' then
         if text:sub(1, 1) == '/' then
             ExecuteCommand(text:sub(2))
         elseif mode == 'rp' then
             ExecuteCommand(('me %s'):format(text))
-        elseif mode == 'ooc' then
-            ExecuteCommand(('ooc %s'):format(text))
         elseif mode == 'job' then
             ExecuteCommand(('job %s'):format(text))
         elseif mode == 'pm' then
@@ -272,29 +364,10 @@ RegisterNUICallback('submit', function(data, cb)
     cb({ ok = true })
 end)
 
-local function sendInit()
-    SendNUIMessage({
-        action = 'init',
-        config = {
-            maxVisibleMessages = Config.MaxVisibleMessages,
-            keepMessages = Config.KeepMessages,
-            autoHideAfter = Config.AutoHideAfter,
-            showCommandPanelOnOpen = Config.ShowCommandPanelOnOpen,
-            maxMessageLength = Config.MaxMessageLength,
-            commands = Config.Commands,
-            rpCommands = Config.RPCommands
-        }
-    })
-end
-
 RegisterNUICallback('ready', function(_, cb)
+    nuiReady = true
     sendInit()
     cb({ ok = true })
-end)
-
-CreateThread(function()
-    Wait(250)
-    sendInit()
 end)
 
 AddEventHandler('onResourceStop', function(resource)
@@ -303,10 +376,15 @@ AddEventHandler('onResourceStop', function(resource)
     end
 end)
 
+CreateThread(function()
+    TriggerEvent('chat:addSuggestion', '/chatmode', _('command_chatmode'), { { name = 'mode', help = 'always | onMessage | hidden' } })
+    TriggerEvent('chat:addSuggestion', '/clear', _('command_clear'), {})
+end)
+
 exports('addMessage', function(message)
     pushMessage(message)
 end)
 
 exports('addSuggestion', function(name, help, params)
-    TriggerEvent('chat:addSuggestion', name, help, params)
+    addSuggestion(name, help, params)
 end)

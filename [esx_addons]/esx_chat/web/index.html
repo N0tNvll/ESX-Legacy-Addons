@@ -14,6 +14,7 @@
         <symbol id="i-message" viewBox="0 0 24 24"><path d="M3 3h18v14H8l-5 4V3Zm4 5h10v2H7V8Zm0 4h7v2H7v-2Z"/></symbol>
         <symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-4.67 0-7 2.33-7 4.5V21h10.2a7.6 7.6 0 0 1-.2-1.75c0-2.43 1.13-4.6 2.9-6A13.2 13.2 0 0 0 10 13Zm9-1v3h3v2h-3v3h-2v-3h-3v-2h3v-3h2Z"/></symbol>
         <symbol id="i-smile" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-3.5 7A1.5 1.5 0 1 1 8.5 12a1.5 1.5 0 0 1 0-3Zm7 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 18c-2.5 0-4.63-1.55-5.5-3.75h2.06A3.98 3.98 0 0 0 12 16a3.98 3.98 0 0 0 3.44-1.75h2.06A5.98 5.98 0 0 1 12 18Z"/></symbol>
+        <symbol id="i-eye" viewBox="0 0 24 24"><path d="M12 5C6.5 5 2.4 8.6 1 12c1.4 3.4 5.5 7 11 7s9.6-3.6 11-7c-1.4-3.4-5.5-7-11-7Zm0 11.5A4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 0 1 0 9Zm0-7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"/></symbol>
         <symbol id="i-send" viewBox="0 0 24 24"><path d="m3 3 18 9-18 9 2.2-7.2L14 12 5.2 10.2 3 3Zm4.02 8.2.46 1.5 6.52-.7-6.52-.7-.46-.1Z"/></symbol>
     </svg>
 
@@ -22,14 +23,14 @@
 
         <section class="composer" id="composer">
             <nav class="mode-tabs" aria-label="Chat mode">
-                <button class="mode-tab is-active" data-mode="ooc" type="button"><span>OOC</span></button>
-                <button class="mode-tab" data-mode="rp" type="button"><span>RP</span></button>
-                <button class="mode-tab" data-mode="job" type="button"><span>Job</span></button>
-                <button class="mode-tab" data-mode="pm" type="button"><span>PM</span></button>
+                <button class="mode-tab is-active" data-mode="ooc" type="button"><span data-i18n="ui_tab_ooc">OOC</span></button>
+                <button class="mode-tab" data-mode="rp" type="button"><span data-i18n="ui_tab_rp">RP</span></button>
+                <button class="mode-tab" data-mode="job" type="button"><span data-i18n="ui_tab_job">Job</span></button>
+                <button class="mode-tab" data-mode="pm" type="button"><span data-i18n="ui_tab_pm">PM</span></button>
             </nav>
 
             <section class="rp-panel" id="rpPanel" aria-label="Roleplay commands">
-                <div class="rp-panel-label">RP COMMANDS</div>
+                <div class="rp-panel-label" data-i18n="ui_rp_commands">RP COMMANDS</div>
                 <div class="rp-command-list" id="rpCommandList"></div>
             </section>
 
@@ -38,20 +39,21 @@
                     <input id="chatInput" type="text" spellcheck="false" maxlength="280" placeholder="Out of character message..." aria-label="Chat message" />
                     <button class="emoji-button" id="emojiButton" type="button" aria-label="Open emoji picker" aria-expanded="false"><svg><use href="#i-smile"></use></svg></button>
                 </div>
-                <button class="send-button" type="submit" aria-label="Send message"><svg><use href="#i-send"></use></svg></button>
+                <button class="display-button" id="displayButton" type="button" aria-label="Display mode"><svg><use href="#i-eye"></use></svg></button>
+                <button class="send-button" id="sendButton" type="submit" aria-label="Send message"><svg><use href="#i-send"></use></svg></button>
             </form>
 
             <section class="emoji-picker" id="emojiPicker" aria-label="Emoji picker">
                 <header class="emoji-picker-header">
-                    <span>EMOJIS</span>
-                    <span class="emoji-picker-hint">Choose a category</span>
+                    <span data-i18n="ui_emojis">EMOJIS</span>
+                    <span class="emoji-picker-hint" data-i18n="ui_emoji_hint">Choose a category</span>
                 </header>
                 <nav class="emoji-categories" id="emojiCategories" aria-label="Emoji categories"></nav>
                 <div class="emoji-grid" id="emojiGrid"></div>
             </section>
 
             <section class="command-panel" id="commandPanel" aria-label="Command suggestions">
-                <header class="command-header"><span>SUGGESTIONS</span></header>
+                <header class="command-header"><span data-i18n="ui_suggestions">SUGGESTIONS</span></header>
                 <div id="commandRows"></div>
             </section>
         </section>

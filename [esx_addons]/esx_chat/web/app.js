@@ -14,6 +14,20 @@
     const rpPanel = document.getElementById('rpPanel');
     const rpCommandList = document.getElementById('rpCommandList');
     const modeButtons = [...document.querySelectorAll('.mode-tab[data-mode]')];
+    const displayButton = document.getElementById('displayButton');
+    const sendButton = document.getElementById('sendButton');
+
+    const DISPLAY_MODES = ['always', 'onMessage', 'hidden'];
+    const DEFAULT_LOCALE = {
+        ui_placeholder_ooc: 'Out of character message...',
+        ui_placeholder_rp: 'Choose an RP command or type /...',
+        ui_placeholder_job: 'Message your job...',
+        ui_placeholder_pm: 'Player ID and message...',
+        ui_send: 'Send message',
+        ui_display_always: 'Always visible',
+        ui_display_onMessage: 'Visible on new messages',
+        ui_display_hidden: 'Hidden'
+    };
 
     const DEFAULT_RP_COMMANDS = [
         { name: '/me', description: 'Perform an action' },
@@ -52,8 +66,85 @@
         rpCommands: [...DEFAULT_RP_COMMANDS],
         suggestions: new Map(),
         emojiCategory: 'smileys',
-        hideTimer: null
+        hideTimer: null,
+        displayMode: 'onMessage',
+        locale: { ...DEFAULT_LOCALE }
     };
+
+    const t = (key) => state.locale[key] || DEFAULT_LOCALE[key] || key;
+
+    function applyLocale(strings) {
+        if (strings && typeof strings === 'object') {
+            state.locale = { ...DEFAULT_LOCALE, ...strings };
+        }
+
+        for (const element of document.querySelectorAll('[data-i18n]')) {
+            const value = state.locale[element.dataset.i18n];
+            if (value) element.textContent = value;
+        }
+
+        sendButton.setAttribute('aria-label', t('ui_send'));
+        updateDisplayButton();
+        setPlaceholder();
+    }
+
+    const HEX_COLOR = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+    function hexToRgb(value) {
+        if (typeof value !== 'string' || !HEX_COLOR.test(value.trim())) return null;
+        let hex = value.trim().slice(1);
+        if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
+        const number = parseInt(hex, 16);
+        return `${(number >> 16) & 255}, ${(number >> 8) & 255}, ${number & 255}`;
+    }
+
+    function applyTheme(theme) {
+        if (!theme || typeof theme !== 'object') return;
+        const root = document.documentElement.style;
+        const map = {
+            primaryColor: '--primary-rgb',
+            backgroundColor: '--bg-rgb',
+            secondaryColor: '--secondary-rgb',
+            accentColor: '--accent-rgb'
+        };
+
+        for (const [key, variable] of Object.entries(map)) {
+            const rgb = hexToRgb(theme[key]);
+            if (!rgb) continue;
+            root.setProperty(variable, rgb);
+            if (key === 'primaryColor') root.setProperty('--primary', theme[key].trim());
+        }
+    }
+
+    function updateDisplayButton() {
+        const label = t(`ui_display_${state.displayMode}`);
+        displayButton.title = label;
+        displayButton.setAttribute('aria-label', label);
+    }
+
+    function updateVisibility() {
+        const cards = messageList.children;
+        const hiddenCount = state.open ? 0 : Math.max(0, cards.length - state.maxVisibleMessages);
+
+        for (let i = 0; i < cards.length; i += 1) {
+            cards[i].classList.toggle('is-overflow', i < hiddenCount);
+        }
+
+        shell.dataset.display = state.displayMode;
+
+        if (state.open) {
+            messageList.style.opacity = '1';
+            messageList.scrollTop = messageList.scrollHeight;
+        }
+    }
+
+    function setDisplayMode(mode) {
+        if (!DISPLAY_MODES.includes(mode)) return;
+        state.displayMode = mode;
+        updateDisplayButton();
+        updateVisibility();
+        resetHideTimer();
+    }
 
     const iconForType = (message) => {
         if (message.icon) {
@@ -75,7 +166,10 @@
     };
 
     const post = async (endpoint, data = {}) => {
-        if (typeof GetParentResourceName !== 'function') {
+        applyLocale();
+    updateVisibility();
+
+    if (typeof GetParentResourceName !== 'function') {
             return { ok: true };
         }
 
@@ -147,9 +241,15 @@
 
     function resetHideTimer() {
         if (state.hideTimer) window.clearTimeout(state.hideTimer);
+        state.hideTimer = null;
+
+        if (state.displayMode === 'hidden' && !state.open) {
+            messageList.style.opacity = '0';
+            return;
+        }
 
         messageList.style.opacity = '1';
-        if (!state.open && state.autoHideAfter > 0) {
+        if (!state.open && state.displayMode === 'onMessage' && state.autoHideAfter > 0) {
             state.hideTimer = window.setTimeout(() => {
                 messageList.style.opacity = '0';
             }, state.autoHideAfter);
@@ -189,10 +289,7 @@
             messageList.firstElementChild?.remove();
         }
 
-        while (messageList.children.length > state.maxVisibleMessages) {
-            messageList.firstElementChild?.remove();
-        }
-
+        updateVisibility();
         resetHideTimer();
     }
 
@@ -289,13 +386,7 @@
             button.classList.toggle('is-active', button.dataset.mode === mode);
         }
 
-        const placeholders = {
-            ooc: 'Out of character message...',
-            rp: 'Choose an RP command or type /...',
-            job: 'Message your job...',
-            pm: 'Player ID and message...'
-        };
-        input.placeholder = placeholders[mode] || placeholders.ooc;
+        setPlaceholder();
 
         if (mode === 'rp') {
             const shouldShow = toggleRP && wasRP ? !rpPanel.classList.contains('is-visible') : true;
@@ -306,6 +397,11 @@
         }
 
         input.focus();
+    }
+
+    function setPlaceholder() {
+        const key = `ui_placeholder_${state.mode}`;
+        input.placeholder = t(state.locale[key] || DEFAULT_LOCALE[key] ? key : 'ui_placeholder_ooc');
     }
 
     function renderEmojiCategories() {
@@ -366,7 +462,7 @@
     function openChat() {
         state.open = true;
         shell.classList.add('is-open');
-        messageList.style.opacity = '1';
+        updateVisibility();
         state.historyIndex = state.history.length;
         commandPanel.classList.remove('is-visible');
         closeEmojiPicker();
@@ -382,6 +478,7 @@
         closeEmojiPicker();
         input.value = '';
         if (notify) post('close');
+        updateVisibility();
         resetHideTimer();
     }
 
@@ -406,6 +503,14 @@
     });
 
     modeButtons.forEach((button) => button.addEventListener('click', () => setMode(button.dataset.mode, true)));
+
+    displayButton.addEventListener('click', async () => {
+        const index = DISPLAY_MODES.indexOf(state.displayMode);
+        const fallback = DISPLAY_MODES[(index + 1) % DISPLAY_MODES.length];
+        const response = await post('cycleDisplayMode');
+        setDisplayMode(response && DISPLAY_MODES.includes(response.mode) ? response.mode : fallback);
+        input.focus();
+    });
 
     emojiButton.addEventListener('click', () => {
         if (emojiPicker.classList.contains('is-visible')) {
@@ -476,12 +581,18 @@
                     state.maxMessageLength = Math.max(1, config.maxMessageLength);
                     input.maxLength = state.maxMessageLength;
                 }
-                if (Array.isArray(config.commands)) state.baseCommands = config.commands;
+                state.baseCommands = Array.isArray(config.commands) ? config.commands : [];
                 if (Array.isArray(config.rpCommands)) state.rpCommands = config.rpCommands;
+                applyTheme(config.theme);
+                applyLocale(config.locale);
+                if (DISPLAY_MODES.includes(config.displayMode)) setDisplayMode(config.displayMode);
                 renderRPCommands();
                 renderCommands();
                 break;
             }
+            case 'displayMode':
+                setDisplayMode(data.mode);
+                break;
             case 'message':
                 appendMessage(data.message);
                 break;

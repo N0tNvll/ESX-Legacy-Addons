@@ -13,6 +13,8 @@ lua54 'yes'
 
 shared_scripts {
     '@es_extended/imports.lua',
+    '@es_extended/locale.lua',
+    '@esx_lib/imports.lua',
     'config.lua',
 }
 
@@ -22,9 +24,13 @@ server_script 'server/main.lua'
 ui_page 'web/index.html'
 
 files {
+    'locales/*.lua',
     'web/index.html',
     'web/style.css',
     'web/app.js'
 }
 
-dependency 'es_extended'
+dependencies {
+    'es_extended',
+    'esx_lib',
+}
