@@ -1,0 +1,10 @@
+/* Keep the FiveM browser transparent until Lua opens the payment panel. */
+:root {
+  background: transparent;
+}
+.stage:not(.is-open) {
+  background: transparent;
+}
+.stage:not(.is-open)::before {
+  display: none;
+}
