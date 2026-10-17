@@ -1,5 +1,7 @@
 interface GhostState {
     choiceVisible: boolean;
+    choiceDuration: number;
+    jumpscareDuration: number;
     hudVisible: boolean;
     jumpscareVisible: boolean;
     maxDuration: number;
@@ -12,6 +14,8 @@ interface GhostState {
 class GhostManager {
     state = $state<GhostState>({
         choiceVisible: false,
+        choiceDuration: 30000,
+        jumpscareDuration: 3000,
         hudVisible: false,
         jumpscareVisible: false,
         maxDuration: 600000,
@@ -21,9 +25,10 @@ class GhostManager {
         soundVolume: 0.8
     });
 
-    showChoice(forced: boolean = false) {
+    showChoice(forced: boolean = false, duration: number = 30000) {
         this.state.choiceVisible = true;
         this.state.forced = forced;
+        this.state.choiceDuration = duration;
     }
 
     hideChoice() {
@@ -41,9 +46,10 @@ class GhostManager {
         this.state.hudVisible = false;
     }
 
-    triggerJumpscare(soundVolume: number = 0.8) {
+    triggerJumpscare(soundVolume: number = 0.8, duration: number = 3000) {
         this.state.jumpscareVisible = true;
         this.state.soundVolume = soundVolume;
+        this.state.jumpscareDuration = duration;
     }
 
     hideJumpscare() {

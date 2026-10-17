@@ -22,6 +22,7 @@ class NotificationManager {
    * @private
    */
   private dismissTimeout: number | null = null;
+  private nextTimeout: number | null = null;
 
   /**
    * Counter for generating unique notification IDs
@@ -63,9 +64,10 @@ class NotificationManager {
     const notification: QueuedNotification = {
       ...data,
       id: `notification-${++this.idCounter}`,
-      duration: data.duration ?? 5000,
+      duration: Number.isFinite(data.duration) ? Math.min(30000, Math.max(1000, data.duration!)) : 5000,
     };
 
+    if (this.queue.length >= 20) this.queue.shift();
     this.queue.push(notification);
 
     if (!this.current) {
@@ -79,6 +81,8 @@ class NotificationManager {
    * @private
    */
   private processQueue(): void {
+    if (this.current) return;
+    if (this.nextTimeout !== null) { clearTimeout(this.nextTimeout); this.nextTimeout = null; }
     if (this.queue.length === 0) {
       this.current = null;
       return;
@@ -108,7 +112,9 @@ class NotificationManager {
 
     this.current = null;
 
-    setTimeout(() => {
+    if (this.nextTimeout !== null) clearTimeout(this.nextTimeout);
+    this.nextTimeout = window.setTimeout(() => {
+      this.nextTimeout = null;
       this.processQueue();
     }, 300);
   }
@@ -118,6 +124,7 @@ class NotificationManager {
    * @returns {void}
    */
   clearAll(): void {
+    if (this.nextTimeout !== null) { clearTimeout(this.nextTimeout); this.nextTimeout = null; }
     this.queue = [];
     if (this.dismissTimeout) {
       clearTimeout(this.dismissTimeout);

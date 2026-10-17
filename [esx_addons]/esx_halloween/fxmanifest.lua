@@ -1,10 +1,9 @@
 fx_version 'cerulean'
 game 'gta5'
-lua54 'yes'
-use_fxv2_oal 'yes'
+use_experimental_fxv2_oal 'yes'
 
 description 'ESX Halloween Event - Ghost Mode & Trick-or-Treat'
-version '2.0.0'
+version '2.1.0'
 
 ui_page 'web/build/index.html'
 
@@ -18,7 +17,8 @@ shared_scripts {
     'shared/events.lua',
     'types.lua',
     'configs/trickortreat.lua',
-    'config.lua'
+    'config.lua',
+    'shared/config.lua'
 }
 
 client_scripts {
@@ -30,9 +30,17 @@ client_scripts {
 }
 
 server_scripts {
+    'server/runtime.lua',
     'server/config_validator.lua',
     'server/main.lua',
     'server/ghost.lua',
     'server/trickortreat.lua',
     'server/commands.lua'
+}
+
+dependencies {
+    'es_extended',
+    'esx_death',
+    'skinchanger',
+    '/onesync'
 }

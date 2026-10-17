@@ -1,68 +1,13 @@
 <script lang="ts">
-  /**
-   * Trick-or-Treat Round Status HUD
-   * Displays progress bar, timer, and current round info in top-left corner
-   * Shows when a trick-or-treat round is active
-   * Now uses notification-style design with background image and pumpkin overlay
-   */
-  import { onMount } from 'svelte';
   import { Clock } from 'lucide-svelte';
   import backgroundImage from '../assets/background.webp';
   import pumpkinImage from '../assets/pumpkin.webp';
-
-  interface Props {
-    /** Whether HUD is currently visible */
-    visible?: boolean;
-    /** Houses collected so far in this round */
-    current?: number;
-    /** Total houses available in this round */
-    total?: number;
-    /** Time remaining in round (milliseconds) */
-    timeRemaining?: number;
-  }
-
-  let {
-    visible = $bindable(false),
-    current = $bindable(0),
-    total = $bindable(0),
-    timeRemaining = $bindable(0),
-  }: Props = $props();
-
-  // Compute progress percentage
-  const progress = $derived(total > 0 ? (current / total) * 100 : 0);
-
-  // Format time remaining (MM:SS)
-  const displayTime = $derived(() => {
-    const totalSeconds = Math.floor(timeRemaining / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  });
-
-  // Animated countdown effect
-  let displayedProgress = $state(0);
-  let displayedCurrent = $state(0);
-
-  $effect(() => {
-    // Smooth progress animation
-    const animationDuration = 300;
-    const startTime = Date.now();
-    const startProgress = displayedProgress;
-    const startCurrent = displayedCurrent;
-
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      const progress_val = Math.min(elapsed / animationDuration, 1);
-
-      displayedProgress = startProgress + (progress - startProgress) * progress_val;
-      displayedCurrent = Math.round(startCurrent + (current - startCurrent) * progress_val);
-
-      if (progress_val < 1) {
-        requestAnimationFrame(animate);
-      }
-    };
-
-    animate();
+  interface Props { visible?: boolean; current?: number; total?: number; timeRemaining?: number }
+  let { visible = false, current = 0, total = 0, timeRemaining = 0 }: Props = $props();
+  const progress = $derived(total > 0 ? Math.min(100, Math.max(0, current / total * 100)) : 0);
+  const displayTime = $derived.by(() => {
+    const seconds = Math.max(0, Math.floor(timeRemaining / 1000));
+    return Math.floor(seconds / 60) + ':' + (seconds % 60).toString().padStart(2, '0');
   });
 </script>
 
@@ -86,18 +31,18 @@
         <div class="progress-section">
           <div class="progress-bar-container">
             <div class="progress-bar">
-              <div class="progress-fill" style="width: {displayedProgress}%"></div>
+              <div class="progress-fill" style="width: {progress}%"></div>
             </div>
           </div>
 
           <!-- Progress text (X / Y houses) -->
-          <div class="progress-text">{displayedCurrent} / {total} houses</div>
+          <div class="progress-text">{current} / {total} houses</div>
         </div>
 
         <!-- Timer section -->
         <div class="timer-section">
           <Clock class="timer-icon" size={18} strokeWidth={2} />
-          <span class="timer-text">Time Left: {displayTime()}</span>
+          <span class="timer-text">Time Left: {displayTime}</span>
         </div>
       </div>
     </div>

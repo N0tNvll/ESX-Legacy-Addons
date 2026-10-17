@@ -1,430 +1,238 @@
----Trick-or-Treat Client Logic
----Manages NPC spawning, blips, interactions, and UI updates
+local settings = Config.TrickOrTreat
+local round, interaction, nearest
+local endedRound = 0
+local npcs, blips, loading, failures = {}, {}, {}, {}
+local stopping = false
 
----@type TrickOrTreatConfig
-local Config
-
----Store spawned house NPCs
----@type table<number, number> houseNPCs - [houseIdx] = pedHandle
-local houseNPCs = {}
-
----Store active blips
----@type table<number, number> blips - [houseIdx] = blipHandle
-local blips = {}
-
----Track current active houses
----@type table<number, boolean> activeHouses - [houseIdx] = true
-local activeHouses = {}
-
----Round state tracking
----@type table roundState
-local roundState = {
-  active = false,
-  totalHouses = 0,
-  currentHouses = 0,
-  timeRemaining = 0,
-}
-
----Player interaction state
-local inRound = false
-
----=============================================================================
---- NPC Management
----=============================================================================
-
----Spawn NPC for a specific house location
----@param houseIdx number Index of house
----@param house table House data (coords, heading, pedModel)
-local function SpawnHouseNPC(houseIdx, house)
-  -- Request model
-  local modelHash = GetHashKey(house.pedModel)
-
-  RequestModel(modelHash)
-  local startTime = GetGameTimer()
-  while not HasModelLoaded(modelHash) do
-    Wait(50)
-    if GetGameTimer() - startTime > 5000 then
-      print('^1[ESX Halloween] Failed to load model: ' .. house.pedModel .. '^7')
-      return
-    end
-  end
-
-  -- Get proper ground Z coordinate (search up to 50 units down)
-  local groundZ, groundFound = GetGroundZFor_3dCoord(house.coords.x, house.coords.y, house.coords.z + 50.0, false)
-  local spawnZ = groundFound and groundZ or house.coords.z
-
-  -- Create ped at ground level
-  local ped = CreatePed(4, modelHash, house.coords.x, house.coords.y, spawnZ, house.heading, false, false)
-
-  -- Ensure ped is placed properly on ground
-  PlaceObjectOnGroundProperly(ped)
-
-  -- Configure ped
-  SetEntityAsMissionEntity(ped, true, true)
-  SetBlockingOfNonTemporaryEvents(ped, true)
-  FreezeEntityPosition(ped, true)
-  SetEntityInvincible(ped, true)
-
-  -- Store reference
-  houseNPCs[houseIdx] = ped
-
-  -- Release model
-  SetModelAsNoLongerNeeded(modelHash)
+local function deleteNPC(id)
+    local ped = npcs[id]
+    if ped and DoesEntityExist(ped) then DeleteEntity(ped) end
+    npcs[id], loading[id], failures[id] = nil, nil, nil
 end
 
----Spawn all NPCs for active houses
-local function SpawnAllNPCs()
-  for idx, house in ipairs(Config.houses) do
-    if activeHouses[idx] then
-      SpawnHouseNPC(idx, house)
-    end
-  end
-
-  print('^2[ESX Halloween] Spawned Trick-or-Treat NPCs^7')
+local function clear()
+    round, interaction, nearest = nil, nil, nil
+    for id in pairs(npcs) do deleteNPC(id) end
+    loading, failures = {}, {}
+    for _, blip in pairs(blips) do RemoveBlip(blip) end
+    blips = {}
+    SendNUIMessage({ type = 'trickOrTreatRoundEnd' })
 end
 
----Delete all spawned NPCs
-local function DeleteAllNPCs()
-  for idx, ped in pairs(houseNPCs) do
-    if DoesEntityExist(ped) then
-      DeleteEntity(ped)
-    end
-  end
-  houseNPCs = {}
+local function timeRemaining()
+    return round and math.max(0, round.remaining - Halloween.Elapsed(round.synced)) or 0
 end
 
----=============================================================================
---- Blip Management
----=============================================================================
-
----Create or update blips for active houses
----@param activeHouseIds table Array of active house indices
-local function UpdateActiveBlips(activeHouseIds)
-  -- Delete old blips
-  for _, blip in pairs(blips) do
-    if blip ~= 0 then
-      RemoveBlip(blip)
-    end
-  end
-  blips = {}
-
-  -- Create new blips for active houses
-  for _, houseIdx in ipairs(activeHouseIds) do
-    local house = Config.houses[houseIdx]
-    if house then
-      local blip = AddBlipForCoord(house.coords.x, house.coords.y, house.coords.z)
-      SetBlipAsShortRange(blip, false)
-      SetBlipSprite(blip, Config.blips.sprite)
-      SetBlipColour(blip, Config.blips.activeColor)
-      SetBlipScale(blip, Config.blips.scale)
-      BeginTextCommandSetBlipName('STRING')
-      AddTextComponentString('Trick-or-Treat House')
-      EndTextCommandSetBlipName(blip)
-
-      blips[houseIdx] = blip
-    end
-  end
-end
-
----Remove all blips
-local function RemoveAllBlips()
-  for _, blip in pairs(blips) do
-    if blip ~= 0 then
-      RemoveBlip(blip)
-    end
-  end
-  blips = {}
-end
-
----=============================================================================
---- Interaction Handling (Performance-Optimized Multi-Level Loop)
----=============================================================================
-
----Send house collection request to server
----@param houseIdx number Index of house to collect from
-local function SendHouseCollectRequest(houseIdx)
-  TriggerServerEvent(Events.HOUSE_COLLECT_REQUEST, houseIdx)
-end
-
--- Track currently nearby house for fast rendering
-local nearbyHouseIdx = nil
-
----=============================================================================
---- NUI Communication
----=============================================================================
-
----Handle round start from server
-RegisterNetEvent(Events.ROUND_START)
-AddEventHandler(Events.ROUND_START, function(data)
-  print('^3[DEBUG] ROUND_START event received^7')
-  print('^3[DEBUG] Data: ' .. json.encode(data) .. '^7')
-
-  -- Validate data parameter
-  if type(data) ~= "table" then
-    print('^1[ESX Halloween] Invalid round start data^7')
-    return
-  end
-
-  if type(data.totalHouses) ~= "number" or
-     type(data.duration) ~= "number" or
-     type(data.activeHouseIds) ~= "table" then
-    print('^1[ESX Halloween] Missing required round start fields^7')
-    return
-  end
-
-  roundState.active = true
-  roundState.totalHouses = data.totalHouses
-  roundState.currentHouses = 0
-  roundState.timeRemaining = data.duration
-
-  -- Store active houses
-  activeHouses = {}
-  for _, houseIdx in ipairs(data.activeHouseIds) do
-    activeHouses[houseIdx] = true
-  end
-
-  -- Spawn NPCs for this round
-  SpawnAllNPCs()
-
-  -- Update blips
-  UpdateActiveBlips(data.activeHouseIds)
-
-  -- Notify UI
-  SendNUIMessage({
-    type = 'trickOrTreatRoundStart',
-    totalHouses = data.totalHouses,
-    timeRemaining = data.duration,
-    activeHouseIds = data.activeHouseIds,
-  })
-
-  print('^2[ESX Halloween] Trick-or-Treat round started (client)^7')
-
-  -- Start Interaction Thread (only runs while round is active)
-  CreateThread(function()
-    while roundState.active do
-      local sleep = 1000 -- Default: check once per second when not near a house
-
-      -- HELP TEXT RENDERING + KEY HANDLING (only when near house)
-      if Config and Config.enabled and nearbyHouseIdx and roundState.active then
-        sleep = 0 -- Only use Wait(0) when ACTUALLY near a house
-
-        local playerPed = PlayerPedId()
-        local playerCoords = GetEntityCoords(playerPed)
-        local house = Config.houses[nearbyHouseIdx]
-
-        if house then
-          local distance = #(playerCoords - house.coords)
-
-          if distance <= Config.interaction.distance then
-            BeginTextCommandDisplayHelp('STRING')
-            AddTextComponentString('Press ~INPUT_CONTEXT~ to collect candy')
-            EndTextCommandDisplayHelp(0)
-
-            -- Handle E-key press
-            if IsControlJustReleased(0, Config.interaction.key) then
-              SendHouseCollectRequest(nearbyHouseIdx)
-            end
-          end
-        end
-      end
-
-      Wait(sleep)
-    end
-  end)
-
-  -- Start Proximity Detection Thread (only runs while round is active)
-  CreateThread(function()
-    while roundState.active do
-      Wait(500)
-
-      if Config and Config.enabled then
-        local playerPed = PlayerPedId()
-        local playerCoords = GetEntityCoords(playerPed)
-        local nearestHouseIdx = nil
-        local nearestDistance = Config.interaction.distance
-
-        for houseIdx, house in ipairs(Config.houses) do
-          if activeHouses[houseIdx] then
-            local distance = #(playerCoords - house.coords)
-
-            if distance < nearestDistance then
-              nearestDistance = distance
-              nearestHouseIdx = houseIdx
-            end
-          end
-        end
-
-        nearbyHouseIdx = nearestHouseIdx
-      else
-        nearbyHouseIdx = nil
-      end
-    end
-  end)
-end)
-
----Handle round end from server
-RegisterNetEvent(Events.ROUND_END)
-AddEventHandler(Events.ROUND_END, function(data)
-  -- Validate data parameter
-  if type(data) ~= "table" then
-    print('^1[ESX Halloween] Invalid round end data^7')
-    return
-  end
-
-  if type(data.totalCollected) ~= "number" or type(data.totalHouses) ~= "number" then
-    print('^1[ESX Halloween] Missing round end fields^7')
-    return
-  end
-
-  roundState.active = false
-
-  -- Delete NPCs
-  DeleteAllNPCs()
-
-  -- Remove blips
-  RemoveAllBlips()
-
-  -- Notify UI
-  SendNUIMessage({
-    type = 'trickOrTreatRoundEnd',
-    totalCollected = data.totalCollected,
-    totalHouses = data.totalHouses,
-  })
-
-  print('^2[ESX Halloween] Trick-or-Treat round ended (client)^7')
-end)
-
----Handle house collection response from server
-RegisterNetEvent(Events.HOUSE_COLLECT_RESPONSE)
-AddEventHandler(Events.HOUSE_COLLECT_RESPONSE, function(data)
-  -- Validate data parameter
-  if type(data) ~= "table" then
-    print('^1[ESX Halloween] Invalid collect response data^7')
-    return
-  end
-
-  if type(data.success) ~= "boolean" then
-    print('^1[ESX Halloween] Missing success field^7')
-    return
-  end
-
-  if data.success then
-    -- Validate reward fields
-    if not data.rewardType or not data.rewardItem or type(data.rewardAmount) ~= "number" then
-      print('^1[ESX Halloween] Missing reward data^7')
-      return
-    end
-
-    -- Show reward popup
+function Halloween.SyncRoundUI()
+    if not round then SendNUIMessage({ type = 'trickOrTreatRoundEnd' }); return end
     SendNUIMessage({
-      type = 'trickOrTreatCollect',
-      rewardType = data.rewardType,
-      rewardItem = data.rewardItem,
-      rewardAmount = data.rewardAmount,
-      remainingHouses = data.remainingHouses,
+        type = 'trickOrTreatRoundStart', totalHouses = round.total,
+        currentHouses = round.collected, timeRemaining = timeRemaining()
     })
+end
 
-    -- Play success sound
-    TriggerEvent('esx:showNotification', 'Collected from house!')
-  else
-    -- Show error notification
-    local errorMsg = "Unknown error"
-    if type(data.error) == "string" then
-      errorMsg = data.error
+local function spawnNPC(id, state)
+    local house = settings.houses[id]
+    local model = GetHashKey(house.pedModel)
+    if not IsModelInCdimage(model) or not IsModelValid(model) or not IsModelAPed(model) then
+        failures[id] = GetGameTimer(); return
     end
-    TriggerEvent('esx:showNotification', 'Failed: ' .. errorMsg)
-  end
+    local token = {}
+    loading[id] = token
+    CreateThread(function()
+        RequestModel(model)
+        local started = GetGameTimer()
+        while not HasModelLoaded(model) and round == state and state.available[id] and not stopping
+            and loading[id] == token and Halloween.Elapsed(started) < 5000 do Wait(50) end
+        if stopping or round ~= state or not state.available[id] or loading[id] ~= token
+            or #(GetEntityCoords(PlayerPedId()) - house.coords) > settings.npcDespawnDistance then
+            if loading[id] == token then loading[id] = nil end
+            SetModelAsNoLongerNeeded(model); return
+        end
+        if not HasModelLoaded(model) then
+            loading[id], failures[id] = nil, GetGameTimer()
+            SetModelAsNoLongerNeeded(model); return
+        end
+        RequestCollisionAtCoord(house.coords.x, house.coords.y, house.coords.z)
+        local found, groundZ = GetGroundZFor_3dCoord(house.coords.x, house.coords.y, house.coords.z + 5.0, false)
+        local z = found and Halloween.IsNumber(groundZ) and groundZ or house.coords.z
+        local ped = CreatePed(4, model, house.coords.x, house.coords.y, z, house.heading, false, false)
+        loading[id] = nil
+        SetModelAsNoLongerNeeded(model)
+        if ped == 0 then failures[id] = GetGameTimer(); return end
+        SetEntityAsMissionEntity(ped, true, true)
+        SetBlockingOfNonTemporaryEvents(ped, true)
+        FreezeEntityPosition(ped, true)
+        SetEntityInvincible(ped, true)
+        npcs[id] = ped
+    end)
+end
+
+local function sync(data)
+    if type(data) ~= 'table' then return end
+    if data.active ~= true or not settings.enabled then clear(); return end
+    if not Halloween.IsInteger(data.roundId, 1, 9007199254740991) or data.roundId <= endedRound
+        or not Halloween.IsInteger(data.totalHouses, 1, settings.doorsPerRound)
+        or not Halloween.IsInteger(data.currentHouses, 0, data.totalHouses)
+        or not Halloween.IsNumber(data.timeRemaining) or data.timeRemaining <= 0
+        or type(data.activeHouseIds) ~= 'table' then return end
+    local same = round and round.id == data.roundId
+    if round and data.roundId < round.id then return end
+    if not same then clear() end
+    local available = {}
+    for _, id in ipairs(data.activeHouseIds) do
+        if Halloween.IsInteger(id, 1, #settings.houses) then available[id] = true end
+    end
+    round = round or { id = data.roundId }
+    round.available, round.total, round.collected = available, data.totalHouses, data.currentHouses
+    round.remaining, round.synced = data.timeRemaining, GetGameTimer()
+    for id, blip in pairs(blips) do
+        if not available[id] then RemoveBlip(blip); blips[id] = nil; deleteNPC(id) end
+    end
+    for id in pairs(loading) do if not available[id] then loading[id] = nil end end
+    for id in pairs(available) do
+        if not blips[id] then
+            local coords = settings.houses[id].coords
+            local blip = AddBlipForCoord(coords.x, coords.y, coords.z)
+            SetBlipAsShortRange(blip, false)
+            SetBlipSprite(blip, settings.blips.sprite)
+            SetBlipColour(blip, settings.blips.activeColor)
+            SetBlipScale(blip, settings.blips.scale)
+            BeginTextCommandSetBlipName('STRING')
+            AddTextComponentString('Trick-or-Treat House')
+            EndTextCommandSetBlipName(blip)
+            blips[id] = blip
+        end
+    end
+    if not same then Halloween.SyncRoundUI() else
+        SendNUIMessage({
+            type = 'trickOrTreatProgress', currentHouses = round.collected,
+            totalHouses = round.total, timeRemaining = timeRemaining()
+        })
+    end
+end
+
+RegisterNetEvent(Events.ROUND_START, function(data) if source == 65535 then sync(data) end end)
+RegisterNetEvent(Events.HOUSE_STATE_SYNC, function(data) if source == 65535 then sync(data) end end)
+RegisterNetEvent(Events.ROUND_END, function(data)
+    if source ~= 65535 or type(data) ~= 'table' or not Halloween.IsNumber(data.roundId) then return end
+    endedRound = math.max(endedRound, data.roundId)
+    if round and round.id <= data.roundId then clear() end
 end)
 
----Handle house state synchronization from server
-RegisterNetEvent(Events.HOUSE_STATE_SYNC)
-AddEventHandler(Events.HOUSE_STATE_SYNC, function(data)
-  -- Validate data parameter
-  if type(data) ~= "table" then
-    print('^1[ESX Halloween] Invalid state sync data^7')
-    return
-  end
+local function canInteract(id)
+    return round and round.available[id] and not ESX.PlayerData.dead and not IsEntityDead(PlayerPedId())
+        and not Halloween.ClientGhost()
+        and #(GetEntityCoords(PlayerPedId()) - settings.houses[id].coords) <= settings.interaction.distance
+end
 
-  if type(data.currentHouses) ~= "number" or
-     type(data.totalHouses) ~= "number" or
-     type(data.timeRemaining) ~= "number" then
-    print('^1[ESX Halloween] Missing state sync fields^7')
-    return
-  end
-
-  if roundState.active then
-    roundState.currentHouses = data.currentHouses
-    roundState.totalHouses = data.totalHouses
-    roundState.timeRemaining = data.timeRemaining
-
-    -- Update UI progress
-    SendNUIMessage({
-      type = 'trickOrTreatProgress',
-      currentHouses = data.currentHouses,
-      totalHouses = data.totalHouses,
-      timeRemaining = data.timeRemaining,
-    })
-  end
+RegisterNetEvent(Events.HOUSE_INTERACT_RESPONSE, function(data)
+    if source ~= 65535 or type(data) ~= 'table' then return end
+    local pending = interaction
+    if not pending or not round or data.roundId ~= round.id or data.houseId ~= pending.id
+        or not Halloween.IsInteger(data.token, 1, 9007199254740991)
+        or not Halloween.IsNumber(data.duration) or data.duration ~= settings.interaction.duration then return end
+    pending.token, pending.started = data.token, GetGameTimer()
+    CreateThread(function()
+        while interaction == pending and canInteract(pending.id)
+            and Halloween.Elapsed(pending.started) < data.duration do Wait(50) end
+        if interaction ~= pending then return end
+        if not canInteract(pending.id) then interaction = nil; return end
+        pending.started = GetGameTimer()
+        TriggerServerEvent(Events.HOUSE_COLLECT_REQUEST, pending.id, pending.roundId, pending.token)
+    end)
 end)
 
----Handle trick effect (trick reward)
-RegisterNetEvent(Events.TRIGGER_TRICK)
-AddEventHandler(Events.TRIGGER_TRICK, function()
-  -- Screen shake
-  ShakeGameplayCam('SMALL_EXPLOSION_SHAKE', 0.5)
-
-  -- Show jumpscare UI
-  SendNUIMessage({
-    type = 'trickOrTreatCollect',
-    rewardType = 'trick',
-    rewardItem = 'trick',
-    rewardAmount = 0,
-  })
-
-  TriggerEvent('esx:showNotification', '^1You got tricked!^7')
+RegisterNetEvent(Events.HOUSE_COLLECT_RESPONSE, function(data)
+    if source ~= 65535 or type(data) ~= 'table' or type(data.success) ~= 'boolean' then return end
+    local pending = interaction
+    if data.success then
+        if not pending or pending.id ~= data.houseId or pending.roundId ~= data.roundId
+            or (data.rewardType ~= 'treat' and data.rewardType ~= 'trick')
+            or type(data.rewardItem) ~= 'string' or not Halloween.IsInteger(data.rewardAmount, 0, 100) then return end
+        SendNUIMessage({
+            type = 'trickOrTreatCollect', rewardType = data.rewardType,
+            rewardItem = data.rewardItem, rewardAmount = data.rewardAmount
+        })
+    elseif pending and type(data.error) == 'string' then
+        ESX.ShowNotification(data.error)
+    end
+    interaction = nil
 end)
 
----=============================================================================
---- Cleanup
----=============================================================================
-
----Cleanup on resource stop
-AddEventHandler('onResourceStop', function(resourceName)
-  if GetCurrentResourceName() ~= resourceName then return end
-
-  DeleteAllNPCs()
-  RemoveAllBlips()
-  roundState.active = false
-
-  print('^2[ESX Halloween] Trick-or-Treat client cleaned up^7')
+RegisterNetEvent(Events.TRIGGER_TRICK, function(data)
+    if source ~= 65535 or type(data) ~= 'table' or not interaction
+        or data.token ~= interaction.token or data.roundId ~= interaction.roundId
+        or type(data.effects) ~= 'table' then return end
+    for _, effect in ipairs(data.effects) do
+        if effect == 'jumpscare' then
+            ShakeGameplayCam('SMALL_EXPLOSION_SHAKE', 0.3)
+            SendNUIMessage({ type = 'triggerJumpscare', soundVolume = 0.7, duration = 1500 })
+        elseif effect == 'small_damage' and Halloween.IsInteger(data.damage, 0, 20)
+            and not ESX.PlayerData.dead then
+            local ped = PlayerPedId()
+            SetEntityHealth(ped, math.max(101, GetEntityHealth(ped) - data.damage))
+        end
+    end
 end)
 
----=============================================================================
---- Initialization
----=============================================================================
-
---- Initialize config after resource load
 CreateThread(function()
-  print('^2[TrickOrTreat] Waiting for global config...^7')
-
-  -- Wait for global Config to be defined
-  local maxWaits = 50
-  local waits = 0
-  while not _G.Config or not _G.Config.TrickOrTreat do
-    Wait(100)
-    waits = waits + 1
-    if waits >= maxWaits then
-      print('^1[TrickOrTreat] Config timeout!^7')
-      return
+    local uiAt = GetGameTimer()
+    while true do
+        Wait(500)
+        local state = round
+        nearest = nil
+        if state then
+            if timeRemaining() == 0 then
+                endedRound = math.max(endedRound, state.id)
+                clear()
+            else
+                local coords, closest = GetEntityCoords(PlayerPedId()), settings.interaction.distance
+                for id in pairs(state.available) do
+                    local distance = #(coords - settings.houses[id].coords)
+                    if distance < closest then nearest, closest = id, distance end
+                    if distance <= settings.npcSpawnDistance and not npcs[id] and not loading[id]
+                        and (not failures[id] or Halloween.Elapsed(failures[id]) >= 10000) then
+                        spawnNPC(id, state)
+                    elseif distance > settings.npcDespawnDistance then
+                        deleteNPC(id)
+                    end
+                end
+                if Halloween.Elapsed(uiAt) >= 1000 then
+                    uiAt = GetGameTimer()
+                    SendNUIMessage({
+                        type = 'trickOrTreatProgress', currentHouses = state.collected,
+                        totalHouses = state.total, timeRemaining = timeRemaining()
+                    })
+                end
+            end
+        end
+        if interaction and Halloween.Elapsed(interaction.started) >= settings.interaction.requestTimeout then
+            interaction = nil
+        end
     end
-  end
+end)
 
-  Config = _G.Config.TrickOrTreat
+CreateThread(function()
+    while true do
+        if nearest and canInteract(nearest) then
+            Wait(0)
+            BeginTextCommandDisplayHelp('STRING')
+            AddTextComponentString(interaction and 'Collecting candy...' or 'Press ~INPUT_CONTEXT~ to collect candy')
+            EndTextCommandDisplayHelp(0)
+            if not interaction and IsControlJustReleased(0, settings.interaction.key) then
+                interaction = { id = nearest, roundId = round.id, started = GetGameTimer() }
+                TriggerServerEvent(Events.HOUSE_INTERACT_REQUEST, nearest, round.id)
+            end
+        else
+            Wait(250)
+        end
+    end
+end)
 
-  if not Config or not Config.enabled then
-    print('^3[TrickOrTreat] Trick-or-Treat is disabled, skipping init^7')
-    return
-  end
-
-  print('^2[TrickOrTreat] ✓ Client initialized^7')
+AddEventHandler('esx:onPlayerLogout', clear)
+AddEventHandler('onResourceStop', function(resource)
+    if resource ~= GetCurrentResourceName() then return end
+    stopping = true
+    clear()
 end)

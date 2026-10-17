@@ -10,11 +10,17 @@ Events = {
     GHOST_MODE_RESPONSE = 'esx_halloween:ghostModeResponse',
     SYNC_GHOST_STATE = 'esx_halloween:syncGhostState',
     RECEIVE_SCARE = 'esx_halloween:receiveScare',
+    REQUEST_SNAPSHOT = 'esx_halloween:requestSnapshot',
+    GHOST_SNAPSHOT = 'esx_halloween:ghostSnapshot',
+    GHOST_READY = 'esx_halloween:ghostReady',
+    FORCE_GHOST_EXIT = 'esx_halloween:forceGhostExit',
 
     -- Trick-or-Treat Events
     ROUND_START = 'esx_halloween:trickOrTreatRoundStart',
     ROUND_END = 'esx_halloween:trickOrTreatRoundEnd',
     HOUSE_COLLECT_REQUEST = 'esx_halloween:houseCollectRequest',
+    HOUSE_INTERACT_REQUEST = 'esx_halloween:houseInteractRequest',
+    HOUSE_INTERACT_RESPONSE = 'esx_halloween:houseInteractResponse',
     HOUSE_COLLECT_RESPONSE = 'esx_halloween:houseCollectResponse',
     HOUSE_STATE_SYNC = 'esx_halloween:houseStateSync',
     TRIGGER_TRICK = 'esx_halloween:triggerTrick'

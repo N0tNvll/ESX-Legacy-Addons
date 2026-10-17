@@ -1,474 +1,298 @@
----Trick-or-Treat Server Logic
----Manages round scheduling, house state, rewards, and client communication
+local settings = Config.TrickOrTreat
+local round, tickets, travel = nil, {}, {}
+local idleSince = GetGameTimer()
 
----@type TrickOrTreatConfig
-local TrickOrTreatConfig = Config.TrickOrTreat
-local Config = Config -- Keep reference to global Config for AdminGroups
+local function openRound()
+    return Halloween.Ready and settings.enabled and round and not round.closing
+        and Halloween.Elapsed(round.started) < round.duration
+end
 
----Track last collection time per house per round
----@type table<number, number> houseCooldowns - [houseId] = lastCollectTime
-local houseCooldowns = {}
+local function remaining(state)
+    return math.max(0, state.duration - Halloween.Elapsed(state.started))
+end
 
----Track current active houses in round
----@type table<number, boolean> activeHouses - [houseId] = true if active
-local activeHouses = {}
-
----Track round state
----@type table roundState
-local roundState = {
-  active = false,
-  startTime = 0,
-  duration = 0,
-  doorsPerRound = 0,
-  selectedHouses = {},
-  collectedCount = 0,
-}
-
----Track player request cooldowns (anti-spam)
----@type table<number, number> playerCooldowns - [source] = timestamp
-local playerCooldowns = {}
-
----=============================================================================
---- Round Management Functions
----=============================================================================
-
----Selects random houses for the current round
----@param count number Number of houses to select
----@return table selectedIndices Array of randomly selected house indices
-local function SelectRandomHouses(count)
-  local totalHouses = #TrickOrTreatConfig.houses
-  if count > totalHouses then count = totalHouses end
-
-  local indices = {}
-  local used = {}
-
-  while #indices < count do
-    local randomIdx = math.random(1, totalHouses)
-    if not used[randomIdx] then
-      table.insert(indices, randomIdx)
-      used[randomIdx] = true
+local function payload(src)
+    if not openRound() or not Halloween.InBucket(src) then return { active = false } end
+    local ids = {}
+    for _, id in ipairs(round.selected) do
+        if not round.houses[id].collected then ids[#ids + 1] = id end
     end
-  end
-
-  return indices
-end
-
----Starts a new trick-or-treat round
----Selects random houses and notifies all clients
-local function StartTrickOrTreatRound()
-  if roundState.active then
-    print('^3[ESX Halloween] A round is already active, ignoring start request^7')
-    return
-  end
-
-  roundState.active = true
-  roundState.startTime = GetGameTimer()
-  roundState.duration = TrickOrTreatConfig.roundFrequencyMinutes * 60000
-  roundState.doorsPerRound = math.min(TrickOrTreatConfig.doorsPerRound, #TrickOrTreatConfig.houses)
-  roundState.selectedHouses = SelectRandomHouses(roundState.doorsPerRound)
-  roundState.collectedCount = 0
-
-  -- Initialize active houses
-  activeHouses = {}
-  for _, houseIdx in ipairs(roundState.selectedHouses) do
-    activeHouses[houseIdx] = true
-  end
-
-  -- Notify all clients
-  TriggerClientEvent(Events.ROUND_START, -1, {
-    totalHouses = roundState.doorsPerRound,
-    duration = roundState.duration,
-    activeHouseIds = roundState.selectedHouses,
-  })
-
-  print(
-    '^2[ESX Halloween] Trick-or-Treat round started! ^3' ..
-      roundState.doorsPerRound ..
-      ' ^2houses available^7'
-  )
-end
-
----Ends the current trick-or-treat round
----Resets state and notifies clients
-local function EndTrickOrTreatRound()
-  if not roundState.active then return end
-
-  local collected = roundState.collectedCount
-  local total = roundState.doorsPerRound
-
-  TriggerClientEvent(Events.ROUND_END, -1, {
-    totalCollected = collected,
-    totalHouses = total,
-  })
-
-  roundState.active = false
-  roundState.selectedHouses = {}
-  activeHouses = {}
-  houseCooldowns = {}
-
-  print('^2[ESX Halloween] Trick-or-Treat round ended! ' .. collected .. '/' .. total .. ' collected^7')
-end
-
----Checks if a house is currently active in the round
----@param houseIdx number Index of the house
----@return boolean True if house is active and not emptied
-local function IsHouseActive(houseIdx)
-  return roundState.active and activeHouses[houseIdx] == true
-end
-
----=============================================================================
---- Reward Management Functions
----=============================================================================
-
----Rolls a random reward based on configured probabilities
----@return table rewardData Contains: rewardType, item, amount
-local function RollReward()
-  local roll = math.random(100)
-  local chance = 0
-
-  -- Check candy (70%)
-  chance = chance + TrickOrTreatConfig.rewards.candy.chance
-  if roll <= chance then
     return {
-      rewardType = 'treat',
-      item = TrickOrTreatConfig.rewards.candy.item,
-      amount = TrickOrTreatConfig.candyPerDoor * TrickOrTreatConfig.rewards.candy.amount,
+        active = true, roundId = round.id, totalHouses = #round.selected,
+        currentHouses = round.collected, timeRemaining = remaining(round),
+        activeHouseIds = ids
     }
-  end
-
-  -- Check rare candy (15%)
-  chance = chance + TrickOrTreatConfig.rewards.rareCandy.chance
-  if roll <= chance then
-    return {
-      rewardType = 'treat',
-      item = TrickOrTreatConfig.rewards.rareCandy.item,
-      amount = TrickOrTreatConfig.rewards.rareCandy.amount,
-    }
-  end
-
-  -- Trick (15%)
-  return {
-    rewardType = 'trick',
-    item = 'trick',
-    amount = 0,
-  }
 end
 
----=============================================================================
---- Request Handlers
----=============================================================================
+function Halloween.SyncRound(src)
+    TriggerClientEvent(Events.ROUND_START, src, payload(src))
+end
 
----Handles player house collection request
----Server-side validation with security checks
----@param source number Player server ID
----@param houseIdx number Index of house to collect from
-RegisterNetEvent(Events.HOUSE_COLLECT_REQUEST)
-AddEventHandler(Events.HOUSE_COLLECT_REQUEST, function(houseIdx)
-  local source = source
-
-  -- Validate player exists
-  if not GetPlayerEndpoint(source) then
-    TriggerClientEvent(Events.HOUSE_COLLECT_RESPONSE, source, {
-      success = false,
-      error = 'Player not found',
-    })
-    return
-  end
-
-  -- Validate round is active
-  if not roundState.active then
-    TriggerClientEvent(Events.HOUSE_COLLECT_RESPONSE, source, {
-      success = false,
-      error = 'No active round',
-    })
-    return
-  end
-
-  -- Validate house index
-  if type(houseIdx) ~= 'number' or houseIdx < 1 or houseIdx > #TrickOrTreatConfig.houses then
-    print(
-      '^1[ESX Halloween] Player ' ..
-        source .. ' sent invalid houseIdx: ' .. tostring(houseIdx) .. '^7'
-    )
-    TriggerClientEvent(Events.HOUSE_COLLECT_RESPONSE, source, {
-      success = false,
-      error = 'Invalid house',
-    })
-    return
-  end
-
-  -- Validate house is active
-  if not IsHouseActive(houseIdx) then
-    TriggerClientEvent(Events.HOUSE_COLLECT_RESPONSE, source, {
-      success = false,
-      error = 'House not available',
-    })
-    return
-  end
-
-  -- Validate distance (server-side security check)
-  local xPlayer = ESX.Player(source)
-  if not xPlayer then
-    TriggerClientEvent(Events.HOUSE_COLLECT_RESPONSE, source, {
-      success = false,
-      error = 'Player data not found',
-    })
-    return
-  end
-
-  local playerPed = GetPlayerPed(source)
-  if playerPed == 0 then
-    TriggerClientEvent(Events.HOUSE_COLLECT_RESPONSE, source, {
-      success = false,
-      error = 'Ped not found',
-    })
-    return
-  end
-
-  local playerCoords = GetEntityCoords(playerPed)
-  local houseCoords = TrickOrTreatConfig.houses[houseIdx].coords
-  local distance = #(playerCoords - houseCoords)
-
-  if distance > TrickOrTreatConfig.interaction.distance + 5.0 then
-    -- Allow 5m buffer for network latency
-    print(
-      '^1[ESX Halloween] Player ' ..
-        source ..
-        ' attempted collection from ' ..
-        distance ..
-        'm away (max: ' ..
-        (TrickOrTreatConfig.interaction.distance + 5.0) ..
-        ')^7'
-    )
-    TriggerClientEvent(Events.HOUSE_COLLECT_RESPONSE, source, {
-      success = false,
-      error = 'Too far away',
-    })
-    return
-  end
-
-  -- Prevent double-collection of same house
-  if houseCooldowns[houseIdx] and houseCooldowns[houseIdx] > GetGameTimer() - 500 then
-    TriggerClientEvent(Events.HOUSE_COLLECT_RESPONSE, source, {
-      success = false,
-      error = 'House already collected',
-    })
-    return
-  end
-
-  -- Roll reward
-  local reward = RollReward()
-
-  -- Handle based on reward type
-  if reward.rewardType == 'treat' then
-    -- Try to add item to inventory
-    if xPlayer.canCarryItem(reward.item, reward.amount) then
-      xPlayer.addInventoryItem(reward.item, reward.amount)
-    else
-      -- Inventory full, send error response (client will show notification)
-      TriggerClientEvent(Events.HOUSE_COLLECT_RESPONSE, source, {
-        success = false,
-        error = 'Inventory full',
-      })
-      return
+local function broadcast()
+    for _, id in ipairs(GetPlayers()) do
+        local src = tonumber(id)
+        if Halloween.Player(src) then Halloween.SyncRound(src) end
     end
-  elseif reward.rewardType == 'trick' then
-    -- Apply trick effect (jumpscare + damage)
-    TriggerClientEvent(Events.TRIGGER_TRICK, source)
-    xPlayer.addHealth(-10) -- Small damage (max health is usually 200)
-  end
+end
 
-  -- Mark house as collected this round
-  activeHouses[houseIdx] = false
-  houseCooldowns[houseIdx] = GetGameTimer()
-  roundState.collectedCount = roundState.collectedCount + 1
+local function endRound()
+    if not round then return end
+    round.closing = true
+    if round.inFlight > 0 then return end
+    local previous = round
+    round, tickets = nil, {}
+    idleSince = GetGameTimer()
+    TriggerClientEvent(Events.ROUND_END, -1, {
+        roundId = previous.id, totalCollected = previous.collected, totalHouses = #previous.selected
+    })
+end
 
-  -- Send success response to client
-  TriggerClientEvent(Events.HOUSE_COLLECT_RESPONSE, source, {
-    success = true,
-    rewardType = reward.rewardType,
-    rewardItem = reward.item,
-    rewardAmount = reward.amount,
-    remainingHouses = roundState.doorsPerRound - roundState.collectedCount,
-  })
+local function selectHouses()
+    local indices = {}
+    for index = 1, #settings.houses do indices[index] = index end
+    local count = math.min(settings.doorsPerRound, #indices)
+    for index = 1, count do
+        local selected = math.random(index, #indices)
+        indices[index], indices[selected] = indices[selected], indices[index]
+    end
+    local result = {}
+    for index = 1, count do result[index] = indices[index] end
+    return result
+end
 
-  -- Broadcast progress update to all clients
-  TriggerClientEvent(Events.HOUSE_STATE_SYNC, -1, {
-    currentHouses = roundState.collectedCount,
-    totalHouses = roundState.doorsPerRound,
-    timeRemaining = roundState.duration - (GetGameTimer() - roundState.startTime),
-  })
+local function startRound()
+    if not Halloween.Ready or not settings.enabled or round then return false end
+    local state = {
+        id = Halloween.Token(), selected = selectHouses(), houses = {}, collected = 0,
+        inFlight = 0, started = GetGameTimer(), duration = settings.roundDurationMinutes * 60000,
+        synced = GetGameTimer()
+    }
+    for _, id in ipairs(state.selected) do state.houses[id] = { collected = false } end
+    round = state
+    broadcast()
+    return true
+end
 
-  print(
-    '^2[ESX Halloween] Player ' ..
-      xPlayer.getName() ..
-      ' collected from house ' .. houseIdx .. ' (' .. reward.item .. ')^7'
-  )
-end)
-
----=============================================================================
---- Timers & Scheduling
----=============================================================================
-
----Main round timer thread
----Manages round scheduling, duration, and auto-start
----Performance: Dynamic sleep - 10s when inactive (auto-start check), 1s when active (progress updates)
-CreateThread(function()
-  local nextAutoStartTime = GetGameTimer() + (TrickOrTreatConfig.roundFrequencyMinutes * 60000)
-  local lastProgressUpdate = 0
-
-  print('^2[ESX Halloween] Timer thread started - next auto-start in ' .. TrickOrTreatConfig.roundFrequencyMinutes .. ' minutes^7')
-
-  while true do
-    -- Dynamic sleep: 10s when inactive (idle), 1s when active (for progress updates)
-    local sleep = roundState.active and 1000 or 10000
-    Wait(sleep)
-
-    if not roundState.active then
-      -- Check if time for auto-start (every 10 seconds when idle)
-      if GetGameTimer() >= nextAutoStartTime then
-        print('^3[ESX Halloween] Auto-starting round...^7')
-        StartTrickOrTreatRound()
-        nextAutoStartTime = GetGameTimer() + (TrickOrTreatConfig.roundFrequencyMinutes * 60000)
-      end
+local function rewardFor(house)
+    if house.reward then return house.reward end
+    local roll, common, rare = math.random(100), settings.rewards.candy, settings.rewards.rareCandy
+    if roll <= common.chance then
+        house.reward = { rewardType = 'treat', item = common.item, amount = common.amount }
+    elseif roll <= common.chance + rare.chance then
+        house.reward = { rewardType = 'treat', item = rare.item, amount = rare.amount }
     else
-      -- Round is active - check if should end
-      local elapsedTime = GetGameTimer() - roundState.startTime
-      if elapsedTime >= roundState.duration then
-        EndTrickOrTreatRound()
-        nextAutoStartTime = GetGameTimer() + (TrickOrTreatConfig.roundFrequencyMinutes * 60000)
-      else
-        -- Send progress updates every 1 second
-        if GetGameTimer() - lastProgressUpdate >= 1000 then
-          lastProgressUpdate = GetGameTimer()
-          TriggerClientEvent(Events.HOUSE_STATE_SYNC, -1, {
-            currentHouses = roundState.collectedCount,
-            totalHouses = roundState.doorsPerRound,
-            timeRemaining = roundState.duration - elapsedTime,
-          })
+        house.reward = { rewardType = 'trick', item = 'trick', amount = 0 }
+    end
+    return house.reward
+end
+
+local function respond(src, errorMessage, extra)
+    local data = extra or {}
+    data.success = errorMessage == nil
+    data.error = errorMessage
+    TriggerClientEvent(Events.HOUSE_COLLECT_RESPONSE, src, data)
+end
+
+local function release(ticket)
+    if ticket.delivering then return end
+    if tickets[ticket.src] == ticket then tickets[ticket.src] = nil end
+    if ticket.house.ticket == ticket then ticket.house.ticket = nil end
+end
+
+local function validate(src, id, roundId)
+    local player = Halloween.Player(src)
+    if not openRound() or not player or not Halloween.InBucket(src)
+        or not Halloween.Alive(src) or Halloween.IsGhost(src) then return nil, 'Event unavailable' end
+    if roundId ~= round.id or not Halloween.IsInteger(id, 1, #settings.houses) then
+        return nil, 'Invalid house or round'
+    end
+    local house = round.houses[id]
+    if not house or house.collected then return nil, 'House not available' end
+    local coords = GetEntityCoords(GetPlayerPed(src))
+    local destination = settings.houses[id].coords
+    if #(coords - destination) > settings.interaction.distance + settings.interaction.tolerance then
+        return nil, 'Too far away'
+    end
+    local previous = travel[src]
+    if previous and previous.player == player then
+        local seconds = Halloween.Elapsed(previous.at) / 1000
+        local distance = #(coords - previous.coords)
+        if seconds < settings.interaction.minimumTravelSeconds
+            or distance > seconds * settings.interaction.maxTravelSpeed + settings.interaction.travelAllowance then
+            return nil, 'Please wait before collecting from another house'
         end
-      end
     end
-  end
-end)
-
----Cleanup on player disconnect
-AddEventHandler('playerDropped', function()
-  local source = source
-  playerCooldowns[source] = nil
-end)
-
----Cleanup on resource stop
-AddEventHandler('onResourceStop', function(resourceName)
-  if GetCurrentResourceName() ~= resourceName then return end
-
-  if roundState.active then
-    EndTrickOrTreatRound()
-  end
-
-  houseCooldowns = {}
-  activeHouses = {}
-  playerCooldowns = {}
-
-  print('^2[ESX Halloween] Trick-or-Treat cleaned up^7')
-end)
-
----=============================================================================
---- Admin Permission Check
----=============================================================================
-
----Check if player has admin permission based on group
----@param source number Player ID
----@return boolean True if player is admin
-local function HasAdminPermission(source)
-  if source == 0 then return true end -- Console always has permission
-
-  local xPlayer = ESX.Player(source)
-  if not xPlayer then return false end
-
-  local playerGroup = xPlayer.getGroup()
-
-  for i = 1, #Config.AdminGroups do
-    if playerGroup == Config.AdminGroups[i] then
-      return true
-    end
-  end
-
-  return false
+    return { player = player, house = house, coords = coords }
 end
 
----=============================================================================
---- Admin Commands
----=============================================================================
-
----Start a trick-or-treat round immediately
----@param source number Admin player ID
----@param args table Command arguments
-TriggerEvent('chat:addSuggestion', '/startround', 'Start a trick-or-treat round immediately')
-TriggerEvent('chat:addSuggestion', '/resetcooldowns', 'Reset all house cooldowns')
-
-RegisterCommand('startround', function(source, args, rawCommand)
-  if source == 0 then
-    -- Console can always execute
-  else
-    -- Check admin permission
-    if not HasAdminPermission(source) then
-      TriggerClientEvent(
-        'chat:addMessage',
-        source,
-        {
-          args = { 'Halloween' },
-          msg = '^1You do not have permission to use this command^7',
-        }
-      )
-      return
+RegisterNetEvent(Events.HOUSE_INTERACT_REQUEST, function(id, roundId)
+    local src = source
+    if not Halloween.Allow(src, 'houseStart', 1000) then return end
+    local result, err = validate(src, id, roundId)
+    if not result then respond(src, err); return end
+    local previous = tickets[src]
+    if previous then
+        if previous.delivering or Halloween.Elapsed(previous.started) < settings.interaction.requestTimeout then
+            respond(src, 'Collection in progress'); return
+        end
+        release(previous)
     end
-  end
-
-  StartTrickOrTreatRound()
-
-  if source ~= 0 then
-    TriggerClientEvent(
-      'chat:addMessage',
-      source,
-      { args = { 'Halloween' }, msg = '^2Round started!^7' }
-    )
-  end
+    local reservation = result.house.ticket
+    if reservation then
+        if not reservation.delivering and (not Halloween.Current(reservation.src, reservation.player)
+            or Halloween.Elapsed(reservation.started) >= settings.interaction.requestTimeout) then
+            release(reservation)
+        else
+            respond(src, 'House is busy'); return
+        end
+    end
+    local ticket = {
+        token = Halloween.Token(), src = src, player = result.player, round = round, id = id,
+        house = result.house, started = GetGameTimer(), coords = result.coords
+    }
+    rewardFor(result.house) -- A full inventory or failed delivery cannot reroll this house.
+    tickets[src], result.house.ticket = ticket, ticket
+    TriggerClientEvent(Events.HOUSE_INTERACT_RESPONSE, src, {
+        token = ticket.token, houseId = id, roundId = round.id, duration = settings.interaction.duration
+    })
 end)
 
-RegisterCommand('resetcooldowns', function(source, args, rawCommand)
-  if source == 0 then
-    -- Console can always execute
-  else
-    -- Check admin permission
-    if not HasAdminPermission(source) then
-      TriggerClientEvent(
-        'chat:addMessage',
-        source,
-        {
-          args = { 'Halloween' },
-          msg = '^1You do not have permission to use this command^7',
-        }
-      )
-      return
+RegisterNetEvent(Events.HOUSE_COLLECT_REQUEST, function(id, roundId, token)
+    local src = source
+    if not Halloween.Allow(src, 'houseFinish', 250) then return end
+    local ticket = tickets[src]
+    if not ticket or ticket.token ~= token or ticket.id ~= id or ticket.round.id ~= roundId
+        or ticket.delivering or not Halloween.Current(src, ticket.player) then return end
+    local elapsed = Halloween.Elapsed(ticket.started)
+    if elapsed < settings.interaction.duration then respond(src, 'Interaction not finished'); return end
+    local result, err = validate(src, id, roundId)
+    if not result or round ~= ticket.round or ticket.house.ticket ~= ticket
+        or elapsed >= settings.interaction.requestTimeout then
+        release(ticket); respond(src, err or 'Interaction expired'); return
     end
-  end
 
-  houseCooldowns = {}
-  activeHouses = {}
-
-  if roundState.active then
-    -- Re-initialize active houses
-    for _, houseIdx in ipairs(roundState.selectedHouses) do
-      activeHouses[houseIdx] = true
+    -- Reserve before calling inventory adapters/hooks, which may yield.
+    ticket.delivering = true
+    local state, house, reward, player = ticket.round, ticket.house, ticket.house.reward, ticket.player
+    state.inFlight = state.inFlight + 1
+    local consumed, success, failure = false, false, nil
+    if reward.rewardType == 'treat' then
+        local checked, canCarry = pcall(player.canCarryItem, reward.item, reward.amount)
+        if not checked then
+            failure = 'Inventory unavailable'
+        elseif not canCarry then
+            failure = 'Inventory full'
+        elseif not Halloween.Current(src, player) or not openRound() then
+            failure = 'Collection expired'
+        else
+            local beforeOK, before = pcall(player.getInventoryItem, reward.item)
+            local beforeCount = beforeOK and before and before.count
+            local stillEligible = validate(src, id, roundId)
+            if not stillEligible or not Halloween.Current(src, player)
+                or Halloween.Elapsed(ticket.started) >= settings.interaction.requestTimeout then
+                failure = 'Collection expired'
+            else
+                local delivered, added = pcall(player.addInventoryItem, reward.item, reward.amount)
+                local afterOK, after = pcall(player.getInventoryItem, reward.item)
+                local measured = afterOK and after and type(beforeCount) == 'number' and type(after.count) == 'number'
+                local changed = measured and after.count ~= beforeCount
+                local increased = measured and after.count >= beforeCount + reward.amount
+                if delivered and (added == true or (added == nil and increased)) then
+                    consumed, success = true, true
+                elseif not delivered or changed or added ~= false or not measured then
+                    -- Ambiguous adapter errors must not reopen a potentially paid house.
+                    consumed, failure = true, 'Reward delivery could not be confirmed'
+                    print(('[esx_halloween] Inventory delivery requires review (round %d, house %d).'):format(state.id, id))
+                else
+                    failure = 'Reward could not be delivered'
+                end
+            end
+        end
+    else
+        consumed, success = true, true
     end
-  end
 
-  if source ~= 0 then
-    TriggerClientEvent(
-      'chat:addMessage',
-      source,
-      { args = { 'Halloween' }, msg = '^2Cooldowns reset!^7' }
-    )
-  end
+    if consumed then
+        house.collected = true
+        state.collected = state.collected + 1
+        if Halloween.Current(src, player) then
+            travel[src] = { player = player, coords = result.coords, at = GetGameTimer() }
+        end
+    end
+    ticket.delivering = false
+    release(ticket)
+    state.inFlight = state.inFlight - 1
+
+    if Halloween.Current(src, player) then
+        if success then
+            if reward.rewardType == 'trick' then
+                TriggerClientEvent(Events.TRIGGER_TRICK, src, {
+                    roundId = state.id, token = token, damage = settings.rewards.trick.damage,
+                    effects = settings.rewards.trick.effects
+                })
+            end
+            respond(src, nil, {
+                roundId = state.id, houseId = id, rewardType = reward.rewardType,
+                rewardItem = reward.item, rewardAmount = reward.amount,
+                remainingHouses = math.max(0, #state.selected - state.collected)
+            })
+        else
+            respond(src, failure)
+        end
+    end
+    if round == state then
+        if state.closing or remaining(state) == 0 or state.collected >= #state.selected then
+            endRound()
+        elseif consumed then
+            broadcast()
+        end
+    end
 end)
+
+CreateThread(function()
+    while true do
+        Wait(1000)
+        for _, ticket in pairs(tickets) do
+            if not ticket.delivering and (not Halloween.Current(ticket.src, ticket.player)
+                or Halloween.Elapsed(ticket.started) >= settings.interaction.requestTimeout) then release(ticket) end
+        end
+        if round then
+            if not settings.enabled or remaining(round) == 0 or round.closing then
+                endRound()
+            elseif Halloween.Elapsed(round.synced) >= settings.progressSyncInterval then
+                round.synced = GetGameTimer()
+                broadcast()
+            end
+        elseif Halloween.Ready and settings.enabled
+            and Halloween.Elapsed(idleSince) >= settings.roundFrequencyMinutes * 60000 then
+            startRound()
+        end
+    end
+end)
+
+local function forget(src)
+    src = tonumber(src)
+    if not src then return end
+    local ticket = tickets[src]
+    if ticket then release(ticket) end
+    travel[src] = nil
+end
+AddEventHandler('playerDropped', function() forget(source) end)
+AddEventHandler('esx:playerLogout', forget)
+AddEventHandler('onResourceStop', function(resource)
+    if resource ~= GetCurrentResourceName() then return end
+    endRound()
+end)
+
+RegisterCommand('startround', function(src)
+    if not Halloween.HasAdminPermission(src) then Halloween.Message(src, 'No permission'); return end
+    Halloween.Message(src, startRound() and 'Round started' or 'A round is active or the event is unavailable')
+end, false)
+
+RegisterCommand('resetcooldowns', function(src)
+    if not Halloween.HasAdminPermission(src) then Halloween.Message(src, 'No permission'); return end
+    if not round or round.inFlight > 0 then Halloween.Message(src, 'No reset available while a reward is being delivered'); return end
+    endRound()
+    startRound()
+    Halloween.Message(src, 'A new round was started; previous collection tickets are invalid')
+end, false)

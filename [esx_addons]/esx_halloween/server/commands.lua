@@ -1,49 +1,10 @@
----@param source number
----@return boolean
-local function HasAdminPermission(source)
-    local xPlayer = ESX.Player(source)
-    if not xPlayer then return false end
-
-    local playerGroup = xPlayer.getGroup()
-
-    for i = 1, #Config.AdminGroups do
-        if playerGroup == Config.AdminGroups[i] then
-            return true
-        end
-    end
-
-    return false
-end
-
----@param source number
----@return boolean
-local function IsPlayerValid(source)
-    return GetPlayerEndpoint(source) ~= nil
-end
-
-RegisterCommand('ghost', function(source, args)
-    if not HasAdminPermission(source) then
-        TriggerClientEvent('chat:addMessage', source, {
-            color = {255, 0, 0},
-            args = {'System', 'No permission'}
-        })
+RegisterCommand('ghost', function(src, args)
+    if not Halloween.HasAdminPermission(src) then Halloween.Message(src, 'No permission'); return end
+    local target = args[1] and tonumber(args[1]) or src
+    if not Halloween.Player(target) then Halloween.Message(src, 'Player not found'); return end
+    if not Halloween.OfferGhost(target, true) then
+        Halloween.Message(src, 'Ghost mode unavailable or normal respawn is not ready yet')
         return
     end
-
-    local targetId = tonumber(args[1]) or source
-
-    if not IsPlayerValid(targetId) then
-        TriggerClientEvent('chat:addMessage', source, {
-            color = {255, 0, 0},
-            args = {'System', 'Player not found'}
-        })
-        return
-    end
-
-    TriggerClientEvent(Events.SHOW_GHOST_CHOICE, targetId, true)
-
-    local adminName = GetPlayerName(source) or 'Console'
-    local targetName = GetPlayerName(targetId) or 'Unknown'
-
-    print(string.format('[ESX Halloween] %s triggered ghost choice for %s (ID: %d)', adminName, targetName, targetId))
+    Halloween.Message(src, 'Ghost choice offered')
 end, false)

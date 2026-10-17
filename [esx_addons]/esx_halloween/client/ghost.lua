@@ -1,427 +1,298 @@
-local KEYBIND_MAP = {
-    ['X'] = 73,
-    ['E'] = 38,
-    ['DELETE'] = 178,
-    ['BACKSPACE'] = 177
-}
+local keys = { X = 73, E = 38, DELETE = 178, BACKSPACE = 177 }
+local exitKey = keys[Config.Ghost.exitKeybind]
+local scareKey = keys[Config.Ghost.abilities.scare.keybind]
+local offer, request, appearance
+local restoringAppearance, deferredAppearance
+local isGhost, stopping, restoring = false, false, false
+local otherGhosts, visibility = {}, {}
+local recovered = 0
 
----@type GhostState
-local ghostState = {
-    isGhost = false,
-    lastScareTime = 0,
-    activatedByDeath = false,
-    startTime = 0,
-    pendingRequest = false
-}
+Halloween.ClientGhost = function() return isGhost or request ~= nil or restoring end
 
-local otherGhostPlayers = {}
-local pendingGhostFromDeath = false
-local ghostRequestTimeout = nil
-
---- Checks if the local player is currently in ghost mode
----@return boolean True if player is a ghost, false otherwise
-local function IsGhost()
-    return ghostState.isGhost
-end
-
---- Requests ghost mode activation from server
---- Waits for server approval before enabling ghost mode
---- Includes timeout handling if server doesn't respond
----@param fromDeath boolean Whether ghost mode was activated from death
----@return nil
-local function RequestGhostMode(fromDeath)
-    if ghostState.isGhost or ghostState.pendingRequest then return end
-
-    ghostState.pendingRequest = true
-    ghostState.activatedByDeath = fromDeath or false
-
-    -- Request ghost mode from server
-    TriggerServerEvent(Events.REQUEST_GHOST_MODE, 'ghost')
-
-    -- Set timeout in case server doesn't respond
-    ghostRequestTimeout = ESX.SetTimeout(Config.Ghost.security.requestTimeout, function()
-        if ghostState.pendingRequest then
-            ghostState.pendingRequest = false
-            ghostState.activatedByDeath = false
-            print('^3[ESX Halloween] Ghost mode request timed out^7')
-        end
-    end)
-end
-
---- Enables ghost mode after server approval
---- Changes model to zombie, applies transparency (30% alpha)
---- Disables combat, increases speed by 1.5x, shows ghost HUD
---- Automatically exits after Config.Ghost.maxDuration or manual X key press
----@param fromDeath boolean Whether ghost mode was activated from death
----@return boolean success True if ghost mode was enabled successfully
-local function EnableGhostMode(fromDeath)
-    if ghostState.isGhost then return false end
-
-    -- Clear timeout if exists
-    if ghostRequestTimeout then
-        ESX.ClearTimeout(ghostRequestTimeout)
-        ghostRequestTimeout = nil
-    end
-
-    ghostState.pendingRequest = false
-    ghostState.activatedByDeath = fromDeath or false
-
-    if fromDeath then
-        TriggerEvent('esx_ambulancejob:revive')
-        Wait(500)
-
-        local playerPed = PlayerPedId()
-        ClearPedTasks(playerPed)
-        FreezeEntityPosition(playerPed, false)
-        SetEntityInvincible(playerPed, false)
-
-        Wait(100)
-    end
-
-    local model = GetHashKey(Config.Ghost.pedModel)
-
-    RequestModel(model)
-    local startTime = GetGameTimer()
-    while not HasModelLoaded(model) do
-        Wait(100)
-        if GetGameTimer() - startTime > 10000 then -- 10 second timeout
-            print('^1[ESX Halloween] Failed to load ghost model: ' .. Config.Ghost.pedModel .. '^7')
-            -- Rollback state
-            ghostState.activatedByDeath = false
-            return false
-        end
-    end
-
-    SetPlayerModel(PlayerId(), model)
-    SetModelAsNoLongerNeeded(model)
-
-    local playerPed = PlayerPedId()
-    ghostState.isGhost = true
-    ghostState.lastScareTime = 0
-    ghostState.startTime = GetGameTimer()
-
-    SetEntityAlpha(playerPed, Config.Ghost.visibility.alpha, false)
-    SetPedCanRagdoll(playerPed, false)
-    SetEntityInvincible(playerPed, true)
-    SetPlayerInvincible(PlayerId(), true)
-
-    SetRunSprintMultiplierForPlayer(PlayerId(), Config.Ghost.movement.speedMultiplier)
-
-    SendNUIMessage({
-        type = 'showGhostHUD',
-        maxDuration = Config.Ghost.maxDuration,
-        exitKey = Config.Ghost.exitKeybind,
-        scareKey = Config.Ghost.abilities.scare.keybind
-    })
-
-    -- Start Ghost Control Thread (only runs while player is a ghost)
-    CreateThread(function()
-        while ghostState.isGhost do
-            Wait(0) -- Must be 0 for DisableControlAction to work
-
-            -- GHOST CONTROL DISABLING (every frame)
-            DisableControlAction(0, 24, true)   -- Attack
-            DisableControlAction(0, 25, true)   -- Aim
-            DisableControlAction(0, 140, true)  -- Melee light attack
-            DisableControlAction(0, 141, true)  -- Melee heavy attack
-            DisableControlAction(0, 142, true)  -- Melee alternate attack
-
-            -- Check exit keybind
-            if IsControlJustPressed(0, exitKey) then
-                DisableGhostMode()
-                break
-            end
-
-            -- Check scare keybind
-            if Config.Ghost.abilities.scare.enabled and IsControlJustPressed(0, scareKey) then
-                local currentTime = GetGameTimer()
-                if currentTime - ghostState.lastScareTime >= Config.Ghost.abilities.scare.cooldown then
-                    local playerPed = PlayerPedId()
-                    local playerCoords = GetEntityCoords(playerPed)
-                    local closestPlayer, closestDistance = ESX.Game.GetClosestPlayer(playerCoords)
-
-                    if closestPlayer ~= -1 and closestDistance and closestDistance <= Config.Ghost.abilities.scare.range then
-                        local targetId = GetPlayerServerId(closestPlayer)
-                        TriggerServerEvent(Events.TRIGGER_SCARE, targetId)
-                        ghostState.lastScareTime = currentTime
-                    end
-                end
-            end
-        end
-    end)
-
-    -- Start Ghost Duration Check Thread (only runs while player is a ghost)
-    CreateThread(function()
-        while ghostState.isGhost do
-            Wait(1000)
-
-            if ghostState.startTime > 0 then
-                local elapsed = GetGameTimer() - ghostState.startTime
-                if elapsed >= Config.Ghost.maxDuration then
-                    DisableGhostMode()
-                    break
-                end
-            end
-        end
-    end)
-
-    return true
-end
-
---- Disables ghost mode and restores player to normal state
---- Handles screen fade, skin restoration, and optional hospital respawn
---- Re-enables combat controls and resets speed multiplier to 1.0
---- If activated by death, triggers hospital respawn via RespawnAtHospital()
---- Notifies server of ghost mode exit via event
----@return nil
-local function DisableGhostMode()
-    if not ghostState.isGhost then return end
-
-    local wasActivatedByDeath = ghostState.activatedByDeath
-
-    -- Reset ghost state
-    ghostState.isGhost = false
-    ghostState.activatedByDeath = false
-    ghostState.startTime = 0
-
-    -- Reset player stats
-    SetRunSprintMultiplierForPlayer(PlayerId(), 1.0)
-    SetPlayerInvincible(PlayerId(), false)
-
-    -- Fade to black for smooth transition
-    FadeScreenOut()
-
-    -- Restore player model and skin
-    RestorePlayerSkin(function()
-        if wasActivatedByDeath then
-            -- Respawn at hospital with fade in
-            RespawnAtHospital()
-        else
-            -- Just fade back in at current location
-            FadeScreenIn()
-        end
-    end)
-
-    -- Notify server and hide UI
-    TriggerServerEvent(Events.EXIT_GHOST_MODE)
-    SendNUIMessage({
-        type = 'hideGhostHUD'
-    })
-end
-
--- Death handler
-AddEventHandler('esx:onPlayerDeath', function()
-    if not Config.Ghost.enabled then return end
-
-    if math.random(100) <= Config.Ghost.spawnChance then
-        ESX.SetTimeout(Config.Ghost.security.deathCooldown, function()
-            pendingGhostFromDeath = true
-            SetNuiFocus(true, true)
-            SendNUIMessage({
-                type = 'showGhostChoice'
-            })
-
-            -- Auto-clear focus after 30 seconds to prevent permanent input blocking
-            ESX.SetTimeout(30000, function()
-                if pendingGhostFromDeath then
-                    SetNuiFocus(false, false)
-                    pendingGhostFromDeath = false
-                    SendNUIMessage({ type = 'hideGhostChoice' })
-                end
-            end)
-        end)
-    end
-end)
-
--- Show ghost choice (admin command)
-RegisterNetEvent(Events.SHOW_GHOST_CHOICE)
-AddEventHandler(Events.SHOW_GHOST_CHOICE, function(forced)
-    -- Validate parameter type
-    if type(forced) ~= "boolean" then
-        forced = false
-    end
-
-    pendingGhostFromDeath = false
-    SetNuiFocus(true, true)
-    SendNUIMessage({
-        type = 'showGhostChoice',
-        forced = forced
-    })
-
-    -- Auto-clear focus after 30 seconds to prevent permanent input blocking
-    ESX.SetTimeout(30000, function()
-        SetNuiFocus(false, false)
-        SendNUIMessage({ type = 'hideGhostChoice' })
-    end)
-end)
-
--- Server response to ghost mode request
-RegisterNetEvent(Events.GHOST_MODE_RESPONSE)
-AddEventHandler(Events.GHOST_MODE_RESPONSE, function(approved, reason)
-    -- Validate parameter types
-    if type(approved) ~= "boolean" then
-        print('^1[ESX Halloween] Invalid ghost mode response^7')
-        return
-    end
-
-    if not ghostState.pendingRequest then return end
-
-    if approved then
-        local success = EnableGhostMode(ghostState.activatedByDeath)
-        if not success then
-            print('^1[ESX Halloween] Failed to enable ghost mode^7')
-        end
-    else
-        -- Request denied
-        ghostState.pendingRequest = false
-        ghostState.activatedByDeath = false
-
-        if ghostRequestTimeout then
-            ESX.ClearTimeout(ghostRequestTimeout)
-            ghostRequestTimeout = nil
-        end
-
-        if type(reason) == "string" then
-            print('^3[ESX Halloween] ' .. reason .. '^7')
-        end
-    end
-end)
-
--- NUI Callbacks
-RegisterNUICallback('ghostChoice', function(data, cb)
+local function hideChoice()
     SetNuiFocus(false, false)
+    SendNUIMessage({ type = 'hideGhostChoice' })
+end
 
-    -- Validate data
-    if type(data) ~= 'table' or not data.choice then
-        print('^1[ESX Halloween] Invalid ghost choice data^7')
-        cb('error')
-        return
+local function resetRemote(id)
+    local cached = visibility[id]
+    if cached and DoesEntityExist(cached.ped) then ResetEntityAlpha(cached.ped) end
+    visibility[id] = nil
+end
+
+local function disableGhost(notifyServer, immediate)
+    local previous = request
+    local saved = appearance or restoringAppearance or deferredAppearance
+    request, offer, appearance = nil, nil, nil
+    local wasGhost = isGhost
+    isGhost = false
+    hideChoice()
+    SendNUIMessage({ type = 'hideGhostHUD' })
+    if notifyServer and previous then TriggerServerEvent(Events.EXIT_GHOST_MODE, previous.token) end
+    if previous and previous.model then SetModelAsNoLongerNeeded(previous.model) end
+    if wasGhost and ESX.PlayerData.dead and not immediate then
+        deferredAppearance = saved
+        Halloween.ResetGhostStats()
+    elseif wasGhost or restoringAppearance or deferredAppearance then
+        deferredAppearance = nil
+        restoring = true
+        restoringAppearance = saved
+        Halloween.RestoreAppearance(saved, immediate)
+        restoringAppearance = nil
+        restoring = false
+    elseif saved then
+        SetModelAsNoLongerNeeded(saved.model)
     end
+end
 
-    if data.choice == 'ghost' then
-        RequestGhostMode(pendingGhostFromDeath)
-    end
-    pendingGhostFromDeath = false
-    cb('ok')
-end)
-
--- Cache keybinds
-local exitKey = KEYBIND_MAP[Config.Ghost.exitKeybind] or 73
-local scareKey = KEYBIND_MAP[Config.Ghost.abilities.scare.keybind] or 38
-
---- Ghost Visibility Thread
---- Updates alpha/visibility for other ghost players based on distance
---- Performance: Checks every 500ms, only when other ghosts exist
-CreateThread(function()
-    local visibilityRange = Config.Ghost.visibility.range
-    local visibilityAlpha = Config.Ghost.visibility.alpha
-
-    while true do
-        Wait(500)
-
-        local hasGhosts = next(otherGhostPlayers) ~= nil
-
-        if hasGhosts then
-            local playerPed = PlayerPedId()
-            local playerCoords = GetEntityCoords(playerPed)
-
-            for playerId in pairs(otherGhostPlayers) do
-                local targetPlayer = GetPlayerFromServerId(playerId)
-
-                if targetPlayer ~= -1 then
-                    local targetPed = GetPlayerPed(targetPlayer)
-                    if targetPed ~= 0 then
-                        local targetCoords = GetEntityCoords(targetPed)
-                        local distance = #(playerCoords - targetCoords)
-
-                        if distance <= visibilityRange then
-                            SetEntityAlpha(targetPed, visibilityAlpha, false)
-                        else
-                            SetEntityAlpha(targetPed, 0, false)
-                        end
-                    end
-                end
-            end
-        end
-    end
-end)
-
--- Receive scare effect
-RegisterNetEvent(Events.RECEIVE_SCARE)
-AddEventHandler(Events.RECEIVE_SCARE, function(ghostName)
-    -- Validate parameter type
-    if type(ghostName) ~= "string" then
-        ghostName = "A ghost"
-    end
-
-    SendNUIMessage({
-        type = 'triggerJumpscare',
-        soundVolume = Config.Ghost.abilities.scare.effects.soundVolume
-    })
-
-    if Config.Ghost.abilities.scare.effects.screenShake then
-        ShakeGameplayCam('SMALL_EXPLOSION_SHAKE', 0.3)
-    end
-
-    if Config.Ghost.abilities.scare.effects.sound then
-        PlaySoundFrontend(-1, 'CHECKPOINT_MISSED', 'HUD_MINI_GAME_SOUNDSET', true)
-    end
-
-    -- Show notification AFTER jumpscare effect (2 second delay)
-    ESX.SetTimeout(2000, function()
+function Halloween.SyncGhostUI()
+    if offer then
+        SendNUIMessage({ type = 'showGhostChoice', duration = math.max(0, offer.duration - Halloween.Elapsed(offer.started)) })
+    elseif isGhost and request then
         SendNUIMessage({
-            type = 'showNotification',
-            size = 'large',
-            position = 'bottom-center',
-            header = 'You were scared!',
-            description = ghostName .. ' has haunted you as a ghost!',
-            duration = 4000
+            type = 'showGhostHUD', maxDuration = math.max(0, request.duration - Halloween.Elapsed(request.started)),
+            exitKey = Config.Ghost.exitKeybind,
+            scareKey = Config.Ghost.abilities.scare.enabled and Config.Ghost.abilities.scare.keybind or ''
         })
-    end)
-end)
+    end
+end
 
--- Sync ghost states from server
-RegisterNetEvent(Events.SYNC_GHOST_STATE)
-AddEventHandler(Events.SYNC_GHOST_STATE, function(playerId, isGhost)
-    -- Validate parameter types
-    if type(playerId) ~= "number" or type(isGhost) ~= "boolean" then
-        print('^1[ESX Halloween] Invalid sync ghost state data^7')
+local function cancelled(entry) return stopping or request ~= entry end
+
+local function prepare(entry)
+    if entry.fromDeath then
+        local started = GetGameTimer()
+        while recovered <= entry.recovered and not cancelled(entry)
+            and Halloween.Elapsed(started) < Config.Ghost.security.requestTimeout do Wait(50) end
+        if cancelled(entry) then return end
+        if recovered <= entry.recovered then disableGhost(true, false); return end
+        Wait(100)
+    end
+    if cancelled(entry) then return end
+    local model = GetHashKey(Config.Ghost.pedModel)
+    if not IsModelInCdimage(model) or not IsModelValid(model) or not IsModelAPed(model) then
+        disableGhost(true, false); return
+    end
+    RequestModel(model)
+    local started = GetGameTimer()
+    while not HasModelLoaded(model) and not cancelled(entry) and Halloween.Elapsed(started) < 8000 do Wait(50) end
+    if cancelled(entry) then SetModelAsNoLongerNeeded(model); return end
+    if not HasModelLoaded(model) then
+        SetModelAsNoLongerNeeded(model); disableGhost(true, false); return
+    end
+    local saved = Halloween.CaptureAppearance(function() return cancelled(entry) end)
+    if cancelled(entry) then
+        if saved then SetModelAsNoLongerNeeded(saved.model) end
+        SetModelAsNoLongerNeeded(model)
         return
     end
+    if not saved then SetModelAsNoLongerNeeded(model); disableGhost(true, false); return end
+    appearance, entry.model = saved, model
+    entry.phase, entry.started = 'prepared', GetGameTimer()
+    TriggerServerEvent(Events.GHOST_READY, entry.token, 'prepared')
+end
 
-    if isGhost then
-        otherGhostPlayers[playerId] = true
-    else
-        otherGhostPlayers[playerId] = nil
+local function enableGhost(entry, duration)
+    if request ~= entry or not appearance or not HasModelLoaded(entry.model) then return end
+    SetPlayerModel(PlayerId(), entry.model)
+    SetModelAsNoLongerNeeded(entry.model)
+    local ped = PlayerPedId()
+    SetEntityAlpha(ped, Config.Ghost.visibility.alpha, false)
+    SetPedCanRagdoll(ped, false)
+    SetEntityInvincible(ped, true)
+    SetPlayerInvincible(PlayerId(), true)
+    SetRunSprintMultiplierForPlayer(PlayerId(), Config.Ghost.movement.speedMultiplier)
+    isGhost, entry.phase, entry.started, entry.duration = true, 'active', GetGameTimer(), duration
+    TriggerServerEvent(Events.GHOST_READY, entry.token, 'active')
+    SendNUIMessage({
+        type = 'showGhostHUD', maxDuration = duration, exitKey = Config.Ghost.exitKeybind,
+        scareKey = Config.Ghost.abilities.scare.enabled and Config.Ghost.abilities.scare.keybind or ''
+    })
+end
+
+RegisterNetEvent(Events.SHOW_GHOST_CHOICE, function(forced, data)
+    if source ~= 65535 or not Config.Ghost.enabled or Halloween.ClientGhost()
+        or type(data) ~= 'table' or not Halloween.IsInteger(data.token, 1, 9007199254740991)
+        or type(data.fromDeath) ~= 'boolean' or not Halloween.IsNumber(data.duration) then return end
+    offer = { token = data.token, fromDeath = data.fromDeath, started = GetGameTimer(), duration = data.duration }
+    SetNuiFocus(true, true)
+    SendNUIMessage({ type = 'showGhostChoice', forced = forced == true, duration = data.duration })
+end)
+
+RegisterNUICallback('ghostChoice', function(data, cb)
+    local selected = offer
+    hideChoice()
+    offer = nil
+    if not selected or type(data) ~= 'table' or (data.choice ~= 'ghost' and data.choice ~= 'normal') then
+        cb({ ok = false, error = 'Choice expired' }); return
+    end
+    if data.choice == 'ghost' then
+        request = {
+            token = selected.token, fromDeath = selected.fromDeath, phase = 'requested',
+            started = GetGameTimer(), recovered = recovered
+        }
+    end
+    TriggerServerEvent(Events.REQUEST_GHOST_MODE, data.choice, selected.token)
+    cb({ ok = true })
+end)
+
+RegisterNetEvent(Events.GHOST_MODE_RESPONSE, function(approved, reason, data)
+    if source ~= 65535 or type(approved) ~= 'boolean' or type(data) ~= 'table'
+        or not Halloween.IsInteger(data.token, 1, 9007199254740991) then return end
+    if not request and approved and (data.phase == 'respawn' or data.phase == 'preparing')
+        and not isGhost and not stopping and not restoring then
+        -- Trusted server exports can initiate preparation without an NUI choice.
+        request = { token = data.token, fromDeath = data.fromDeath == true, recovered = recovered }
+    end
+    local entry = request
+    if not entry or entry.token ~= data.token then return end
+    if not approved then
+        disableGhost(false, false)
+        if type(reason) == 'string' then ESX.ShowNotification(reason) end
+        return
+    end
+    if data.phase == 'respawn' and entry.phase ~= 'respawn' then
+        entry.phase, entry.started = 'respawn', GetGameTimer()
+        ESX.TriggerServerCallback('esx_death:respawn', function(result)
+            if result and result.ok then
+                TriggerServerEvent(Events.GHOST_READY, entry.token, 'respawned')
+            end
+            if request == entry and (not result or not result.ok) then
+                disableGhost(true, false)
+                ESX.ShowNotification('Normal respawn is unavailable. Try again from the death screen.')
+            end
+        end)
+    elseif data.phase == 'preparing' and entry.phase ~= 'preparing' and entry.phase ~= 'prepared' then
+        entry.phase, entry.started = 'preparing', GetGameTimer()
+        CreateThread(function() prepare(entry) end)
+    elseif data.phase == 'active' and entry.phase == 'prepared'
+        and Halloween.IsNumber(data.duration) and data.duration > 0 and data.duration <= Config.Ghost.maxDuration then
+        enableGhost(entry, data.duration)
     end
 end)
 
---- Ghost visibility thread
---- Note: Ghost visibility is now handled by master thread in main_thread.lua
+RegisterNetEvent(Events.FORCE_GHOST_EXIT, function(token)
+    if source ~= 65535 then return end
+    if (request and request.token == token) or (offer and offer.token == token) then disableGhost(false, false) end
+end)
 
--- Cleanup on resource stop
-AddEventHandler('onResourceStop', function(resourceName)
-    if GetCurrentResourceName() ~= resourceName then return end
+AddEventHandler('esx_death:recovered', function()
+    if deferredAppearance then
+        local saved = deferredAppearance
+        deferredAppearance = nil
+        saved.health, saved.armor = GetEntityHealth(PlayerPedId()), GetPedArmour(PlayerPedId())
+        restoring, restoringAppearance = true, saved
+        Halloween.RestoreAppearance(saved, false)
+        restoring, restoringAppearance = false, nil
+    end
+    recovered = recovered + 1
+end)
 
-    SetNuiFocus(false, false)
+CreateThread(function()
+    while true do
+        if isGhost then
+            Wait(0)
+            DisablePlayerFiring(PlayerId(), true)
+            for _, control in ipairs({ 24, 25, 140, 141, 142, 23, 75 }) do DisableControlAction(0, control, true) end
+            local entry = request
+            if IsControlJustPressed(0, exitKey) then
+                disableGhost(true, false)
+            elseif entry and Config.Ghost.abilities.scare.enabled and IsControlJustPressed(0, scareKey)
+                and (not entry.lastScare or Halloween.Elapsed(entry.lastScare) >= Config.Ghost.abilities.scare.cooldown) then
+                local coords = GetEntityCoords(PlayerPedId())
+                local target, distance = ESX.Game.GetClosestPlayer(coords)
+                if target ~= -1 and distance and distance <= Config.Ghost.abilities.scare.range then
+                    TriggerServerEvent(Events.TRIGGER_SCARE, GetPlayerServerId(target))
+                    entry.lastScare = GetGameTimer()
+                end
+            end
+        else
+            Wait(500)
+        end
+    end
+end)
 
-    -- Reset all ghost players alpha
-    for playerId in pairs(otherGhostPlayers) do
-        local targetPlayer = GetPlayerFromServerId(playerId)
-        if targetPlayer ~= -1 then
-            local targetPed = GetPlayerPed(targetPlayer)
-            if targetPed ~= 0 then
-                SetEntityAlpha(targetPed, 255, false)
+CreateThread(function()
+    while true do
+        Wait(250)
+        if offer and Halloween.Elapsed(offer.started) >= offer.duration then
+            TriggerServerEvent(Events.EXIT_GHOST_MODE, offer.token)
+            offer = nil
+            hideChoice()
+        end
+        local entry = request
+        if entry then
+            local timeout = isGhost and entry.duration or Config.Ghost.security.requestTimeout
+            if Halloween.Elapsed(entry.started) >= timeout then disableGhost(true, false) end
+        end
+    end
+end)
+
+RegisterNetEvent(Events.SYNC_GHOST_STATE, function(id, enabled)
+    if source ~= 65535 or not Halloween.IsInteger(id, 1, 65534) or type(enabled) ~= 'boolean'
+        or id == GetPlayerServerId(PlayerId()) then return end
+    if enabled then otherGhosts[id] = true else otherGhosts[id] = nil; resetRemote(id) end
+end)
+
+RegisterNetEvent(Events.GHOST_SNAPSHOT, function(ids)
+    if source ~= 65535 or type(ids) ~= 'table' then return end
+    local latest = {}
+    for _, id in ipairs(ids) do
+        if Halloween.IsInteger(id, 1, 65534) and id ~= GetPlayerServerId(PlayerId()) then latest[id] = true end
+    end
+    for id in pairs(otherGhosts) do if not latest[id] then resetRemote(id) end end
+    otherGhosts = latest
+end)
+
+CreateThread(function()
+    while true do
+        Wait(next(otherGhosts) and 500 or 1000)
+        local coords = GetEntityCoords(PlayerPedId())
+        for id in pairs(otherGhosts) do
+            local player = GetPlayerFromServerId(id)
+            if player ~= -1 then
+                local ped = GetPlayerPed(player)
+                if ped ~= 0 and DoesEntityExist(ped) then
+                    local alpha = #(coords - GetEntityCoords(ped)) <= Config.Ghost.visibility.range
+                        and Config.Ghost.visibility.alpha or 0
+                    local cached = visibility[id]
+                    if not cached or cached.ped ~= ped or cached.alpha ~= alpha then
+                        if cached and cached.ped ~= ped then resetRemote(id) end
+                        SetEntityAlpha(ped, alpha, false)
+                        visibility[id] = { ped = ped, alpha = alpha }
+                    end
+                end
+            else
+                resetRemote(id)
             end
         end
     end
+end)
 
-    if ghostState.isGhost then
-        DisableGhostMode()
-    end
+RegisterNetEvent(Events.RECEIVE_SCARE, function(name)
+    if source ~= 65535 or type(name) ~= 'string' then return end
+    local effect = Config.Ghost.abilities.scare.effects
+    SendNUIMessage({
+        type = 'triggerJumpscare', soundVolume = effect.sound and effect.soundVolume or 0,
+        duration = effect.duration
+    })
+    if effect.screenShake then ShakeGameplayCam('SMALL_EXPLOSION_SHAKE', 0.3) end
+    SendNUIMessage({
+        type = 'showNotification', size = 'large', position = 'bottom-center',
+        header = 'You were scared!', description = name:sub(1, 100) .. ' has haunted you!', duration = 4000
+    })
+end)
 
-    -- Clear timeouts
-    if ghostRequestTimeout then
-        ESX.ClearTimeout(ghostRequestTimeout)
-    end
+AddEventHandler('esx:onPlayerLogout', function()
+    disableGhost(true, true)
+    for id in pairs(otherGhosts) do resetRemote(id) end
+    otherGhosts = {}
+end)
+
+AddEventHandler('onResourceStop', function(resource)
+    if resource ~= GetCurrentResourceName() then return end
+    stopping = true
+    disableGhost(false, true)
+    DoScreenFadeIn(0)
+    for id in pairs(otherGhosts) do resetRemote(id) end
 end)

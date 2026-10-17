@@ -1,206 +1,84 @@
-# ESX Halloween Event
+# ESX Halloween Event 2.1
 
-Dead players don't have to stay dead. This FiveM/ESX resource adds a ghost respawn system that lets players come back as haunting specters with the ability to terrify the living. Built for performance, security, and fully configurable.
+Ghost mode and shared trick-or-treat rounds for this ESX Legacy installation.
 
-## What This Does
+## Requirements
 
-When a player dies, there's a chance they'll be offered a choice: respawn normally, or come back as a ghost. Choose the spectral path and you'll get increased speed, partial invisibility, and the ability to scare nearby players with jump scares. Ghosts can roam for up to 10 minutes before automatically respawning, or they can exit ghost mode whenever they want.
+- The local ESX core with session-bound xPlayer methods (`isCurrent`).
+- `esx_death` with its normal respawn callback and server lifecycle events.
+- `skinchanger` and OneSync.
+- Reward items registered in the active ESX or ox_inventory catalog.
 
-The resource also includes a flexible notification system with Halloween theming, perfect for event-specific messages and alerts.
+Add `ensure esx_halloween` after the dependencies. The compiled UI is included; Node.js is only needed to rebuild it.
 
-## Ghost System Breakdown
+## Ghost lifecycle
 
-**The Basics**
-Configure spawn chances, ghost duration, visibility range, and movement speed through a straightforward config file. Ghosts use a zombie ped model by default but this can be changed to any model you prefer.
+A verified `esx_death:stateChanged` server event records a death candidate. Once normal respawn becomes available, the server performs one probability roll and can offer a short-lived choice.
 
-**Visibility Mechanics**
-Ghosts aren't fully transparent. They appear at 30% opacity to players within 25 meters, but become completely invisible beyond that range. This creates an effective balance between spookiness and gameplay clarity.
+Accepting a death offer invokes the existing `esx_death:respawn` callback. Its waiting period, fines, removal of possessions and hospital selection remain authoritative. Halloween waits for that successful recovery before preparing the ghost model. Ghost mode therefore begins **after normal hospital respawn**, rather than temporarily bypassing death penalties and trying to apply them later.
 
-**Movement & Abilities**
-Ghost players move 50% faster than normal and can trigger a scare ability using the E key (configurable). The scare has a 30-second cooldown and affects all players within 10 meters, triggering screen shake, sounds, and a brief jumpscare visual effect. When scared, players receive a notification showing which ghost haunted them. Ghosts cannot use weapons or vehicles.
+An administrator can use `/ghost [player_id]` to offer the mode to a player. The console must specify a target. Dead targets must still satisfy normal respawn eligibility.
 
-**Admin Controls**
-Admins can force the ghost choice dialog on any player using `/ghost [player_id]`. This is useful for events or testing. Permission is tied to ESX groups defined in the config.
+The server reserves a ghost slot during preparation, confirms activation and expires the state after `Ghost.maxDuration`. Preparation failure, disconnect, logout, leaving the configured routing bucket or expiration releases the slot. A cancelled request does not prevent an already-authorized normal respawn from completing.
 
-## Installation
+The client restores appearance, sprint multiplier, health/armor and the ESX loadout on exit. Death-related cleanup is coordinated with `esx_death`. Vehicle entry/exit, firing and melee controls are disabled while the mode is active.
 
-Standard resource installation applies here:
+## Shared houses
 
-1. Drop the `esx_halloween` folder into your server's resources directory
-2. Add `ensure esx_halloween` to your server.cfg
-3. Edit `config.lua` to match your preferences
-4. Restart the server
+There are still **12 shared opportunities per round by default**, not 12 per player. Each house is consumed once across the configured event bucket.
 
-## Configuration
+- `roundDurationMinutes`: round duration.
+- `roundFrequencyMinutes`: pause after a round finishes.
+- A round also ends when all selected houses are consumed.
+- `/startround`: administrator/console starts an idle round.
+- `/resetcooldowns`: administrator/console replaces the current round with a new round ID. It is refused while inventory delivery is in progress.
 
-Everything meaningful can be adjusted in `config.lua`:
+Players start an interaction near a house and wait the configured duration. The server issues a session-bound collection ticket, checks distance again and reserves the house before calling the inventory backend.
 
-```lua
-Config = {
-    Ghost = {
-        enabled = true,
-        spawnChance = 20,              -- 20% chance on death
-        pedModel = 's_m_y_zombie_01',  -- Ped model for ghost
-        maxDuration = 600000,          -- 10 minutes
+The reward is fixed for that house for the whole round. Full inventories or failed attempts cannot reroll it. Amounts come directly from `rewards.*.amount`: the common default is **3 medikits**, not 3 multiplied by 3. The legacy `candyPerDoor` multiplier has been removed.
 
-        visibility = {
-            range = 25.0,              -- Visibility range in meters
-            alpha = 77                 -- Opacity (0-255)
-        },
+Explicit inventory failure with no mutation allows another attempt at the same reward. Ambiguous errors or partial writes consume the house and emit a diagnostic, preventing a potentially paid house from being reopened. An administrator should inspect that delivery before compensating a player.
 
-        movement = {
-            speedMultiplier = 1.5      -- 1.5x speed
-        },
+Trick damage is a bounded, nonfatal client effect from a server-authorized collection. A cheating client may ignore visual/health effects; house consumption and inventory rewards remain server decisions.
 
-        abilities = {
-            scare = {
-                enabled = true,
-                cooldown = 30000,      -- 30 seconds
-                range = 10.0,          -- 10 meters
-                keybind = 'E',
-                effects = {
-                    screenShake = true,
-                    sound = true,
-                    duration = 3000    -- 3 seconds
-                }
-            }
-        }
-    },
+## Configuration and performance
 
-    AdminGroups = {
-        'admin',
-        'superadmin'
-    }
-}
-```
+`Config.RoutingBucket` restricts gameplay to one bucket (default 0). Ghost victims must be alive in that same bucket. Dead players and pending/active ghosts cannot collect rewards.
 
-The spawn chance determines how likely a player is to get the ghost option after death. Duration controls the maximum time as a ghost. Visibility settings affect how ghosts appear to other players. Movement multiplier adjusts ghost speed.
+Configuration is normalized synchronously on both sides. Invalid house/reward definitions disable trick-or-treat. Missing catalog items disable that feature with a clear startup message; Halloween does not create items or silently substitute rewards.
 
-## Commands
+NPCs are local, appear only near the player and are removed when a house is consumed or the player leaves the area. Model loading is bounded and cancellable. Snapshots reconcile late joins and bucket changes without creating duplicate interaction loops.
 
-**`/ghost [player_id]`** (Admin Only)
-Triggers the ghost choice dialog. Without an ID, it targets yourself. With an ID, it targets that player. Requires admin or superadmin group membership.
+Network progress is sent on changes and periodically (default 15 seconds); clients run their own countdown. The required per-frame control disabling runs only while ghost mode is active. UI notifications and particle animations are bounded and clean up their timers.
 
-```
-/ghost          # Show choice for yourself
-/ghost 5        # Show choice for player ID 5
-```
+Travel checks reject implausibly fast movement between completed collections. This resource does not replace a server-wide anticheat or guarantee that all replicated movement is legitimate.
 
-## Using Notifications
+## Persistence
 
-The notification system can be triggered from any Lua code:
+Halloween adds **no SQL schema or direct DML**. Inventories are persisted by their existing backend, and death/respawn persistence belongs to `esx_death`.
+
+Round state and consumed houses remain in memory. Restarting the resource starts a new schedule. There is no cross-resource database transaction guaranteeing exactly-once delivery across a process crash or a broken inventory adapter. This is separate from the tested protection against concurrent/replayed collection events.
+
+## Server exports
 
 ```lua
-exports['esx_halloween']:showNotification({
-    size = 'small',
-    position = 'top-right',
-    header = 'Item Received',
-    description = 'You found a Halloween candy!',
-    duration = 5000
-})
+exports.esx_halloween:IsPlayerGhost(playerId)
+exports.esx_halloween:SetPlayerGhost(playerId, true)
+exports.esx_halloween:SetPlayerGhost(playerId, false)
 ```
 
-Notifications support small and large sizes, multiple positioning options (top-left, top-right, top-center, bottom-center), and queue-based display so they don't overlap. Check `EXPORTS.md` for complete export documentation.
+`IsPlayerGhost` includes pending reservations, so other resources can block interactions during preparation. `SetPlayerGhost(true)` starts an asynchronous, server-authorized preparation; it returns whether initiation was accepted, not whether the client has finished loading its model. Dead players still use normal respawn. These exports are trusted server integrations, not network events.
 
-## How Ghost Mode Works
+Client notifications retain the existing `exports.esx_halloween:showNotification(data)` API. Text is rendered as escaped Svelte text nodes.
 
-**Activation Sequence**
-Player dies → system rolls spawn chance → if successful, choice dialog appears → player selects ghost or normal respawn → client requests ghost mode from server → server validates and approves/denies request → client enables ghost mode after server approval.
+## Validation
 
-This request-response pattern prevents exploits and ensures proper server-side validation of all ghost mode activations.
+The offline Lua suite runs the actual resource code with deterministic FiveM/ESX stubs, including exported xPlayer table copies, delayed inventory calls and reconnects. It requires Node.js and Fengari:
 
-**While Ghosting**
-Movement speed increases by 50%. Opacity is set to 30% for nearby players. The scare ability becomes available on E key with a 30-second cooldown. Weapons and vehicles are disabled. A HUD displays remaining time and provides an exit button.
-
-When a ghost uses the scare ability, the target player sees a jumpscare effect and receives a notification 2 seconds later showing which ghost scared them.
-
-**Ending Ghost Mode**
-Either the 10-minute timer expires and the player auto-respawns, or the player presses X (configurable) to exit ghost mode early.
-
-## Theme Integration
-
-This resource respects ESX UI theme convars, so it will automatically match your server's color scheme:
-
-- `esx:ui:primaryColor`
-- `esx:ui:secondaryColor`
-- `esx:ui:backgroundColor`
-- `esx:ui:accentColor`
-- `esx:ui:logoUrl`
-
-Colors apply automatically on resource start without requiring manual configuration.
-
-## Technical Notes
-
-**Requirements**
-ESX Legacy framework, FiveM server with `use_fxv2_oal` support, Lua 5.4.
-
-**Performance Optimizations**
-Event-driven architecture means no constant loops. Visibility checks use adaptive intervals: 500ms when ghosts are active, 2000ms when idle. Control disabling runs every frame (Wait(0)) as required by native functions. Model loading has a 10-second timeout. These performance values are hardcoded for optimal balance between responsiveness and resource usage.
-
-**Security Features**
-- All ghost mode requests require server-side validation
-- Request-response pattern with 5-second timeout prevents client-side exploits
-- Cooldown system prevents spam (60s ghost request, 30s scare ability)
-- Maximum concurrent ghost limit (configurable, default 10)
-- Scare range validation on server-side
-- Input sanitization prevents XSS attacks in notifications
-- Parameter validation on all exports
-
-**ESX Compliance**
-No async code in net events. `use_fxv2_oal 'yes'` is enabled. ESX theme convars are supported. Type definitions are included for better development experience.
-
-**File Structure**
-```
-esx_halloween/
-├── fxmanifest.lua           # Resource manifest
-├── config.lua               # Configuration
-├── types.lua                # Lua type definitions
-├── README.md                # This file
-├── EXPORTS.md               # Export documentation
-├── shared/
-│   └── events.lua          # Centralized event constants
-├── client/
-│   ├── main.lua            # Notification system
-│   ├── ghost.lua           # Ghost system logic
-│   ├── respawn.lua         # Respawn handling
-│   └── convars.lua         # ESX theme support
-├── server/
-│   ├── main.lua            # Server initialization
-│   ├── ghost.lua           # Ghost state sync & validation
-│   ├── commands.lua        # Admin commands
-│   └── config_validator.lua # Config validation on start
-└── web/
-    ├── build/              # Production build
-    └── src/                # Svelte 5 source code
+```text
+node tests/security.cjs /absolute/path/to/fengari
 ```
 
-## Building the UI
+For the UI, run `npm ci`, `npm run check` and `npm run build` in `web`. The build replaces `web/build`.
 
-If you modify the Svelte source:
-
-```bash
-cd web
-npm install
-npm run build
-```
-
-The build output goes to `web/build` and is automatically loaded by the resource.
-
-## Troubleshooting
-
-**Ghost choice not appearing after death**
-Check that `Config.Ghost.enabled` is set to true and that spawn chance is above 0. Console errors will indicate if something else is wrong.
-
-**UI elements not rendering**
-Verify the resource is actually started with `ensure esx_halloween` in your server.cfg. Check that the `web/build` folder exists and contains the UI files. Browser console (F8) will show any client-side errors.
-
-**Admin command rejected**
-Confirm your ESX group is listed in `Config.AdminGroups`. Player IDs must be valid online players. Permission errors will show in chat.
-
-## License
-
-Open source and free to modify. Use it however you need.
-
-## Development Notes
-
-Built for ESX Legacy with modern best practices. Event-driven architecture keeps performance high. Optimized for production servers but easy to extend for custom features.
+Before deployment, verify with actual FiveM clients: normal death/respawn penalties, admin activation, model restoration, inventory capacity, shared-house competition, another routing bucket, resource restart and NPC placement. The automated suite does not emulate GTA rendering, OneSync replication or real server load.

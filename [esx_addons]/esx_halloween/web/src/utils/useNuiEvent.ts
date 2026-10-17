@@ -23,6 +23,7 @@ export function useNuiEvent<T = unknown>(
   handler: NuiEventHandler<T>
 ): void {
   const eventListener = (event: MessageEvent<NuiMessage<T>>) => {
+    if (!event.data || typeof event.data !== 'object' || typeof event.data.type !== 'string') return;
     const { type, ...data } = event.data;
 
     if (type === eventType) {

@@ -1,5 +1,5 @@
 <script lang="ts">
-let { visible = $bindable(false), soundVolume = $bindable(0.8) } = $props();
+let { visible = $bindable(false), soundVolume = 0.8, duration = 3000 } = $props();
 
 let timeoutId: number | null = null;
 let audio: HTMLAudioElement | null = null;
@@ -7,12 +7,12 @@ let audio: HTMLAudioElement | null = null;
 $effect(() => {
     if (visible) {
         audio = new Audio('./assets/scream.wav');
-        audio.volume = soundVolume;
+        audio.volume = Math.max(0, Math.min(1, soundVolume));
         audio.play().catch(err => console.error('Jumpscare sound error:', err));
 
         timeoutId = window.setTimeout(() => {
             visible = false;
-        }, 2000);
+        }, Math.max(500, Math.min(10000, duration)));
     }
 
     return () => {

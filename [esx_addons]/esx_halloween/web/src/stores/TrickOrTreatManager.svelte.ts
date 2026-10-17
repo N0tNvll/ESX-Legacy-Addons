@@ -48,9 +48,9 @@ class TrickOrTreatManager {
    * @param total - Total houses available in this round
    * @param duration - Round duration in milliseconds
    */
-  startRound(total: number, duration: number): void {
+  startRound(total: number, duration: number, current: number = 0): void {
     this.state.hudVisible = true;
-    this.state.currentHouses = 0;
+    this.state.currentHouses = current;
     this.state.totalHouses = total;
     this.state.timeRemaining = duration;
   }

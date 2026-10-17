@@ -1,53 +1,20 @@
 <script lang="ts">
-import { ghostManager } from '../stores/GhostManager.svelte';
 import { fetchNui } from '../utils/fetchNui';
-
-let { visible = $bindable(false), forced = $bindable(false) } = $props();
-
-let countdown = $state(15);
-let intervalId: number | null = null;
-
-// Manage countdown interval lifecycle - cleanup properly on all state changes
+let { visible = $bindable(false), forced = false, duration = 30000 } = $props();
+let countdown = $state(0);
 $effect(() => {
-    // Cleanup any existing interval first
-    if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-    }
-
-    // Only start countdown if visible and not forced
-    if (visible && !forced) {
-        countdown = 15;
-        intervalId = window.setInterval(() => {
-            countdown--;
-            if (countdown <= 0) {
-                if (intervalId) {
-                    clearInterval(intervalId);
-                    intervalId = null;
-                }
-                handleChoice('normal');
-            }
-        }, 1000);
-    }
-
-    // Cleanup on unmount or when dependencies change
-    return () => {
-        if (intervalId) {
-            clearInterval(intervalId);
-            intervalId = null;
-        }
-    };
+    if (!visible) return;
+    const deadline = performance.now() + duration;
+    countdown = Math.ceil(duration / 1000);
+    const interval = window.setInterval(() => {
+        countdown = Math.max(0, Math.ceil((deadline - performance.now()) / 1000));
+        if (countdown === 0) handleChoice('normal');
+    }, 250);
+    return () => clearInterval(interval);
 });
-
 function handleChoice(choice: 'ghost' | 'normal') {
-    // Clean up interval before closing
-    if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-    }
-
-    fetchNui('ghostChoice', { choice });
     visible = false;
+    void fetchNui('ghostChoice', { choice }).catch(error => console.error(error));
 }
 </script>
 
@@ -59,14 +26,14 @@ function handleChoice(choice: 'ghost' | 'normal') {
         </div>
 
         <h2>Spooky Opportunity!</h2>
-        <p>You have a chance to respawn as a ghost and haunt the living...</p>
+        <p>Become a ghost for a limited time and haunt nearby players.</p>
 
         <div class="buttons">
             <button class="btn btn-ghost" onclick={() => handleChoice('ghost')}>
                 Become a Ghost
             </button>
             <button class="btn btn-normal" onclick={() => handleChoice('normal')}>
-                Respawn Normally
+                Continue normally
             </button>
         </div>
 

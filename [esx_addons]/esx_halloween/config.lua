@@ -1,5 +1,7 @@
----@type GhostConfig
+---@type HalloweenConfig
 Config = {
+    -- Gameplay is restricted to this routing bucket.
+    RoutingBucket = 0,
     Ghost = {
         enabled = true,
         spawnChance = 20,
@@ -13,7 +15,7 @@ Config = {
         },
 
         movement = {
-            speedMultiplier = 1.5 -- 1.5x normal speed
+            speedMultiplier = 1.49 -- GTA's supported sprint multiplier limit
         },
 
         abilities = {
@@ -36,7 +38,8 @@ Config = {
             ghostRequestCooldown = 60000, -- 60 seconds between ghost mode requests
             maxConcurrentGhosts = 10, -- Maximum number of ghosts at once
             deathCooldown = 2000, -- 2 seconds after death before showing ghost choice
-            requestTimeout = 5000 -- 5 seconds timeout for ghost mode request response
+            requestTimeout = 15000, -- Model preparation / activation timeout
+            offerTimeout = 30000 -- One-use server offer expires after 30 seconds
         }
     },
 
@@ -49,9 +52,5 @@ Config = {
         'superadmin'
     },
 
-    -- Hospital respawn points (used when exiting ghost mode after death)
-    RespawnPoints = {
-        {coords = vector3(341.0, -1397.3, 32.5), heading = 48.5}, -- Central Los Santos
-        {coords = vector3(1836.03, 3670.99, 34.28), heading = 296.06} -- Sandy Shores
-    }
+    -- esx_death owns hospital selection, waiting periods and death penalties.
 }

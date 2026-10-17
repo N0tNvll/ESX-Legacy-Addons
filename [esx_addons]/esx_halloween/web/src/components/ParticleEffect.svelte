@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
+  let frameId: number | null = null;
+  let lastFrame = 0;
   /**
    * Particle Effect Component
    * Generic particle system for visual effects
@@ -64,7 +67,7 @@
   ): void {
     const config = PARTICLE_CONFIG[type];
 
-    for (let i = 0; i < config.count; i++) {
+    for (let i = 0; i < config.count && particles.length < 96; i++) {
       // Randomize angle for spreading effect
       const angle = (Math.random() * Math.PI * 2);
       const speed = config.speed + Math.random() * 1;
@@ -90,20 +93,24 @@
   /**
    * Animation loop - update particles each frame
    */
-  function updateParticles(): void {
+  function updateParticles(now: number): void {
+    frameId = null;
+    const elapsed = lastFrame ? Math.min(50, now - lastFrame) : 16;
+    lastFrame = now;
+    const step = elapsed / 16;
     particles = particles.filter((p) => {
-      p.lifetime += 16; // ~60fps
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += 0.1; // Gravity
+      p.lifetime += elapsed; // ~60fps
+      p.x += p.vx * step;
+      p.y += p.vy * step;
+      p.vy += 0.1 * step; // Gravity
       p.opacity = Math.max(0, 1 - p.lifetime / p.maxLifetime);
-      p.rotation += 5;
+      p.rotation += 5 * step;
 
       return p.lifetime < p.maxLifetime;
     });
 
     if (particles.length > 0) {
-      requestAnimationFrame(updateParticles);
+      frameId = requestAnimationFrame(updateParticles);
     }
   }
 
@@ -116,15 +123,19 @@
     y?: number
   ): void {
     spawn(type, x, y);
-    updateParticles();
+    if (frameId === null) { lastFrame = 0; frameId = requestAnimationFrame(updateParticles); }
   }
 
   /**
    * Clear all particles (cleanup)
    */
   export function clear(): void {
+    if (frameId !== null) cancelAnimationFrame(frameId);
+    frameId = null;
+    lastFrame = 0;
     particles = [];
   }
+  onDestroy(clear);
 </script>
 
 <!-- Particle container -->

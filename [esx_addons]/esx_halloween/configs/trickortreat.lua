@@ -5,14 +5,15 @@ TrickOrTreatConfig = {
 	---Enable/disable the trick-or-treat event feature
 	enabled = true,
 
-	---Frequency of trick-or-treat rounds in minutes
+	---Pause between rounds, independent of round duration
 	roundFrequencyMinutes = 5,
+	roundDurationMinutes = 5,
+	progressSyncInterval = 15000,
+	npcSpawnDistance = 60.0,
+	npcDespawnDistance = 80.0,
 
 	---Number of random houses selected per round
 	doorsPerRound = 12,
-
-	---Amount of candy collected per door per round
-	candyPerDoor = 3,
 
 	---Notification display settings
 	notifications = {
@@ -50,6 +51,7 @@ TrickOrTreatConfig = {
 		trick = {
 			chance = 15, -- 15% chance
 			effects = { 'jumpscare', 'small_damage' },
+			damage = 10,
 		},
 	},
 
@@ -57,6 +59,12 @@ TrickOrTreatConfig = {
 	interaction = {
 		---Maximum distance to interact with house/NPC
 		distance = 2.0,
+		tolerance = 0.5,
+		duration = 1500,
+		requestTimeout = 7000,
+		minimumTravelSeconds = 2,
+		maxTravelSpeed = 120.0,
+		travelAllowance = 30.0,
 		---Keybind for interaction (38 = E key)
 		key = 38,
 	},

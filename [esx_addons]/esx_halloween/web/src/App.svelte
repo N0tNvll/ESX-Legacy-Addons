@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { useNuiEvent } from './utils/useNuiEvent';
   import { fetchNui } from './utils/fetchNui';
   import type { NotificationData } from './types/nui';
@@ -53,9 +53,11 @@
     notificationManager.show(data);
   });
 
-  useNuiEvent<{ forced?: boolean }>('showGhostChoice', (data) => {
-    ghostManager.showChoice(data?.forced || false);
+  useNuiEvent<{ forced?: boolean; duration?: number }>('showGhostChoice', (data) => {
+    ghostManager.showChoice(data?.forced ?? false, data?.duration ?? 30000);
   });
+  useNuiEvent('hideGhostChoice', () => ghostManager.hideChoice());
+  onDestroy(() => { notificationManager.clearAll(); soundManager.unloadAll(); });
 
   useNuiEvent<{ maxDuration: number; exitKey: string; scareKey: string }>('showGhostHUD', (data) => {
     ghostManager.showHUD(data.maxDuration, data.exitKey, data.scareKey || 'E');
@@ -65,8 +67,8 @@
     ghostManager.hideHUD();
   });
 
-  useNuiEvent<{ soundVolume?: number }>('triggerJumpscare', (data) => {
-    ghostManager.triggerJumpscare(data?.soundVolume || 0.8);
+  useNuiEvent<{ soundVolume?: number; duration?: number }>('triggerJumpscare', (data) => {
+    ghostManager.triggerJumpscare(data?.soundVolume ?? 0.8, data?.duration ?? 3000);
   });
 
   /**
@@ -75,9 +77,8 @@
    * =================================================================
    */
 
-  useNuiEvent<{ totalHouses: number; timeRemaining: number }>('trickOrTreatRoundStart', (data) => {
-    trickOrTreatManager.startRound(data.totalHouses, data.timeRemaining);
-    soundManager.play('trick-success');
+  useNuiEvent<{ totalHouses: number; timeRemaining: number; currentHouses?: number }>('trickOrTreatRoundStart', (data) => {
+    trickOrTreatManager.startRound(data.totalHouses, data.timeRemaining, data.currentHouses ?? 0);
   });
 
   useNuiEvent<{ collected: number; totalHouses: number }>('trickOrTreatRoundEnd', (data) => {
@@ -110,9 +111,9 @@
 <NotificationContainer />
 
 <!-- Ghost Features (Halloween Base) -->
-<GhostChoice bind:visible={ghostManager.state.choiceVisible} bind:forced={ghostManager.state.forced} />
+<GhostChoice bind:visible={ghostManager.state.choiceVisible} forced={ghostManager.state.forced} duration={ghostManager.state.choiceDuration} />
 <GhostHUD bind:visible={ghostManager.state.hudVisible} bind:maxDuration={ghostManager.state.maxDuration} bind:exitKey={ghostManager.state.exitKey} bind:scareKey={ghostManager.state.scareKey} />
-<JumpscareEffect bind:visible={ghostManager.state.jumpscareVisible} bind:soundVolume={ghostManager.state.soundVolume} />
+<JumpscareEffect bind:visible={ghostManager.state.jumpscareVisible} soundVolume={ghostManager.state.soundVolume} duration={ghostManager.state.jumpscareDuration} />
 
 <!-- Trick-or-Treat Features -->
 <TrickOrTreatHUD

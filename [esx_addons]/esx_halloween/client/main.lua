@@ -8,11 +8,8 @@ local function SanitizeString(input)
     end
 
     local sanitized = input
-    sanitized = string.gsub(sanitized, "<", "&lt;")
-    sanitized = string.gsub(sanitized, ">", "&gt;")
-    sanitized = string.gsub(sanitized, '"', "&quot;")
-    sanitized = string.gsub(sanitized, "'", "&#39;")
-    sanitized = string.gsub(sanitized, "&", "&amp;")
+    -- Svelte renders text nodes; HTML encoding here would display literal entities.
+    sanitized = string.gsub(sanitized, '%c', ' ')
 
     -- Limit length to prevent spam
     if #sanitized > 500 then
@@ -75,7 +72,7 @@ local function ShowNotification(data)
 
     -- Validate duration
     local duration = tonumber(data.duration) or 5000
-    if duration < 1000 or duration > 30000 then
+    if not Halloween.IsNumber(duration) or duration < 1000 or duration > 30000 then
         duration = 5000
     end
 
@@ -90,3 +87,15 @@ local function ShowNotification(data)
 end
 
 exports('showNotification', ShowNotification)
+
+AddEventHandler('esx:playerLoaded', function()
+    ESX.SetTimeout(1000, function() TriggerServerEvent(Events.REQUEST_SNAPSHOT) end)
+end)
+
+-- Reconcile bucket changes and late joins without restarting entities or threads.
+CreateThread(function()
+    while true do
+        Wait(15000)
+        if ESX.PlayerLoaded then TriggerServerEvent(Events.REQUEST_SNAPSHOT) end
+    end
+end)

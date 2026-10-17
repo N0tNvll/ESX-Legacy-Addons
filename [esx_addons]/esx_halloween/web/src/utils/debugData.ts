@@ -28,8 +28,8 @@ export function debugData<T = unknown>(
 
   setTimeout(() => {
     const message: NuiMessage<T> = {
-      action,
-      data,
+      ...(typeof data === 'object' && data !== null ? data : {}),
+      type: action,
     };
 
     window.dispatchEvent(

@@ -20,4 +20,9 @@ RegisterNUICallback('ready', function(data, cb)
         ok = true,
         data = colors
     })
+    ESX.SetTimeout(0, function()
+        if Halloween.SyncGhostUI then Halloween.SyncGhostUI() end
+        if Halloween.SyncRoundUI then Halloween.SyncRoundUI() end
+        TriggerServerEvent(Events.REQUEST_SNAPSHOT)
+    end)
 end)
