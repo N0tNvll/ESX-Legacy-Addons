@@ -31,6 +31,7 @@
 
 ---@class TrickOrTreatConfig
 ---@field enabled boolean
+---@field autoRegisterItems boolean Create missing native ESX reward items at startup
 ---@field roundFrequencyMinutes number Pause after a completed round
 ---@field roundDurationMinutes number
 ---@field doorsPerRound integer Shared, not per-player

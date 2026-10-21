@@ -23,5 +23,5 @@ Events = {
     HOUSE_INTERACT_RESPONSE = 'esx_halloween:houseInteractResponse',
     HOUSE_COLLECT_RESPONSE = 'esx_halloween:houseCollectResponse',
     HOUSE_STATE_SYNC = 'esx_halloween:houseStateSync',
-    TRIGGER_TRICK = 'esx_halloween:triggerTrick'
+    TRIGGER_TRICK = 'esx_halloween:triggerTrick',
 }

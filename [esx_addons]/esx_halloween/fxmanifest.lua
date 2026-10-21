@@ -8,7 +8,7 @@ version '2.1.0'
 ui_page 'web/build/index.html'
 
 files {
-    'web/build/**/*'
+    'web/build/**/*',
 }
 
 shared_script '@es_extended/imports.lua'
@@ -18,7 +18,7 @@ shared_scripts {
     'types.lua',
     'configs/trickortreat.lua',
     'config.lua',
-    'shared/config.lua'
+    'shared/config.lua',
 }
 
 client_scripts {
@@ -26,7 +26,7 @@ client_scripts {
     'client/respawn.lua',
     'client/ghost.lua',
     'client/trickortreat.lua',
-    'client/main.lua'
+    'client/main.lua',
 }
 
 server_scripts {
@@ -35,12 +35,12 @@ server_scripts {
     'server/main.lua',
     'server/ghost.lua',
     'server/trickortreat.lua',
-    'server/commands.lua'
+    'server/commands.lua',
 }
 
 dependencies {
     'es_extended',
     'esx_death',
     'skinchanger',
-    '/onesync'
+    '/onesync',
 }

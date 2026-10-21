@@ -11,11 +11,11 @@ Config = {
 
         visibility = {
             range = 25.0, -- Distance in meters
-            alpha = 77 -- ~30% opacity (0-255)
+            alpha = 77, -- ~30% opacity (0-255)
         },
 
         movement = {
-            speedMultiplier = 1.49 -- GTA's supported sprint multiplier limit
+            speedMultiplier = 1.49, -- GTA's supported sprint multiplier limit
         },
 
         abilities = {
@@ -28,9 +28,9 @@ Config = {
                     screenShake = true,
                     sound = true,
                     soundVolume = 0.8,
-                    duration = 3000 -- 3 seconds in milliseconds
-                }
-            }
+                    duration = 3000, -- 3 seconds in milliseconds
+                },
+            },
         },
 
         -- Security & anti-abuse settings
@@ -39,8 +39,8 @@ Config = {
             maxConcurrentGhosts = 10, -- Maximum number of ghosts at once
             deathCooldown = 2000, -- 2 seconds after death before showing ghost choice
             requestTimeout = 15000, -- Model preparation / activation timeout
-            offerTimeout = 30000 -- One-use server offer expires after 30 seconds
-        }
+            offerTimeout = 30000, -- One-use server offer expires after 30 seconds
+        },
     },
 
     -- Trick-or-Treat event configuration (loaded via shared_scripts)
@@ -49,7 +49,7 @@ Config = {
     -- Admin permissions for /ghost command
     AdminGroups = {
         'admin',
-        'superadmin'
+        'superadmin',
     },
 
     -- esx_death owns hospital selection, waiting periods and death penalties.

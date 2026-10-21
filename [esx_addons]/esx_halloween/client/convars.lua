@@ -8,7 +8,7 @@ local function GetESXThemeColors()
         secondary = GetConvar('esx:ui:secondaryColor', '#1a1a1a'),
         background = GetConvar('esx:ui:backgroundColor', '#000000'),
         accent = GetConvar('esx:ui:accentColor', '#fb9b04'),
-        logoUrl = GetConvar('esx:ui:logoUrl', '')
+        logoUrl = GetConvar('esx:ui:logoUrl', ''),
     }
 end
 
@@ -16,13 +16,21 @@ end
 --- Prevents race conditions by letting frontend fetch when ready
 RegisterNUICallback('ready', function(data, cb)
     local colors = GetESXThemeColors()
+
     cb({
         ok = true,
-        data = colors
+        data = colors,
     })
+
     ESX.SetTimeout(0, function()
-        if Halloween.SyncGhostUI then Halloween.SyncGhostUI() end
-        if Halloween.SyncRoundUI then Halloween.SyncRoundUI() end
+        if Halloween.SyncGhostUI then
+            Halloween.SyncGhostUI()
+        end
+
+        if Halloween.SyncRoundUI then
+            Halloween.SyncRoundUI()
+        end
+
         TriggerServerEvent(Events.REQUEST_SNAPSHOT)
     end)
 end)
