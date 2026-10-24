@@ -1,0 +1,283 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
+
+:root {
+    --u: clamp(0.72px, 0.0787vh, 1.1px);
+    --primary: #fb9b04;
+    --primary-rgb: 251, 155, 4;
+    --bg-rgb: 22, 22, 22;
+    --secondary-rgb: 37, 37, 37;
+    --accent-rgb: 56, 56, 56;
+    --stroke: rgba(255, 255, 255, 0.10);
+    --text: #ffffff;
+    --muted: rgba(255, 255, 255, 0.55);
+    --grade-regular: #c9c9c9;
+    --grade-plus: #2f6fe0;
+    --grade-premium: #d63a3a;
+    --grade-diesel: #2fa45a;
+    --grade-electric: #22b8cf;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: transparent;
+    color: var(--text);
+    font-family: "Poppins", Arial, sans-serif;
+    user-select: none;
+}
+
+body.preview {
+    background: linear-gradient(145deg, #07111c 0%, #101821 48%, #070b10 100%);
+}
+
+[hidden] {
+    display: none !important;
+}
+
+button {
+    font: inherit;
+    color: inherit;
+    border: 0;
+    cursor: pointer;
+}
+
+.label {
+    color: var(--muted);
+    font-size: calc(var(--u) * 11);
+    font-weight: 600;
+    letter-spacing: calc(var(--u) * 1.5);
+}
+
+.display {
+    display: block;
+    padding: calc(var(--u) * 8) calc(var(--u) * 12);
+    border: calc(var(--u) * 1) solid var(--stroke);
+    border-radius: calc(var(--u) * 6);
+    background: rgba(0, 0, 0, 0.45);
+    font-size: calc(var(--u) * 17);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.display.total {
+    color: var(--primary);
+    font-size: calc(var(--u) * 22);
+}
+
+.display.small {
+    font-size: calc(var(--u) * 14);
+}
+
+.pump {
+    position: absolute;
+    left: 50%;
+    bottom: calc(var(--u) * 60);
+    width: calc(var(--u) * 640);
+    max-width: calc(100vw - 32px);
+    transform: translateX(-50%);
+    overflow: hidden;
+    border: calc(var(--u) * 1) solid var(--stroke);
+    border-radius: calc(var(--u) * 12);
+    background: linear-gradient(160deg, rgba(var(--secondary-rgb), 0.96), rgba(var(--bg-rgb), 0.97));
+    box-shadow: 0 calc(var(--u) * 14) calc(var(--u) * 40) rgba(0, 0, 0, 0.45);
+}
+
+.pump-head {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    gap: calc(var(--u) * 16);
+    padding: calc(var(--u) * 16) calc(var(--u) * 20);
+    border-bottom: calc(var(--u) * 1) solid var(--stroke);
+}
+
+.pump-head .value {
+    display: block;
+    margin-top: calc(var(--u) * 4);
+    font-size: calc(var(--u) * 16);
+    font-weight: 600;
+}
+
+.gauge {
+    height: calc(var(--u) * 10);
+    margin-top: calc(var(--u) * 6);
+    overflow: hidden;
+    border-radius: calc(var(--u) * 5);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.gauge-fill {
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--primary);
+    transition: width 120ms linear;
+}
+
+.pump-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: calc(var(--u) * 20);
+    padding: calc(var(--u) * 18) calc(var(--u) * 20);
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--u) * 12);
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--u) * 6);
+}
+
+.stepper {
+    display: grid;
+    grid-template-columns: calc(var(--u) * 40) 1fr calc(var(--u) * 40);
+    gap: calc(var(--u) * 6);
+}
+
+.stepper button {
+    border-radius: calc(var(--u) * 6);
+    background: rgba(var(--accent-rgb), 0.9);
+    font-size: calc(var(--u) * 20);
+}
+
+.stepper .display {
+    text-align: center;
+}
+
+input[type="range"] {
+    width: 100%;
+    accent-color: var(--primary);
+}
+
+.account {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--u) * 6);
+    padding: calc(var(--u) * 10);
+    border: calc(var(--u) * 1) solid var(--stroke);
+    border-radius: calc(var(--u) * 8);
+    background: rgba(0, 0, 0, 0.2);
+    text-align: left;
+}
+
+.account.is-active {
+    border-color: var(--primary);
+    box-shadow: inset 0 0 0 calc(var(--u) * 1) rgba(var(--primary-rgb), 0.6);
+}
+
+.account .display {
+    border: 0;
+    padding: 0;
+    background: transparent;
+}
+
+.actions {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: calc(var(--u) * 8);
+    margin-top: auto;
+}
+
+.primary,
+.ghost {
+    padding: calc(var(--u) * 11);
+    border-radius: calc(var(--u) * 7);
+    font-size: calc(var(--u) * 13);
+    font-weight: 700;
+    letter-spacing: calc(var(--u) * 1);
+}
+
+.primary {
+    background: var(--primary);
+    color: #0c0c0c;
+}
+
+.primary:disabled,
+.stepper button:disabled,
+.ghost:disabled,
+#slider:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.ghost {
+    border: calc(var(--u) * 1) solid var(--stroke);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.ghost:hover,
+.stepper button:hover {
+    border-color: rgba(var(--primary-rgb), 0.8);
+    color: var(--primary);
+}
+
+.grades {
+    display: grid;
+    grid-auto-columns: 1fr;
+    grid-auto-flow: column;
+}
+
+.grade {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: calc(var(--u) * 10);
+    padding: calc(var(--u) * 12);
+    background: rgba(0, 0, 0, 0.35);
+    font-size: calc(var(--u) * 13);
+    font-weight: 600;
+    opacity: 0.55;
+    transition: opacity 120ms ease;
+}
+
+.grade:hover,
+.grade.is-active {
+    opacity: 1;
+}
+
+.grade .badge {
+    min-width: calc(var(--u) * 30);
+    padding: calc(var(--u) * 3) calc(var(--u) * 6);
+    border-radius: calc(var(--u) * 4);
+    background: var(--grade-color);
+    color: #0c0c0c;
+    font-weight: 700;
+    text-align: center;
+}
+
+.grade.is-active {
+    box-shadow: inset 0 calc(var(--u) * -3) 0 var(--grade-color);
+}
+
+.filling {
+    position: absolute;
+    left: 50%;
+    bottom: calc(var(--u) * 90);
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--u) * 6);
+    width: calc(var(--u) * 280);
+    padding: calc(var(--u) * 14) calc(var(--u) * 16);
+    transform: translateX(-50%);
+    border: calc(var(--u) * 1) solid var(--stroke);
+    border-radius: calc(var(--u) * 10);
+    background: rgba(var(--bg-rgb), 0.92);
+    text-align: center;
+}
+
+@media (max-height: 760px) {
+    .pump {
+        bottom: calc(var(--u) * 20);
+    }
+}

@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS `esx_fuel_vehicles` (
+    `plate` VARCHAR(12) NOT NULL PRIMARY KEY,
+    `mix` LONGTEXT NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `esx_fuel_stations` (
+    `id` INT NOT NULL PRIMARY KEY,
+    `stock` INT NOT NULL DEFAULT 0,
+    `price_multiplier` DECIMAL(4, 2) NOT NULL DEFAULT 1.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
