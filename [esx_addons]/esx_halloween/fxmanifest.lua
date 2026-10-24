@@ -39,6 +39,7 @@ server_scripts {
 }
 
 dependencies {
+    'esx_custom_props',
     'es_extended',
     'esx_death',
     'skinchanger',

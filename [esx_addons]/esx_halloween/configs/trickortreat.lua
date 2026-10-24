@@ -11,6 +11,9 @@ TrickOrTreatConfig = {
     roundFrequencyMinutes = 5,
     roundDurationMinutes = 5,
     progressSyncInterval = 15000,
+    ---Custom prop streamed by esx_custom_props (upstream PR #94)
+    pumpkinModel = 'esx_jackolantern',
+    ---Legacy option names retained for the pumpkin streaming distances
     npcSpawnDistance = 60.0,
     npcDespawnDistance = 80.0,
 
@@ -63,7 +66,7 @@ TrickOrTreatConfig = {
 
     ---Player interaction settings
     interaction = {
-        ---Maximum distance to interact with house/NPC
+        ---Maximum distance to loot a pumpkin at the house
         distance = 2.0,
         tolerance = 0.5,
         duration = 1500,
@@ -79,33 +82,33 @@ TrickOrTreatConfig = {
     ---These are real Los Santos residential locations from across the map
     houses = {
         -- Vinewood Hills (affluent area)
-        { coords = vec3(-174.35, 502.23, 137.42), heading = 45.0, pedModel = 'a_f_m_bevhills_01' },
-        { coords = vec3(-682.04, 592.09, 145.39), heading = 315.0, pedModel = 'a_m_m_business_01' },
-        { coords = vec3(-902.27, 694.09, 151.43), heading = 135.0, pedModel = 'a_f_m_business_02' },
+        { coords = vec3(-174.35, 502.23, 137.42), heading = 45.0 },
+        { coords = vec3(-682.04, 592.09, 145.39), heading = 315.0 },
+        { coords = vec3(-902.27, 694.09, 151.43), heading = 135.0 },
         -- Rockford Hills (mansion area)
-        { coords = vec3(-1288.84, 439.82, 97.69), heading = 270.0, pedModel = 'a_m_y_business_01' },
-        { coords = vec3(-1405.81, 526.75, 123.83), heading = 90.0, pedModel = 'a_f_m_bevhills_02' },
-        { coords = vec3(-1578.23, 764.94, 189.57), heading = 0.0, pedModel = 'a_m_y_business_02' },
+        { coords = vec3(-1288.84, 439.82, 97.69), heading = 270.0 },
+        { coords = vec3(-1405.81, 526.75, 123.83), heading = 90.0 },
+        { coords = vec3(-1578.23, 764.94, 189.57), heading = 0.0 },
         -- West Vinewood (residential)
-        { coords = vec3(-1922.32, 166.09, 84.66), heading = 180.0, pedModel = 'a_f_y_business_01' },
-        { coords = vec3(-1965.46, 211.08, 86.80), heading = 45.0, pedModel = 'a_m_y_business_03' },
+        { coords = vec3(-1922.32, 166.09, 84.66), heading = 180.0 },
+        { coords = vec3(-1965.46, 211.08, 86.80), heading = 45.0 },
         -- Mirror Park (middle class)
-        { coords = vec3(1265.24, -647.03, 68.12), heading = 270.0, pedModel = 'a_f_m_eastsa_01' },
-        { coords = vec3(1010.47, -423.08, 65.35), heading = 135.0, pedModel = 'a_m_y_clubcust_01' },
+        { coords = vec3(1265.24, -647.03, 68.12), heading = 270.0 },
+        { coords = vec3(1010.47, -423.08, 65.35), heading = 135.0 },
         -- Del Perro Heights (beachside)
-        { coords = vec3(-1467.83, -538.98, 55.62), heading = 45.0, pedModel = 'a_f_y_business_02' },
-        { coords = vec3(-1529.51, -428.57, 35.60), heading = 315.0, pedModel = 'a_m_y_hipster_01' },
+        { coords = vec3(-1467.83, -538.98, 55.62), heading = 45.0 },
+        { coords = vec3(-1529.51, -428.57, 35.60), heading = 315.0 },
         -- Downtown (apartments)
-        { coords = vec3(-596.61, -282.36, 35.45), heading = 90.0, pedModel = 'a_f_y_hipster_01' },
-        { coords = vec3(-273.00, -957.37, 31.22), heading = 270.0, pedModel = 'a_m_y_hipster_02' },
+        { coords = vec3(-596.61, -282.36, 35.45), heading = 90.0 },
+        { coords = vec3(-273.00, -957.37, 31.22), heading = 270.0 },
         -- Grove Street (residential)
-        { coords = vec3(127.94, -1930.14, 21.38), heading = 180.0, pedModel = 'a_f_y_hipster_02' },
-        { coords = vec3(91.54, -1960.98, 20.75), heading = 0.0, pedModel = 'a_m_m_eastsa_01' },
+        { coords = vec3(127.94, -1930.14, 21.38), heading = 180.0 },
+        { coords = vec3(91.54, -1960.98, 20.75), heading = 0.0 },
         -- Sandy Shores (outer areas)
-        { coords = vec3(1661.15, 3819.82, 35.18), heading = 45.0, pedModel = 'a_f_y_hipster_03' },
-        { coords = vec3(1702.75, 4819.56, 42.06), heading = 315.0, pedModel = 'a_m_y_hipster_03' },
+        { coords = vec3(1661.15, 3819.82, 35.18), heading = 45.0 },
+        { coords = vec3(1702.75, 4819.56, 42.06), heading = 315.0 },
         -- Paleto Bay (rural)
-        { coords = vec3(-146.86, 6341.49, 31.49), heading = 135.0, pedModel = 'a_f_y_clubcust_02' },
-        { coords = vec3(-1291.01, -1439.87, 4.31), heading = 270.0, pedModel = 'a_m_y_clubcust_02'},
+        { coords = vec3(-146.86, 6341.49, 31.49), heading = 135.0 },
+        { coords = vec3(-1291.01, -1439.87, 4.31), heading = 270.0 },
     },
 }

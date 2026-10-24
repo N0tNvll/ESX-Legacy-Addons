@@ -121,6 +121,19 @@ number(treat, 'roundFrequencyMinutes', 5, 1, 1440)
 number(treat, 'roundDurationMinutes', 5, 1, 60)
 number(treat, 'doorsPerRound', 12, 1, 100, true)
 number(treat, 'progressSyncInterval', 15000, 5000, 60000, true)
+
+if
+    type(treat.pumpkinModel) ~= 'string'
+    or not treat.pumpkinModel:match('^[%w_]+$')
+    or #treat.pumpkinModel > 64
+then
+    if treat.pumpkinModel ~= nil then
+        warn('TrickOrTreat.pumpkinModel')
+    end
+
+    treat.pumpkinModel = 'esx_jackolantern'
+end
+
 number(treat, 'npcSpawnDistance', 60.0, 10, 150)
 number(
     treat,
@@ -182,9 +195,6 @@ for _, house in ipairs(houses) do
                     and math.abs(house.coords.z) < 5000
             )
             assert(Halloween.IsNumber(house.heading))
-            assert(
-                type(house.pedModel) == 'string' and #house.pedModel > 0 and #house.pedModel <= 64
-            )
             house.coords = vector3(house.coords.x, house.coords.y, house.coords.z)
         end)
 

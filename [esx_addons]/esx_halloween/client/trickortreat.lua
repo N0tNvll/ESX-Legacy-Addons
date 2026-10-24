@@ -1,24 +1,24 @@
 local settings = Config.TrickOrTreat
 local round, interaction, nearest
 local endedRound = 0
-local npcs, blips, loading, failures = {}, {}, {}, {}
+local pumpkins, blips, loading, failures = {}, {}, {}, {}
 local stopping = false
 
-local function deleteNPC(id)
-    local ped = npcs[id]
+local function deletePumpkin(id)
+    local object = pumpkins[id]
 
-    if ped and DoesEntityExist(ped) then
-        DeleteEntity(ped)
+    if object and DoesEntityExist(object) then
+        DeleteEntity(object)
     end
 
-    npcs[id], loading[id], failures[id] = nil, nil, nil
+    pumpkins[id], loading[id], failures[id] = nil, nil, nil
 end
 
 local function clear()
     round, interaction, nearest = nil, nil, nil
 
-    for id in pairs(npcs) do
-        deleteNPC(id)
+    for id in pairs(pumpkins) do
+        deletePumpkin(id)
     end
 
     loading, failures = {}, {}
@@ -49,11 +49,11 @@ function Halloween.SyncRoundUI()
     })
 end
 
-local function spawnNPC(id, state)
+local function spawnPumpkin(id, state)
     local house = settings.houses[id]
-    local model = GetHashKey(house.pedModel)
+    local model = GetHashKey(settings.pumpkinModel)
 
-    if not IsModelInCdimage(model) or not IsModelValid(model) or not IsModelAPed(model) then
+    if not IsModelInCdimage(model) or not IsModelValid(model) or IsModelAPed(model) then
         failures[id] = GetGameTimer()
         return
     end
@@ -103,22 +103,22 @@ local function spawnNPC(id, state)
         local found, groundZ =
             GetGroundZFor_3dCoord(house.coords.x, house.coords.y, house.coords.z + 5.0, false)
         local z = found and Halloween.IsNumber(groundZ) and groundZ or house.coords.z
-        local ped =
-            CreatePed(4, model, house.coords.x, house.coords.y, z, house.heading, false, false)
+        local object = CreateObject(model, house.coords.x, house.coords.y, z, false, false, false)
 
         loading[id] = nil
         SetModelAsNoLongerNeeded(model)
 
-        if ped == 0 then
+        if object == 0 then
             failures[id] = GetGameTimer()
             return
         end
 
-        SetEntityAsMissionEntity(ped, true, true)
-        SetBlockingOfNonTemporaryEvents(ped, true)
-        FreezeEntityPosition(ped, true)
-        SetEntityInvincible(ped, true)
-        npcs[id] = ped
+        SetEntityAsMissionEntity(object, true, true)
+        SetEntityHeading(object, house.heading)
+        PlaceObjectOnGroundProperly(object)
+        FreezeEntityPosition(object, true)
+        SetEntityInvincible(object, true)
+        pumpkins[id] = object
     end)
 end
 
@@ -170,7 +170,7 @@ local function sync(data)
         if not available[id] then
             RemoveBlip(blip)
             blips[id] = nil
-            deleteNPC(id)
+            deletePumpkin(id)
         end
     end
 
@@ -190,7 +190,7 @@ local function sync(data)
             SetBlipColour(blip, settings.blips.activeColor)
             SetBlipScale(blip, settings.blips.scale)
             BeginTextCommandSetBlipName('STRING')
-            AddTextComponentString('Trick-or-Treat House')
+            AddTextComponentString('Trick-or-Treat Pumpkin')
             EndTextCommandSetBlipName(blip)
             blips[id] = blip
         end
@@ -235,6 +235,8 @@ end)
 local function canInteract(id)
     return round
         and round.available[id]
+        and pumpkins[id]
+        and DoesEntityExist(pumpkins[id])
         and not ESX.PlayerData.dead
         and not IsEntityDead(PlayerPedId())
         and not Halloween.ClientGhost()
@@ -372,13 +374,13 @@ CreateThread(function()
 
                     if
                         distance <= settings.npcSpawnDistance
-                        and not npcs[id]
+                        and not pumpkins[id]
                         and not loading[id]
                         and (not failures[id] or Halloween.Elapsed(failures[id]) >= 10000)
                     then
-                        spawnNPC(id, state)
+                        spawnPumpkin(id, state)
                     elseif distance > settings.npcDespawnDistance then
-                        deleteNPC(id)
+                        deletePumpkin(id)
                     end
                 end
 
@@ -409,7 +411,7 @@ CreateThread(function()
             Wait(0)
             BeginTextCommandDisplayHelp('STRING')
             AddTextComponentString(
-                interaction and 'Collecting candy...' or 'Press ~INPUT_CONTEXT~ to collect candy'
+                interaction and 'Looting pumpkin...' or 'Press ~INPUT_CONTEXT~ to loot pumpkin'
             )
             EndTextCommandDisplayHelp(0)
 

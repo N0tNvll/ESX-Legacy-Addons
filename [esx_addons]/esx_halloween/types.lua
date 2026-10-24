@@ -36,6 +36,7 @@
 ---@field roundDurationMinutes number
 ---@field doorsPerRound integer Shared, not per-player
 ---@field progressSyncInterval integer
+---@field pumpkinModel string Lootable object model streamed by esx_custom_props
 ---@field npcSpawnDistance number
 ---@field npcDespawnDistance number
 ---@field houses HouseLocation[]
@@ -47,7 +48,6 @@
 ---@class HouseLocation
 ---@field coords vector3
 ---@field heading number
----@field pedModel string
 
 ---@class ThemeColors
 ---@field primary string
