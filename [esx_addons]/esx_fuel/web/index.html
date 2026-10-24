@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESX Fuel</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <main class="pump" id="pump" hidden>
+        <header class="pump-head">
+            <div class="pump-vehicle">
+                <span class="label" id="targetLabel" data-i18n="ui_vehicle_type">VEHICLE TAKES</span>
+                <span class="value" id="vehicleKind">Petrol</span>
+            </div>
+            <div class="pump-gauge">
+                <span class="label" data-i18n="ui_vehicle_fuel">VEHICLE FUEL</span>
+                <div class="gauge"><div class="gauge-fill" id="gaugeFill"></div></div>
+                <span class="value" id="vehicleLiters">0.0 / 0 L</span>
+            </div>
+        </header>
+
+        <section class="pump-body">
+            <div class="column">
+                <label class="field">
+                    <span class="label" data-i18n="ui_price_per_liter">PRICE PER LITER</span>
+                    <span class="display" id="pricePerLiter">$0.00</span>
+                </label>
+                <div class="field">
+                    <span class="label" data-i18n="ui_quantity">QUANTITY</span>
+                    <div class="stepper">
+                        <button type="button" id="minus" aria-label="-">−</button>
+                        <span class="display" id="quantity">0 L</span>
+                        <button type="button" id="plus" aria-label="+">+</button>
+                    </div>
+                    <input type="range" id="slider" min="0" max="0" step="1" value="0" />
+                    <button type="button" class="ghost" id="fillUp" data-i18n="ui_fill_up">FILL UP</button>
+                </div>
+                <div class="field" id="stockField" hidden>
+                    <span class="label" data-i18n="ui_station_stock">STATION STOCK</span>
+                    <span class="display" id="stock">0 L</span>
+                </div>
+                <div class="field">
+                    <span class="label" data-i18n="ui_total">TOTAL</span>
+                    <span class="display total" id="total">$0</span>
+                </div>
+            </div>
+
+            <div class="column">
+                <span class="label" data-i18n="ui_your_money">YOUR MONEY</span>
+                <button type="button" class="account" data-account="bank">
+                    <span class="label" data-i18n="ui_bank">BANK BALANCE</span>
+                    <span class="display" id="bank">$0</span>
+                </button>
+                <button type="button" class="account" data-account="money">
+                    <span class="label" data-i18n="ui_cash">CASH</span>
+                    <span class="display" id="cash">$0</span>
+                </button>
+                <div class="actions">
+                    <button type="button" class="ghost" id="cancel" data-i18n="ui_cancel">CANCEL</button>
+                    <button type="button" class="primary" id="confirm" data-i18n="ui_confirm">CONFIRM</button>
+                </div>
+            </div>
+        </section>
+
+        <nav class="grades" id="grades"></nav>
+    </main>
+
+    <section class="filling" id="filling" hidden>
+        <span class="label" data-i18n="ui_filling">FILLING</span>
+        <span class="display" id="fillLiters">0.0 / 0 L</span>
+        <div class="gauge"><div class="gauge-fill" id="fillGauge"></div></div>
+        <span class="display small" id="fillPrice">$0</span>
+    </section>
+
+    <script src="app.js"></script>
+</body>
+</html>
