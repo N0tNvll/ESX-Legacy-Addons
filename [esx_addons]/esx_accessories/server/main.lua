@@ -4,6 +4,7 @@
 ESXCatalog.awaitReady()
 
 local PendingAccessoryPurchases = {}
+local purchaseLimiter = xLib.rateLimiter({ capacity = 2, refill = 1, interval = 2000 })
 local ValidAccessories = {
 	ears = 'Ears',
 	mask = 'Mask',
@@ -31,12 +32,23 @@ local function isNearAccessoryShop(source, accessory)
 end
 
 local function beginAccessoryPurchase(source, accessory, account)
-	local xPlayer = ESX.GetPlayerFromId(source)
-	accessory = normalizeAccessory(accessory)
+    local xPlayer = ESX.GetPlayerFromId(source)
+    accessory = normalizeAccessory(accessory)
 
-	if not xPlayer or not accessory or not isNearAccessoryShop(source, accessory) then
-		return false
-	end
+    if not xPlayer or not accessory or not isNearAccessoryShop(source, accessory) then
+        return false
+    end
+
+    if not purchaseLimiter:consume(source) then
+        return false, 'busy'
+    end
+
+    local purchases = PendingAccessoryPurchases[source]
+    local pending = purchases and purchases[accessory]
+
+    if pending and pending.player == xPlayer and pending.expires >= GetGameTimer() then
+        return false, 'busy'
+    end
 
     local charged, failure =
         PaymentGateway.Charge(xPlayer, account, Config.Price, "Accessory Purchase")
@@ -44,11 +56,16 @@ local function beginAccessoryPurchase(source, accessory, account)
     if not charged then
         return false, failure
     end
-	PendingAccessoryPurchases[source] = PendingAccessoryPurchases[source] or {}
-	PendingAccessoryPurchases[source][accessory] = GetGameTimer() + (Config.PurchaseSessionDuration or 60000)
 
-	TriggerClientEvent('esx:showNotification', source, TranslateCap('you_paid', ESX.Math.GroupDigits(Config.Price)))
-	return true
+    PendingAccessoryPurchases[source] = purchases or {}
+    PendingAccessoryPurchases[source][accessory] = {
+        player = xPlayer,
+        expires = GetGameTimer() + (Config.PurchaseSessionDuration or 60000),
+    }
+
+    TriggerClientEvent('esx:showNotification', source,
+        TranslateCap('you_paid', ESX.Math.GroupDigits(Config.Price)))
+    return true
 end
 
 RegisterServerEvent('esx_accessories:pay')
@@ -58,27 +75,61 @@ end)
 
 RegisterServerEvent('esx_accessories:save')
 AddEventHandler('esx_accessories:save', function(skin, accessory)
-	local source = source
-	local xPlayer = ESX.Player(source)
-	accessory = normalizeAccessory(accessory)
+    local playerId = source
+    local player = ESX.GetPlayerFromId(playerId)
+    accessory = normalizeAccessory(accessory)
 
-	if not xPlayer or not accessory or type(skin) ~= 'table' or not isNearAccessoryShop(source, accessory) then return end
-	if not PendingAccessoryPurchases[source] or not PendingAccessoryPurchases[source][accessory] or PendingAccessoryPurchases[source][accessory] < GetGameTimer() then return end
+    if not player or not accessory or type(skin) ~= 'table' then
+        return
+    end
 
-	TriggerEvent('esx_datastore:getDataStore', 'user_' .. string.lower(accessory), xPlayer.getIdentifier(), function(store)
-		store.set('has' .. accessory, true)
+    local purchases = PendingAccessoryPurchases[playerId]
+    local pending = purchases and purchases[accessory]
 
-		local itemSkin = {}
-		local item1 = string.lower(accessory) .. '_1'
-		local item2 = string.lower(accessory) .. '_2'
-		if skin[item1] == nil or skin[item2] == nil then return end
+    if not pending or pending.player ~= player or pending.expires < GetGameTimer() then
+        return
+    end
 
-		itemSkin[item1] = skin[item1]
-		itemSkin[item2] = skin[item2]
+    if not player.isCurrent() or not isNearAccessoryShop(playerId, accessory) then
+        return
+    end
 
-		store.set('skin', itemSkin)
-		PendingAccessoryPurchases[source][accessory] = nil
-	end)
+    local name = string.lower(accessory)
+    local item1, item2 = name .. '_1', name .. '_2'
+    local minimum = accessory == 'Mask' and 0 or -1
+    local itemSkin = {}
+
+    for _, field in ipairs({ item1, item2 }) do
+        local value = skin[field]
+        local lowerBound = field == item1 and minimum or 0
+
+        if type(value) ~= 'number' or value ~= value or value % 1 ~= 0 then
+            return
+        end
+
+        if value < lowerBound or value > 4095 then
+            return
+        end
+
+        itemSkin[field] = value
+    end
+
+    purchases[accessory] = nil
+
+    local identifier = player.getIdentifier()
+
+    TriggerEvent('esx_datastore:getDataStore', 'user_' .. name, identifier, function(store)
+        if ESX.GetPlayerFromId(playerId) ~= player or not player.isCurrent() then
+            return
+        end
+
+        if not store then
+            return
+        end
+
+        store.set('skin', itemSkin)
+        store.set('has' .. accessory, true)
+    end)
 end)
 
 xLib.callback.registerCompat('esx_accessories:get', function(source, cb, accessory)

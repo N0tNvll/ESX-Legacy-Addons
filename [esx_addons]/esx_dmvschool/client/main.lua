@@ -22,35 +22,34 @@ function DrawMissionText(msg, time)
 	EndTextCommandPrint(time, true)
 end
 
-function StartTheoryTest()
-	CurrentTest = 'theory'
+function StartTheoryTest(exam)
+    CurrentTest = 'theory'
 
-	xLib.nui.send({
-		openQuestion = true
-	})
+    xLib.nui.send({
+        openQuestion = true,
+        questions = exam.questions,
+    })
 
-	xLib.timeout.setTimeout(200, function()
-		xLib.nui.focus(true, true)
-	end)
-
-
+    xLib.timeout.setTimeout(200, function()
+        xLib.nui.focus(true, true)
+    end)
 end
 
 function StopTheoryTest(success)
-	CurrentTest = nil
+    CurrentTest = nil
 
-	xLib.nui.send({
-		openQuestion = false
-	})
+    xLib.nui.send({
+        openQuestion = false
+    })
 
-	xLib.nui.focus(false)
+    xLib.nui.focus(false)
 
-	if success then
-		TriggerServerEvent('esx_dmvschool:addLicense', 'dmv')
-		ESX.ShowNotification(TranslateCap('passed_test'))
-	else
-		ESX.ShowNotification(TranslateCap('failed_test'))
-	end
+    if success then
+        ESX.ShowNotification(TranslateCap('passed_test'))
+    else
+        TriggerServerEvent('esx_dmvschool:cancelTest')
+        ESX.ShowNotification(TranslateCap('failed_test'))
+    end
 end
 
 function StartDriveTest(type)
@@ -74,16 +73,21 @@ function StartDriveTest(type)
 end
 
 function StopDriveTest(success)
-	if success then
-		TriggerServerEvent('esx_dmvschool:addLicense', CurrentTestType)
-		ESX.ShowNotification(TranslateCap('passed_test'))
-		ESX.ShowNotification(TranslateCap('driving_test_complete'))
-	else
-		ESX.ShowNotification(TranslateCap('failed_test'))
-	end
+    local testType = CurrentTestType
+    CurrentTest = nil
+    CurrentTestType = nil
 
-	CurrentTest     = nil
-	CurrentTestType = nil
+    if success then
+        success = xLib.callback.await('esx_dmvschool:finishDrive', false, testType) == true
+    end
+
+    if success then
+        ESX.ShowNotification(TranslateCap('passed_test'))
+        ESX.ShowNotification(TranslateCap('driving_test_complete'))
+    else
+        TriggerServerEvent('esx_dmvschool:cancelTest')
+        ESX.ShowNotification(TranslateCap('failed_test'))
+    end
 end
 
 function SetCurrentZoneType(type)
@@ -143,10 +147,10 @@ function OpenDMVSchoolMenu()
             PaymentGateway.Pay({
                 amount = Config.Prices.dmv,
                 title = TranslateCap('theory_test'),
-            }, 'esx_dmvschool:canYouPay', function(haveMoney, paymentFailure)
+            }, 'esx_dmvschool:canYouPay', function(haveMoney, paymentFailure, exam)
 				if haveMoney then
 					ESX.CloseContext()
-					StartTheoryTest()
+                    StartTheoryTest(exam)
 				else
                     PaymentGateway.NotifyFailure(
                         paymentFailure,
@@ -191,6 +195,16 @@ end)
 xLib.nui.register('kick', function()
 	StopTheoryTest(false)
 	return {}
+end)
+
+xLib.nui.register('submitTheory', function(data)
+    if CurrentTest ~= 'theory' then
+        return { passed = false }
+    end
+
+    local passed = xLib.callback.await('esx_dmvschool:finishTheory', false, data.answers)
+
+    return { passed = passed == true }
 end)
 
 AddEventHandler('esx_dmvschool:hasEnteredMarker', function(zone)
@@ -282,8 +296,18 @@ CreateThread(function()
 				end
 
 				if distance <= 3.0 then
-					Config.CheckPoints[nextCheckPoint].Action(playerPed, CurrentVehicle, SetCurrentZoneType)
-					CurrentCheckPoint = CurrentCheckPoint + 1
+                    local accepted = failedTest or xLib.callback.await(
+                        'esx_dmvschool:checkpoint', false, nextCheckPoint
+                    )
+
+                    if accepted then
+                        Config.CheckPoints[nextCheckPoint].Action(
+                            playerPed, CurrentVehicle, SetCurrentZoneType
+                        )
+                        CurrentCheckPoint = CurrentCheckPoint + 1
+                    else
+                        Wait(500)
+                    end
 				end
 			end
 		end
@@ -326,8 +350,9 @@ end)
 
 
 function TestFailedGoToLastCheckPoint()
-	CurrentCheckPoint = #Config.CheckPoints - 1
-	failedTest = true
+    TriggerServerEvent('esx_dmvschool:cancelTest')
+    CurrentCheckPoint = #Config.CheckPoints - 1
+    failedTest = true
 end
 
 -- Speed / Damage control

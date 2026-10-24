@@ -134,9 +134,7 @@ end
 ---@param paymentMethod string Payment method ('cash' or 'bank')
 ---@param amount number Amount to refund
 function RefundMoney(xPlayer, paymentMethod, amount)
-	if paymentMethod == 'cash' or paymentMethod == 'money' then
-		xPlayer.addMoney(amount, 'Shop Refund')
-	elseif paymentMethod == 'bank' then
-		xPlayer.addAccountMoney('bank', amount, 'Shop Refund')
-	end
+    local account = paymentMethod == 'cash' and 'money' or paymentMethod
+
+    return PaymentGateway.Refund(xPlayer, account, amount, 'Shop Refund')
 end

@@ -1,81 +1,92 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
+local activePurchases = {}
+
 ---@param source number Player source
 ---@param purchaseData table Purchase data from client
 ---@param zone string Shop zone
 ---@param cb function Callback function(success, message)
-function ProcessPurchase(source, purchaseData, zone, cb)
-	local isLimited, remainingMs = IsPlayerRateLimited(source)
-	if isLimited then
-		DebugPrint(_U('rate_limited_log', source, remainingMs))
-		cb(false, _U('rate_limited'))
-		return
-	end
+local function processPurchase(source, purchaseData, zone, cb)
+    local isLimited, remainingMs = IsPlayerRateLimited(source)
 
-	local xPlayer = ValidatePlayer(source)
-	if not xPlayer then
-		cb(false, _U('invalid_player', source))
-		return
-	end
+    if isLimited then
+        DebugPrint(_U('rate_limited_log', source, remainingMs))
+        cb(false, _U('rate_limited'))
+        return
+    end
 
-	if not Verify(purchaseData, 'table') then
-		cb(false, _U('invalid_items'))
-		return
-	end
+    local xPlayer = ValidatePlayer(source)
 
-	if not ValidateZone(zone, source) then
-		cb(false, _U('invalid_shop'))
-		return
-	end
+    if not xPlayer then
+        cb(false, _U('invalid_player', source))
+        return
+    end
 
-	if not ValidatePlayerDistance(source, zone) then
-		cb(false, _U('invalid_shop'))
-		return
-	end
+    if not Verify(purchaseData, 'table') then
+        cb(false, _U('invalid_items'))
+        return
+    end
 
-	local items = purchaseData.items
-	local clientTotal = purchaseData.total
-	local paymentMethod = purchaseData.paymentMethod
+    if not ValidateZone(zone, source) then
+        cb(false, _U('invalid_shop'))
+        return
+    end
 
-	if not ValidatePaymentMethod(paymentMethod, source) then
-		cb(false, _U('invalid_payment'))
-		return
-	end
+    if not ValidatePlayerDistance(source, zone) then
+        cb(false, _U('invalid_shop'))
+        return
+    end
 
-	local itemsValid, serverTotal, validatedItems = ValidateAndCalculateItems(items, zone, source)
-	if not itemsValid then
-		cb(false, _U('invalid_items'))
-		return
-	end
+    local items = purchaseData.items
+    local clientTotal = purchaseData.total
+    local paymentMethod = purchaseData.paymentMethod
 
-	if not ValidateTotal(serverTotal, clientTotal, source) then
-		cb(false, _U('price_mismatch'))
-		return
-	end
+    if not ValidatePaymentMethod(paymentMethod, source) then
+        cb(false, _U('invalid_payment'))
+        return
+    end
 
-	if not ValidateInventorySpace(source, validatedItems) then
-		local message = _U('inventory_full')
-		xPlayer.showNotification(message)
-		cb(false, message)
-		return
-	end
+    local itemsValid, serverTotal, validatedItems = ValidateAndCalculateItems(items, zone, source)
 
-	local actualTotal, actualTax = CalculateTax(xPlayer, serverTotal)
-	local hasEnough, missingAmount = CheckPlayerMoney(xPlayer, paymentMethod, actualTotal)
-	if not hasEnough then
-		local message = _U('not_enough_money', ESX.Math.GroupDigits(missingAmount))
-		xPlayer.showNotification(message)
-		cb(false, message)
-		return
-	end
+    if not itemsValid then
+        cb(false, _U('invalid_items'))
+        return
+    end
 
-	if not ValidateInventorySpaceFinal(source, validatedItems) then
-		local message = _U('inventory_full')
-		xPlayer.showNotification(message)
-		cb(false, message)
-		return
-	end
+    if not ValidateTotal(serverTotal, clientTotal, source) then
+        cb(false, _U('price_mismatch'))
+        return
+    end
+
+    if not ValidateInventorySpace(source, validatedItems) then
+        local message = _U('inventory_full')
+        xPlayer.showNotification(message)
+        cb(false, message)
+        return
+    end
+
+    local actualTotal, actualTax = CalculateTax(xPlayer, serverTotal)
+    local hasEnough, missingAmount = CheckPlayerMoney(xPlayer, paymentMethod, actualTotal)
+
+    if not hasEnough then
+        local message = _U('not_enough_money', ESX.Math.GroupDigits(missingAmount))
+        xPlayer.showNotification(message)
+        cb(false, message)
+        return
+    end
+
+    if not ValidateInventorySpaceFinal(source, validatedItems) then
+        local message = _U('inventory_full')
+        xPlayer.showNotification(message)
+        cb(false, message)
+        return
+    end
+
+    if ESX.GetPlayerFromId(source) ~= xPlayer or not xPlayer.isCurrent()
+        or not ValidatePlayerDistance(source, zone) then
+        return cb(false, _U('transaction_error'))
+    end
 
     local charged = DeductMoney(xPlayer, paymentMethod, actualTotal)
 
@@ -83,30 +94,69 @@ function ProcessPurchase(source, purchaseData, zone, cb)
         return cb(false, _U('transaction_error'))
     end
 
-	local itemsAdded = AddItemsToInventory(source, validatedItems)
-	if not itemsAdded then
-		DebugPrint(_U('critical_transaction', source))
-		RefundMoney(xPlayer, paymentMethod, actualTotal)
-		DebugPrint(('[^2INFO^7] Refunded ^5$%s^7 to player ^5%s^7 due to item add failure'):format(
-			ESX.Math.GroupDigits(actualTotal), source
-		))
-		cb(false, _U('transaction_error'))
-		return
-	end
+    local itemsAdded, recovered = AddItemsToInventory(source, validatedItems, xPlayer)
 
-	if actualTax > 0 then
-		DepositTaxToSociety(actualTax)
-	end
+    if not itemsAdded then
+        DebugPrint(_U('critical_transaction', source))
 
-	UpdatePurchaseTimestamp(source)
+        if recovered == true then
+            RefundMoney(xPlayer, paymentMethod, actualTotal)
+        else
+            print(('[esx_shops] Purchase requires review: %s, account=%s, total=%s, items=%s')
+                :format(xPlayer.getIdentifier(), paymentMethod, actualTotal,
+                    json.encode(validatedItems)))
+        end
 
-	local message
-	if IsJobTaxExempt(xPlayer) then
-		message = _U('purchase_success_tax_exempt', ESX.Math.GroupDigits(actualTotal))
-	else
-		message = _U('purchase_success', ESX.Math.GroupDigits(actualTotal))
-	end
+        cb(false, _U('transaction_error'))
+        return
+    end
 
-	xPlayer.showNotification(message)
-	cb(true, message)
+    if actualTax > 0 then
+        DepositTaxToSociety(actualTax)
+    end
+
+    UpdatePurchaseTimestamp(source)
+
+    local message
+
+    if IsJobTaxExempt(xPlayer) then
+        message = _U('purchase_success_tax_exempt', ESX.Math.GroupDigits(actualTotal))
+    else
+        message = _U('purchase_success', ESX.Math.GroupDigits(actualTotal))
+    end
+
+    xPlayer.showNotification(message)
+    cb(true, message)
+end
+
+function ProcessPurchase(source, purchaseData, zone, cb)
+    local player = ValidatePlayer(source)
+
+    if not player then
+        return cb(false, _U('transaction_error'))
+    end
+
+    local identifier = player.getIdentifier()
+
+    if activePurchases[identifier] or not player.beginAccountOperation() then
+        return cb(false, _U('transaction_error'))
+    end
+
+    activePurchases[identifier] = player
+
+    local response
+    local ok, failure = pcall(processPurchase, source, purchaseData, zone, function(...)
+        response = table.pack(...)
+    end)
+
+    activePurchases[identifier] = nil
+    player.endAccountOperation()
+
+    if not ok or not response then
+        print(('[esx_shops] Purchase requires review: %s, error=%s')
+            :format(identifier, tostring(failure)))
+        return cb(false, _U('transaction_error'))
+    end
+
+    cb(table.unpack(response, 1, response.n))
 end
