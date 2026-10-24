@@ -4,6 +4,18 @@
 PaymentGateway = {}
 
 if IsDuplicityVersion() then
+    local missingApiReported = false
+
+    local function isCallable(value)
+        if type(value) == 'function' then
+            return true
+        end
+
+        local metatable = type(value) == 'table' and getmetatable(value)
+
+        return type(metatable) == 'table' and type(metatable.__call) == 'function'
+    end
+
     function PaymentGateway.Charge(player, account, amount, reason)
         if account ~= 'money' and account ~= 'bank' then
             return false, 'invalid_account'
@@ -13,8 +25,26 @@ if IsDuplicityVersion() then
             return false, 'session_closing'
         end
 
+        if not isCallable(player.chargeAccount) or not isCallable(player.isCurrent) then
+            if not missingApiReported then
+                local message = '[%s] Payment unavailable: '
+                    .. 'es_extended player payment API is missing. '
+                    .. 'Deploy the updated es_extended with chargeAccount '
+                    .. 'and restart the full server to recreate player sessions.'
+
+                print(message:format(GetCurrentResourceName()))
+                missingApiReported = true
+            end
+
+            return false, 'payment_unavailable'
+        end
+
+        if player.isCurrent() ~= true then
+            return false, 'session_closing'
+        end
+
         if amount == 0 then
-            return player.isCurrent() == true
+            return true
         end
 
         return player.chargeAccount(account, amount, reason)
@@ -52,6 +82,11 @@ function PaymentGateway.NotifyFailure(reason, message)
         return
     end
 
+    if reason == 'payment_unavailable' then
+        ESX.ShowNotification('Payment service unavailable. Please contact server staff.', 'error')
+        return
+    end
+
     if reason == 'unconfirmed' then
         ESX.ShowNotification(
             'Payment not confirmed. Check your purchase before paying again.',
@@ -60,7 +95,17 @@ function PaymentGateway.NotifyFailure(reason, message)
         return
     end
 
-    ESX.ShowNotification(message)
+    if reason == 'insufficient_funds' then
+        ESX.ShowNotification(message)
+        return
+    end
+
+    if reason == 'not_near_shop' then
+        ESX.ShowNotification('You are too far from this shop.', 'error')
+        return
+    end
+
+    ESX.ShowNotification('Purchase could not be completed. Please try again.', 'error')
 end
 
 function PaymentGateway.Select(request)
@@ -120,6 +165,13 @@ function PaymentGateway.Await(request, callbackName, ...)
             )
         )
         return false, 'unconfirmed'
+    end
+
+    if result[2] == false and result[3] ~= 'insufficient_funds'
+        and result[3] ~= 'busy' and result[3] ~= 'cancelled' then
+        print(('[%s] Purchase rejected (%s): %s'):format(
+            GetCurrentResourceName(), callbackName, tostring(result[3] or 'unspecified')
+        ))
     end
 
     return table.unpack(result, 2, result.n)

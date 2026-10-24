@@ -377,7 +377,7 @@ xLib.callback.registerCompat('esx_vehicleshop:buyVehicle', function(source, cb, 
     local modelPrice = vehicleData and tonumber(vehicleData.price)
 
     if not xPlayer or not modelPrice or xLib.validation.money(modelPrice, 1) ~= modelPrice then
-        return cb(false)
+        return cb(false, 'invalid_vehicle')
     end
 
     if account ~= 'money' and account ~= 'bank' then
@@ -385,7 +385,7 @@ xLib.callback.registerCompat('esx_vehicleshop:buyVehicle', function(source, cb, 
     end
 
     if not isNear(source, Config.Zones.ShopInside.Pos, 30.0) then
-        return cb(false)
+        return cb(false, 'not_near_shop')
     end
 
     local identifier = xPlayer.getIdentifier()
@@ -397,15 +397,19 @@ xLib.callback.registerCompat('esx_vehicleshop:buyVehicle', function(source, cb, 
     vehiclePurchases[identifier] = xPlayer
 
     local function isCurrentBuyer()
-        return ESX.GetPlayerFromId(source) == xPlayer and xPlayer.isCurrent()
+        return xPlayer.isCurrent() == true
     end
 
     local plateOk, generated = pcall(generateServerPlate)
 
-    if not plateOk or not generated or not isCurrentBuyer()
-        or not isNear(source, Config.Zones.ShopInside.Pos, 30.0) then
+    if not plateOk or not generated then
         vehiclePurchases[identifier] = nil
-        return cb(false)
+        return cb(false, 'plate_unavailable')
+    end
+
+    if not isCurrentBuyer() or not isNear(source, Config.Zones.ShopInside.Pos, 30.0) then
+        vehiclePurchases[identifier] = nil
+        return cb(false, 'purchase_invalidated')
     end
 
     plate = generated
@@ -461,7 +465,7 @@ xLib.callback.registerCompat('esx_vehicleshop:buyVehicle', function(source, cb, 
 
             if not insertId then
                 PaymentGateway.Refund(xPlayer, account, modelPrice, 'Vehicle Purchase Refund')
-                return finish(false)
+                return finish(false, 'persistence_failed')
             end
 
             finish(true)

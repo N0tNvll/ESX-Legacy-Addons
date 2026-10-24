@@ -61,7 +61,7 @@ local function payHaircut(source, cb, skin, account)
             end
 
             print(('[esx_barbershop] Appearance save failed for player %s: %s'):format(source, reason))
-        elseif ESX.GetPlayerFromId(source) == player then
+        elseif player.isCurrent() == true then
             TriggerClientEvent('esx:showNotification', source, TranslateCap('you_paid', ESX.Math.GroupDigits(Config.Price)))
         end
 

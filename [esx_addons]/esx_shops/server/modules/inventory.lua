@@ -71,7 +71,7 @@ function AddItemsToInventory(source, items, player)
         local success
 
         local ok, result = pcall(function()
-            if player and (ESX.GetPlayerFromId(source) ~= player or not player.isCurrent()) then
+            if player and player.isCurrent() ~= true then
                 return false
             end
 
@@ -92,7 +92,7 @@ function AddItemsToInventory(source, items, player)
             for j = i - 1, 1, -1 do
                 local delivered = items[j]
                 local removedOk, removed = pcall(function()
-                    if player and ESX.GetPlayerFromId(source) ~= player then
+                    if player and player.isCurrent() ~= true then
                         return false
                     end
 

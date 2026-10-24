@@ -23,7 +23,7 @@ local function isValidTestType(testType)
 end
 
 local function isCurrentPlayer(source, player)
-    return ESX.GetPlayerFromId(source) == player and player.isCurrent()
+    return player.source == source and player.isCurrent() == true
 end
 
 local function isNearPosition(source, position, distance)
@@ -98,7 +98,7 @@ xLib.callback.registerCompat('esx_dmvschool:canYouPay', function(source, cb, tes
     local identifier = player.getIdentifier()
     local previous = paidTests[source]
 
-    if purchases[identifier] or (previous and previous.player == player
+    if purchases[identifier] or (previous and previous.player.isCurrent() == true
         and (previous.granting or previous.expires >= GetGameTimer())) then
         return cb(false, 'busy')
     end

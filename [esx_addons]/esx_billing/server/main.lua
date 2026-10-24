@@ -462,7 +462,7 @@ xLib.callback.registerCompat('esx_billing:payBill', function(source, cb, billId,
 
         if
             not result
-            or ESX.GetPlayerFromId(source) ~= xPlayer
+            or xPlayer.isCurrent() ~= true
             or not BillingRecovery.isHeld(identifier)
         then
             return false
@@ -588,7 +588,7 @@ xLib.callback.registerCompat('esx_billing:payBill', function(source, cb, billId,
         reserved = false
 
         local function savePlayer(player)
-            if ESX.GetPlayerFromId(player.source) ~= player then
+            if player.isCurrent() ~= true then
                 return false
             end
 
@@ -656,7 +656,7 @@ xLib.callback.registerCompat('esx_billing:payBill', function(source, cb, billId,
             confirm = function()
                 TriggerEvent('esx_billing:paidBill', source, billId)
 
-                if ESX.GetPlayerFromId(source) == xPlayer then
+                if xPlayer.isCurrent() == true then
                     xPlayer.showNotification(
                         TranslateCap('paid_invoice', ESX.Math.GroupDigits(amount))
                     )

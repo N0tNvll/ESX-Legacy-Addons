@@ -83,7 +83,7 @@ local function processPurchase(source, purchaseData, zone, cb)
         return
     end
 
-    if ESX.GetPlayerFromId(source) ~= xPlayer or not xPlayer.isCurrent()
+    if xPlayer.isCurrent() ~= true
         or not ValidatePlayerDistance(source, zone) then
         return cb(false, _U('transaction_error'))
     end

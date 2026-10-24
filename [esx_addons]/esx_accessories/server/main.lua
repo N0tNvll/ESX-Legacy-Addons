@@ -46,7 +46,7 @@ local function beginAccessoryPurchase(source, accessory, account)
     local purchases = PendingAccessoryPurchases[source]
     local pending = purchases and purchases[accessory]
 
-    if pending and pending.player == xPlayer and pending.expires >= GetGameTimer() then
+    if pending and pending.player.isCurrent() == true and pending.expires >= GetGameTimer() then
         return false, 'busy'
     end
 
@@ -76,21 +76,22 @@ end)
 RegisterServerEvent('esx_accessories:save')
 AddEventHandler('esx_accessories:save', function(skin, accessory)
     local playerId = source
-    local player = ESX.GetPlayerFromId(playerId)
     accessory = normalizeAccessory(accessory)
 
-    if not player or not accessory or type(skin) ~= 'table' then
+    if not accessory or type(skin) ~= 'table' then
         return
     end
 
     local purchases = PendingAccessoryPurchases[playerId]
     local pending = purchases and purchases[accessory]
 
-    if not pending or pending.player ~= player or pending.expires < GetGameTimer() then
+    if not pending or pending.expires < GetGameTimer() then
         return
     end
 
-    if not player.isCurrent() or not isNearAccessoryShop(playerId, accessory) then
+    local player = pending.player
+
+    if player.isCurrent() ~= true or not isNearAccessoryShop(playerId, accessory) then
         return
     end
 
@@ -119,7 +120,7 @@ AddEventHandler('esx_accessories:save', function(skin, accessory)
     local identifier = player.getIdentifier()
 
     TriggerEvent('esx_datastore:getDataStore', 'user_' .. name, identifier, function(store)
-        if ESX.GetPlayerFromId(playerId) ~= player or not player.isCurrent() then
+        if player.isCurrent() ~= true then
             return
         end
 

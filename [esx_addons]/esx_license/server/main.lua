@@ -172,8 +172,7 @@ AddEventHandler('esx_license:addLicense', function(target, licenseType, cb)
             local identifier = xPlayer.getIdentifier()
 
             CheckLicense(identifier, licenseType, function(hasLicense)
-                if hasLicense or ESX.GetPlayerFromId(target) ~= xPlayer
-                    or not xPlayer.isCurrent() then
+                if hasLicense or xPlayer.isCurrent() ~= true then
                     if cb then
                         cb(false)
                     end
