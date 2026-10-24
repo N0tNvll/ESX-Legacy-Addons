@@ -5,6 +5,7 @@ local menuOpen = false
 local licenseRequest = nil
 local inZoneDrugShop = false
 local inRangeMarkerDrugShop = false
+local dealerTextUIShown = false
 local cfgMarker = Config.Marker;
 
 --slow loop
@@ -55,10 +56,16 @@ CreateThread(function ()
 		local Sleep = 1500
 		if inZoneDrugShop and not menuOpen then
 			Sleep = 0
-			ESX.ShowHelpNotification(TranslateCap('dealer_prompt'),true)
+			if not dealerTextUIShown then
+				ESX.TextUI(TranslateCap('dealer_prompt'))
+				dealerTextUIShown = true
+			end
 			if IsControlJustPressed(0, 38) then
 				OpenDrugShop()
 			end
+		elseif dealerTextUIShown then
+			ESX.HideUI()
+			dealerTextUIShown = false
 		end
 	Wait(Sleep)
 	end
@@ -109,6 +116,10 @@ end
 
 AddEventHandler('onResourceStop', function(resource)
 	if resource == GetCurrentResourceName() then
+		if dealerTextUIShown then
+			ESX.HideUI()
+			dealerTextUIShown = false
+		end
 		if menuOpen then
 			ESX.CloseContext()
 		end
