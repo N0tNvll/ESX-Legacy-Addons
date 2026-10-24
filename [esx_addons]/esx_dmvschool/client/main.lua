@@ -140,21 +140,31 @@ function OpenDMVSchoolMenu()
 
 	ESX.OpenContext("right", elements, function(menu,element)
 		if element.value == "theory_test" then
-			xLib.callback('esx_dmvschool:canYouPay', false, function(haveMoney)
+            PaymentGateway.Pay({
+                amount = Config.Prices.dmv,
+                title = TranslateCap('theory_test'),
+            }, 'esx_dmvschool:canYouPay', function(haveMoney, paymentFailure)
 				if haveMoney then
 					ESX.CloseContext()
 					StartTheoryTest()
 				else
-					ESX.ShowNotification(TranslateCap('not_enough_money'))
+                    PaymentGateway.NotifyFailure(
+                        paymentFailure,
+                        TranslateCap('not_enough_money'))
 				end
 			end, 'dmv')
 		elseif element.value == "drive_test" then
-			xLib.callback('esx_dmvschool:canYouPay', false, function(haveMoney)
+            PaymentGateway.Pay({
+                amount = Config.Prices[element.type],
+                title = TranslateCap('driving_school'),
+            }, 'esx_dmvschool:canYouPay', function(haveMoney, paymentFailure)
 				if haveMoney then
 					ESX.CloseContext()
 					StartDriveTest(element.type)
 				else
-					ESX.ShowNotification(TranslateCap('not_enough_money'))
+                    PaymentGateway.NotifyFailure(
+                        paymentFailure,
+                        TranslateCap('not_enough_money'))
 				end
 			end, element.type)
 		end

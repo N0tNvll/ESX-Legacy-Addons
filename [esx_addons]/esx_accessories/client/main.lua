@@ -65,7 +65,10 @@ function OpenShopMenu(accessory)
 
 		ESX.OpenContext("right", elements, function(menu,element)
 			if element.value == "yes" then
-				xLib.callback('esx_accessories:buy', false, function(bought)
+                PaymentGateway.Pay({
+                    amount = Config.Price,
+                    title = TranslateCap(string.lower(accessory)),
+                }, 'esx_accessories:buy', function(bought, paymentFailure)
 					if bought then
 						ESX.CloseContext()
 						TriggerEvent('skinchanger:getSkin', function(skin)
@@ -86,7 +89,9 @@ function OpenShopMenu(accessory)
 						elseif accessory == "Glasses" then
 							SetPedPropIndex(player, 1, -1, 0, 0)
 						end
-						ESX.ShowNotification(TranslateCap('not_enough_money'))
+                        PaymentGateway.NotifyFailure(
+                            paymentFailure,
+                            TranslateCap('not_enough_money'))
 					end
 				end, accessory)
 			elseif element.value == "no" then

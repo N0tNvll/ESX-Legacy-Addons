@@ -89,8 +89,8 @@ local function getVehicleFromHash(model)
 	return nil
 end
 
-xLib.callback.registerCompat('esx_boat:buyBoat', function(source, cb, vehicleProps)
-	local xPlayer = ESX.Player(source)
+xLib.callback.registerCompat('esx_boat:buyBoat', function(source, cb, vehicleProps, account)
+	local xPlayer = ESX.GetPlayerFromId(source)
 	local model = type(vehicleProps) == 'table' and tonumber(vehicleProps.model)
 	local vehicleData = model and getVehicleFromHash(model)
 	local price = vehicleData and tonumber(vehicleData.price) or 0
@@ -100,8 +100,6 @@ xLib.callback.registerCompat('esx_boat:buyBoat', function(source, cb, vehiclePro
 		print(('[^2INFO^7] Player ^5%s^7 Attempted To Exploit Shop'):format(source))
 		return cb(false)
 	end
-
-	if xPlayer.getMoney() < price then return cb(false) end
 
 	local plate = generateBoatPlate()
 	if not plate then return cb(false) end
@@ -113,7 +111,11 @@ xLib.callback.registerCompat('esx_boat:buyBoat', function(source, cb, vehiclePro
 		end
 	end
 
-	xPlayer.removeMoney(price, "Boat Purchase")
+    local charged, failure = PaymentGateway.Charge(xPlayer, account, price, "Boat Purchase")
+
+    if not charged then
+        return cb(false, failure)
+    end
 
 	MySQL.insert('INSERT INTO owned_vehicles (owner, plate, vehicle, type, `stored`) VALUES (@owner, @plate, @vehicle, @type, @stored)', {
 		['@owner']   = xPlayer.getIdentifier(),
@@ -123,7 +125,7 @@ xLib.callback.registerCompat('esx_boat:buyBoat', function(source, cb, vehiclePro
 		['@stored']  = true
 	}, function(insertId)
 		if not insertId then
-			xPlayer.addMoney(price, "Boat Purchase Refund")
+            PaymentGateway.Refund(xPlayer, account, price, "Boat Purchase Refund")
 			return cb(false)
 		end
 
@@ -187,20 +189,25 @@ xLib.callback.registerCompat('esx_boat:getGarage', function(source, cb)
 	end)
 end)
 
-xLib.callback.registerCompat('esx_boat:buyBoatLicense', function(source, cb)
-	local xPlayer = ESX.Player(source)
+xLib.callback.registerCompat('esx_boat:buyBoatLicense', function(source, cb, account)
+	local xPlayer = ESX.GetPlayerFromId(source)
 
-	if not xPlayer or not isNearBoatShop(source) or xPlayer.getMoney() < Config.LicensePrice then
+	if not xPlayer or not isNearBoatShop(source) then
 		return cb(false)
 	end
 
 	TriggerEvent('esx_license:checkLicense', source, 'boat', function(hasLicense)
 		if hasLicense then return cb(false) end
 
-		xPlayer.removeMoney(Config.LicensePrice, "Boat License Purchase")
+        local charged, failure =
+            PaymentGateway.Charge(xPlayer, account, Config.LicensePrice, "Boat License Purchase")
+
+        if not charged then
+            return cb(false, failure)
+        end
 		TriggerEvent('esx_license:addLicense', source, 'boat', function(result)
 			if result == false then
-				xPlayer.addMoney(Config.LicensePrice, "Boat License Refund")
+                PaymentGateway.Refund(xPlayer, account, Config.LicensePrice, "Boat License Refund")
 				return cb(false)
 			end
 

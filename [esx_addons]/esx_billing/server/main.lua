@@ -391,7 +391,7 @@ xLib.callback.registerCompat('esx_billing:getTargetBills', function(source, cb, 
     cb(result, hasNext)
 end)
 
-xLib.callback.registerCompat('esx_billing:payBill', function(source, cb, billId)
+xLib.callback.registerCompat('esx_billing:payBill', function(source, cb, billId, selectedAccount)
     local xPlayer = ESX.GetPlayerFromId(source)
     billId = tonumber(billId)
 
@@ -474,7 +474,11 @@ xLib.callback.registerCompat('esx_billing:payBill', function(source, cb, billId)
             return false
         end
 
-        paymentAccount = xPlayer.getMoney() >= amount and 'money' or 'bank'
+        if selectedAccount ~= 'money' and selectedAccount ~= 'bank' then
+            return false
+        end
+
+        paymentAccount = selectedAccount
 
         if result.target_type == 'player' then
             receiverPlayer = ESX.GetPlayerFromIdentifier(result.sender)
@@ -500,7 +504,7 @@ xLib.callback.registerCompat('esx_billing:payBill', function(source, cb, billId)
             return false
         end
 
-        if xPlayer.removeAccountMoney(paymentAccount, amount, 'Bill reservation') ~= true then
+        if PaymentGateway.Charge(xPlayer, paymentAccount, amount, 'Bill reservation') ~= true then
             return false
         end
 

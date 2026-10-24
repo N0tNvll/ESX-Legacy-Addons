@@ -36,7 +36,10 @@ function OpenShopMenu()
                 TriggerEvent('skinchanger:getSkin', function(skin) selectedSkin = skin end)
                 purchasePending = true
 
-                xLib.callback('esx_barbershop:pay', false, function(paid, reason)
+                PaymentGateway.Pay({
+                    amount = Config.Price,
+                    title = TranslateCap('barber_blip'),
+                }, 'esx_barbershop:pay', function(paid, reason)
                     purchasePending = false
 
                     if paid then
@@ -52,7 +55,9 @@ function OpenShopMenu()
                             ESX.ShowNotification(TranslateCap('not_enough_money'))
                         else
                             print(('[esx_barbershop] Purchase failed: %s'):format(reason or 'unknown'))
-                            ESX.ShowNotification(TranslateCap('purchase_failed'))
+                            PaymentGateway.NotifyFailure(
+                                reason,
+                                TranslateCap('purchase_failed'))
                         end
                     end
 

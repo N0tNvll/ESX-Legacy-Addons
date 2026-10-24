@@ -77,7 +77,11 @@ function ProcessPurchase(source, purchaseData, zone, cb)
 		return
 	end
 
-	DeductMoney(xPlayer, paymentMethod, actualTotal)
+    local charged = DeductMoney(xPlayer, paymentMethod, actualTotal)
+
+    if not charged then
+        return cb(false, _U('transaction_error'))
+    end
 
 	local itemsAdded = AddItemsToInventory(source, validatedItems)
 	if not itemsAdded then

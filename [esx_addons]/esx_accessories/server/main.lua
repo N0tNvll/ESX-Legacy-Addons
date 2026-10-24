@@ -30,15 +30,20 @@ local function isNearAccessoryShop(source, accessory)
 	return false
 end
 
-local function beginAccessoryPurchase(source, accessory)
-	local xPlayer = ESX.Player(source)
+local function beginAccessoryPurchase(source, accessory, account)
+	local xPlayer = ESX.GetPlayerFromId(source)
 	accessory = normalizeAccessory(accessory)
 
-	if not xPlayer or not accessory or not isNearAccessoryShop(source, accessory) or xPlayer.getMoney() < Config.Price then
+	if not xPlayer or not accessory or not isNearAccessoryShop(source, accessory) then
 		return false
 	end
 
-	xPlayer.removeMoney(Config.Price, "Accessory Purchase")
+    local charged, failure =
+        PaymentGateway.Charge(xPlayer, account, Config.Price, "Accessory Purchase")
+
+    if not charged then
+        return false, failure
+    end
 	PendingAccessoryPurchases[source] = PendingAccessoryPurchases[source] or {}
 	PendingAccessoryPurchases[source][accessory] = GetGameTimer() + (Config.PurchaseSessionDuration or 60000)
 
@@ -90,8 +95,8 @@ xLib.callback.registerCompat('esx_accessories:get', function(source, cb, accesso
 
 end)
 
-xLib.callback.registerCompat('esx_accessories:buy', function(source, cb, accessory)
-	cb(beginAccessoryPurchase(source, accessory))
+xLib.callback.registerCompat('esx_accessories:buy', function(source, cb, accessory, account)
+	cb(beginAccessoryPurchase(source, accessory, account))
 end)
 
 xLib.callback.registerCompat('esx_accessories:checkMoney', function(source, cb, accessory)

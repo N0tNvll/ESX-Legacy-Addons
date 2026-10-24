@@ -34,7 +34,7 @@ local function isNearFinish(source)
 	return checkpoint and isNearPosition(source, checkpoint.Pos, 35.0)
 end
 
-xLib.callback.registerCompat('esx_dmvschool:canYouPay', function(source, cb, type)
+xLib.callback.registerCompat('esx_dmvschool:canYouPay', function(source, cb, type, account)
 	local xPlayer = ESX.Player(source)
 	type = tostring(type or '')
 
@@ -44,9 +44,13 @@ xLib.callback.registerCompat('esx_dmvschool:canYouPay', function(source, cb, typ
 
 	local price = Config.Prices[type]
 	TriggerEvent('esx_license:checkLicense', source, type, function(hasLicense)
-		if hasLicense or xPlayer.getMoney() < price then return cb(false) end
+		if hasLicense then return cb(false) end
 
-		xPlayer.removeMoney(price, "DMV Purchase")
+        local charged, failure = PaymentGateway.Charge(xPlayer, account, price, "DMV Purchase")
+
+        if not charged then
+            return cb(false, failure)
+        end
 		PaidTests[source] = PaidTests[source] or {}
 		PaidTests[source][type] = GetGameTimer() + PaidTestDuration
 

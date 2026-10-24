@@ -14,6 +14,7 @@ legacyversion "1.16.3"
 ui_page "web/dist/index.html"
 
 files {
+    "imports.lua",
     "web/dist/index.html",
     "web/dist/**/*",
     "locales/*.lua",

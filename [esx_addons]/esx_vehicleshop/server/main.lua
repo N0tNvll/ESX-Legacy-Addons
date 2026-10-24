@@ -368,8 +368,8 @@ AddEventHandler('esx_vehicleshop:putStockItems', function(itemName, count)
     end)
 end)
 
-xLib.callback.registerCompat('esx_vehicleshop:buyVehicle', function(source, cb, model, plate)
-    local xPlayer = ESX.Player(source)
+xLib.callback.registerCompat('esx_vehicleshop:buyVehicle', function(source, cb, model, plate, account)
+    local xPlayer = ESX.GetPlayerFromId(source)
     local vehicleData = type(model) == 'string' and getVehicleFromModel(model)
     local modelPrice = vehicleData and tonumber(vehicleData.price)
 
@@ -379,15 +379,17 @@ xLib.callback.registerCompat('esx_vehicleshop:buyVehicle', function(source, cb, 
         return cb(false)
     end
 
-    if modelPrice and xPlayer.getMoney() >= modelPrice then
-        xPlayer.removeMoney(modelPrice, 'Vehicle Purchase')
+    local charged, failure =
+        PaymentGateway.Charge(xPlayer, account, modelPrice, 'Vehicle Purchase')
+
+    if charged then
 
         MySQL.insert(
             'INSERT INTO owned_vehicles (owner, plate, vehicle) VALUES (?, ?, ?)',
             { xPlayer.getIdentifier(), plate, json.encode({ model = joaat(model), plate = plate }) },
             function(insertId)
                 if not insertId then
-                    xPlayer.addMoney(modelPrice, 'Vehicle Purchase Refund')
+                    PaymentGateway.Refund(xPlayer, account, modelPrice, 'Vehicle Purchase Refund')
                     return cb(false)
                 end
 
