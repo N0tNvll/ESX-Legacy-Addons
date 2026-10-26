@@ -19,6 +19,7 @@ shared_scripts({
 })
 
 client_scripts({
+	"client/clipboard.lua",
 	"client/helpers.lua",
 	"client/actions.lua",
 	"client/nui.lua",

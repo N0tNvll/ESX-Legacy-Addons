@@ -17,32 +17,47 @@ export const t = (key: string | null | undefined, fallback?: string): string => 
 	return translations.values[key] ?? fallback ?? key;
 };
 
-export const copyToClipboardChromium = (text: string, timeout = 50): void => {
-	if (!document.body) return;
+export const copyToClipboardChromium = async (text: string): Promise<boolean> => {
+	if (!document.body || typeof text !== "string" || !text) return false;
+
+	const previousFocus = document.activeElement;
+	let copyHandled = false;
+	const onCopy = (event: ClipboardEvent) => {
+		if (!event.clipboardData) return;
+		event.clipboardData.setData("text/plain", text);
+		event.preventDefault();
+		copyHandled = true;
+	};
 
 	const textarea = document.createElement("textarea");
 	textarea.value = text;
 
 	textarea.style.position = "fixed";
-	textarea.style.top = "-9999px";
-	textarea.style.left = "-9999px";
-	textarea.setAttribute("readonly", "");
+	textarea.style.top = "0";
+	textarea.style.left = "0";
+	textarea.style.width = "1px";
+	textarea.style.height = "1px";
+	textarea.style.opacity = "0";
+	textarea.style.pointerEvents = "none";
+	textarea.setAttribute("aria-hidden", "true");
 
 	document.body.appendChild(textarea);
+	document.addEventListener("copy", onCopy);
 
-	textarea.focus();
+	textarea.focus({ preventScroll: true });
 	textarea.select();
 	textarea.setSelectionRange(0, textarea.value.length);
 
 	try {
-		document.execCommand("copy");
-	} catch (err) {
-		console.error("Clipboard fallback failed:", err);
-	}
-
-	setTimeout(() => {
-		if (textarea.parentNode) {
-			textarea.parentNode.removeChild(textarea);
+		const copied = document.execCommand("copy");
+		return copied || copyHandled;
+	} catch {
+		return false;
+	} finally {
+		document.removeEventListener("copy", onCopy);
+		textarea.remove();
+		if (previousFocus instanceof HTMLElement && previousFocus.isConnected) {
+			previousFocus.focus({ preventScroll: true });
 		}
-	}, timeout);
+	}
 };

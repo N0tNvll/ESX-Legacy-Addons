@@ -7,6 +7,7 @@
 	import "./Actions.css";
 	import { computePosition, offset, flip, shift, autoUpdate, type VirtualElement } from "@floating-ui/dom";
 	import { copyToClipboardChromium, t } from "$lib/shared/util/util";
+	import { notifications } from "$lib/shared/stores/notifications.svelte";
 	import type { Player } from "../types/player";
 	import type { Ban } from "../types/ban";
 	import type { Vehicle } from "../types/vehicle";
@@ -15,9 +16,13 @@
 
 	type ContextType = "player" | "ban" | "vehicle";
 
-	function copyToClipboard(text: string) {
+	async function copyToClipboard(text: string) {
 		if (!text) return;
-		copyToClipboardChromium(text);
+		if (await copyToClipboardChromium(text)) {
+			notifications.success(t("copied_to_clipboard", "Copied to clipboard"));
+		} else {
+			notifications.error(t("copy_failed", "Could not copy the text. Please try again."));
+		}
 	}
 
 	async function handleImpoundClick(vehicle: Vehicle) {

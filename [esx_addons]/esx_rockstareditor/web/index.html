@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src https:; object-src 'none'; base-uri 'none'">
+  <title>ESX Rockstar Editor</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <svg class="icon-library" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="icon-camera" viewBox="0 0 24 24"><rect x="3" y="6" width="12" height="12" rx="3"/><path d="m15 10 6-3v10l-6-3"/></symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="icon-record" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="icon-save" viewBox="0 0 24 24"><path d="M5 3h12l4 4v13H3V3h2Zm2 0v6h10V3M7 20v-7h10v7"/></symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></symbol>
+    <symbol id="icon-edit" viewBox="0 0 24 24"><path d="M4 7h16v13H4zM4 7l-1-4 16-2 1 4M8 3l3 3M14 2l3 3M10 11l5 3-5 3z"/></symbol>
+    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+  </svg>
+
+  <main id="menu" class="studio" role="dialog" aria-modal="true" aria-labelledby="title" tabindex="-1" hidden>
+    <header class="header">
+      <span class="brand-logo"><img src="assets/esx-logo.png" alt="ESX"></span>
+      <div class="heading"><p class="eyebrow" data-text="ui_eyebrow">ESX / CREATOR TOOLS</p><h1 id="title">Rockstar <span>Editor</span></h1></div>
+      <button id="close" class="icon-button" aria-label="Close menu" data-label="ui_close"><svg><use href="#icon-close"/></svg></button>
+    </header>
+    <p class="subtitle" data-text="ui_subtitle">Your next story starts here.</p>
+
+    <div class="workspace" id="workspace">
+      <section class="capture-card" aria-labelledby="capture-label">
+        <div class="capture-top"><span id="capture-label" data-text="ui_capture">RECORDING</span><span class="status-chip"><i class="status-dot"></i><span id="status-label">READY</span></span></div>
+        <div class="viewfinder" aria-hidden="true"><i class="corner top-left"></i><i class="corner top-right"></i><svg class="camera-art"><use href="#icon-camera"/></svg><i class="corner bottom-left"></i><i class="corner bottom-right"></i><span class="viewfinder-line"></span></div>
+        <p class="duration-label" data-text="ui_duration">Current take</p>
+        <p class="timecode" id="timecode">00:00</p>
+        <p class="status-title" id="status-title">Ready for your next take</p>
+        <p class="capture-hint" id="capture-hint">Set the scene. Start recording. Make it yours.</p>
+      </section>
+
+      <section class="actions" aria-label="Recording controls" data-label="ui_controls">
+        <button id="start" class="action-button primary" data-action="start"><span class="action-icon"><svg><use href="#icon-record"/></svg></span><span class="action-copy"><strong data-text="ui_start">Start recording</strong><small data-text="ui_start_hint">Capture a new gameplay clip</small></span><svg class="action-arrow"><use href="#icon-arrow"/></svg></button>
+        <button id="save" class="action-button" data-action="save" disabled><span class="action-icon"><svg><use href="#icon-save"/></svg></span><span class="action-copy"><strong data-text="ui_save">Stop &amp; save</strong><small data-text="ui_save_hint">Finish the current take and request a save</small></span><svg class="action-arrow"><use href="#icon-arrow"/></svg></button>
+        <button id="discard" class="action-button discard" data-action="discard" disabled><span class="action-icon"><svg><use href="#icon-trash"/></svg></span><span class="action-copy"><strong data-text="ui_discard">Discard take</strong><small data-text="ui_discard_hint">Stop without saving the current clip</small></span><svg class="action-arrow"><use href="#icon-arrow"/></svg></button>
+        <div class="action-divider"></div>
+        <button id="editor" class="action-button editor-button" data-action="editor"><span class="action-icon"><svg><use href="#icon-edit"/></svg></span><span class="action-copy"><strong data-text="ui_editor">Open Rockstar Editor</strong><small data-text="ui_editor_hint">Edit your saved clips and camera angles</small></span><svg class="action-arrow"><use href="#icon-arrow"/></svg></button>
+        <p class="editor-note" data-text="ui_editor_note">Opening the editor leaves your current server session.</p>
+      </section>
+    </div>
+
+    <p id="message" class="message" role="status" aria-live="polite" hidden></p>
+
+    <section id="confirmation" class="confirmation" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-text" hidden>
+      <div class="confirmation-card"><span class="confirm-icon"><svg id="confirm-icon"><use href="#icon-trash"/></svg></span><h2 id="confirm-title"></h2><p id="confirm-text"></p><div class="confirmation-actions"><button id="cancel-confirm" class="secondary-button" data-text="ui_cancel">Go back</button><button id="confirm" class="confirm-button"></button></div></div>
+    </section>
+  </main>
+
+  <aside id="recording-indicator" class="recording-indicator" aria-label="Recording in progress" data-label="ui_recording" hidden><span class="rec-dot"></span><strong>REC</strong><span id="indicator-time">00:00</span></aside>
+</body>
+</html>

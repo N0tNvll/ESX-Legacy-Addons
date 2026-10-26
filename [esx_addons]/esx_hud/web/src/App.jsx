@@ -298,7 +298,7 @@ export default function App() {
                     </Show>
                     </aside>
                 </Show>
-                <div class="player-cluster anchor">
+                <div classList={{ "player-cluster": true, anchor: true, "recording-layout": hud.recording === true }}>
                     <Show when={statusReady() && !hidden("Status")}>
                         <section classList={{ "status-cluster": true, "above-map": prefs.CenterStatuses }} aria-label="Character status">
                             <For each={statusItems.filter(([key]) => showStatus(key))}>

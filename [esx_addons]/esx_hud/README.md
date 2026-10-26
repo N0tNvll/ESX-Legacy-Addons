@@ -15,6 +15,12 @@ Features
  - Seatbelt system with sound effect (Required script: esx_cruisecontrol)
 
 ## HUD UI
+While GTA replay recording is active, character status and location move temporarily
+to the lower center, above the voice indicator. This leaves the native recording
+notification above the minimap visible. The HUD reads the game's recording state
+every 500 ms, including recordings started by another resource, and restores the
+normal layout when recording ends. Saved HUD preferences are not changed.
+
 ![img.png](img.png)
 ## SETTINGS UI
 ![img_1.png](img_1.png)

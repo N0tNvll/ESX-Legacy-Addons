@@ -22,6 +22,15 @@ function HUD:GetLocation()
     return streetName
 end
 
+function HUD:IsRecording()
+    if type(IsRecording) ~= "function" then
+        return false
+    end
+
+    local ok, active = pcall(IsRecording)
+    return ok and (active == true or active == 1)
+end
+
 function HUD:UpdateAccounts(accounts)
     if not Config.Disable.Money then
         if accounts == nil then
@@ -117,6 +126,7 @@ function HUD:FastThick()
                 streetName = self.Data.Location or "",
                 zoneName = GetLabelText(GetNameOfZone(self.Data.Position.x, self.Data.Position.y, self.Data.Position.z)),
                 heading = GetEntityHeading(ESX.PlayerData.ped),
+                recording = self:IsRecording(),
                 gameTime = string.format("%02d:%02d", GetClockHours(), GetClockMinutes()),
                 voice = {
                     mic = self.Data.isTalking or false,

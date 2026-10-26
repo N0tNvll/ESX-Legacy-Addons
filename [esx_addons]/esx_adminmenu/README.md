@@ -22,6 +22,8 @@ It has two UI entry points:
 - Permission-gated sensitive information such as identifiers and IP addresses.
 - Configurable feature permissions, keybinds, revive events, vehicle presets, weather types, limits, and admin groups.
 - Frontend error notifications when an NUI callback returns `success = false`.
+- Coordinate helpers (`/vec2`, `/vec3`, `/vec4`, `/heading`, `/copycoords`, `/rot`, `/rotation`) open a dialog with the requested text selected. Press **Ctrl+C** or click **Copy**; **Escape** or **Close** cancels. If the button fails, the text remains selected for manual copying. The text is also printed in the player's F8 console. Close another resource's focused menu before using these helpers.
+- The dialog restores the admin menu's previous input mode when closed, or releases focus back to the game. It expires after 60 seconds; logout and resource stop also release focus. Clipboard copying uses a user action and the legacy copy event/command, without calling the `navigator.clipboard` API blocked by NUI's Permissions Policy.
 
 ## Dependencies
 
