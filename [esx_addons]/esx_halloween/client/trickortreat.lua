@@ -2,7 +2,54 @@ local settings = Config.TrickOrTreat
 local round, interaction, nearest
 local endedRound = 0
 local pumpkins, blips, loading, failures = {}, {}, {}, {}
+local reportedFailures = {}
 local stopping = false
+local prompt
+local pickupDictionary = 'random@domestic'
+local pickupAnimation = 'pickup_low'
+
+local function hidePrompt()
+    if prompt then
+        prompt = nil
+        ESX.HideUI()
+    end
+end
+
+local function stopPickup(pending)
+    if not pending then
+        return
+    end
+
+    if pending.animationPed then
+        if DoesEntityExist(pending.animationPed) then
+            StopAnimTask(pending.animationPed, pickupDictionary, pickupAnimation, 1.0)
+        end
+
+        pending.animationPed = nil
+    end
+
+    if pending.animationRequested then
+        pending.animationRequested = nil
+        RemoveAnimDict(pickupDictionary)
+    end
+end
+
+local function clearInteraction()
+    local pending = interaction
+
+    interaction = nil
+    stopPickup(pending)
+    hidePrompt()
+end
+
+local function failSpawn(id, reason)
+    failures[id] = GetGameTimer()
+
+    if not reportedFailures[reason] then
+        reportedFailures[reason] = true
+        print(('[esx_halloween] Pumpkin %d (%s): %s.'):format(id, settings.pumpkinModel, reason))
+    end
+end
 
 local function deletePumpkin(id)
     local object = pumpkins[id]
@@ -15,13 +62,15 @@ local function deletePumpkin(id)
 end
 
 local function clear()
-    round, interaction, nearest = nil, nil, nil
+    clearInteraction()
+    round, nearest = nil, nil
 
     for id in pairs(pumpkins) do
         deletePumpkin(id)
     end
 
     loading, failures = {}, {}
+    reportedFailures = {}
 
     for _, blip in pairs(blips) do
         RemoveBlip(blip)
@@ -54,7 +103,7 @@ local function spawnPumpkin(id, state)
     local model = GetHashKey(settings.pumpkinModel)
 
     if not IsModelInCdimage(model) or not IsModelValid(model) or IsModelAPed(model) then
-        failures[id] = GetGameTimer()
+        failSpawn(id, 'model unavailable; check esx_custom_props and reconnect')
         return
     end
 
@@ -93,29 +142,39 @@ local function spawnPumpkin(id, state)
         end
 
         if not HasModelLoaded(model) then
-            loading[id], failures[id] = nil, GetGameTimer()
+            loading[id] = nil
+            failSpawn(id, 'model loading timed out; check its streamed textures and archetype')
             SetModelAsNoLongerNeeded(model)
             return
         end
 
         RequestCollisionAtCoord(house.coords.x, house.coords.y, house.coords.z)
 
-        local found, groundZ =
-            GetGroundZFor_3dCoord(house.coords.x, house.coords.y, house.coords.z + 5.0, false)
-        local z = found and Halloween.IsNumber(groundZ) and groundZ or house.coords.z
-        local object = CreateObject(model, house.coords.x, house.coords.y, z, false, false, false)
+        local object = CreateObjectNoOffset(
+            model,
+            house.coords.x,
+            house.coords.y,
+            house.coords.z,
+            false,
+            false,
+            false
+        )
 
         loading[id] = nil
         SetModelAsNoLongerNeeded(model)
 
-        if object == 0 then
-            failures[id] = GetGameTimer()
+        if object == 0 or not DoesEntityExist(object) then
+            failSpawn(id, 'object creation failed')
             return
         end
 
         SetEntityAsMissionEntity(object, true, true)
         SetEntityHeading(object, house.heading)
-        PlaceObjectOnGroundProperly(object)
+        -- Cast down from the configured point, including porches and raised surfaces.
+        -- Probing from above the entrance can select its roof instead of the doorstep.
+        if not PlaceObjectOnGroundOrObjectProperly(object) then
+            failSpawn(id, 'ground placement failed; object kept at configured coordinates')
+        end
         FreezeEntityPosition(object, true)
         SetEntityInvincible(object, true)
         pumpkins[id] = object
@@ -253,6 +312,7 @@ RegisterNetEvent(Events.HOUSE_INTERACT_RESPONSE, function(data)
 
     if
         not pending
+        or pending.token ~= nil
         or not round
         or data.roundId ~= round.id
         or data.houseId ~= pending.id
@@ -265,6 +325,42 @@ RegisterNetEvent(Events.HOUSE_INTERACT_RESPONSE, function(data)
 
     pending.token, pending.started = data.token, GetGameTimer()
     CreateThread(function()
+        pending.animationRequested = true
+        RequestAnimDict(pickupDictionary)
+
+        while
+            interaction == pending
+            and canInteract(pending.id)
+            and not HasAnimDictLoaded(pickupDictionary)
+            and Halloween.Elapsed(pending.started) < math.min(1000, data.duration)
+        do
+            Wait(50)
+        end
+
+        if
+            interaction == pending
+            and canInteract(pending.id)
+            and HasAnimDictLoaded(pickupDictionary)
+            and Halloween.Elapsed(pending.started) < data.duration
+        then
+            local duration = data.duration - Halloween.Elapsed(pending.started)
+
+            pending.animationPed = PlayerPedId()
+            TaskPlayAnim(
+                pending.animationPed,
+                pickupDictionary,
+                pickupAnimation,
+                4.0,
+                -4.0,
+                duration,
+                0,
+                0.0,
+                false,
+                false,
+                false
+            )
+        end
+
         while
             interaction == pending
             and canInteract(pending.id)
@@ -273,12 +369,14 @@ RegisterNetEvent(Events.HOUSE_INTERACT_RESPONSE, function(data)
             Wait(50)
         end
 
+        stopPickup(pending)
+
         if interaction ~= pending then
             return
         end
 
         if not canInteract(pending.id) then
-            interaction = nil
+            clearInteraction()
             return
         end
 
@@ -316,7 +414,7 @@ RegisterNetEvent(Events.HOUSE_COLLECT_RESPONSE, function(data)
         ESX.ShowNotification(data.error)
     end
 
-    interaction = nil
+    clearInteraction()
 end)
 
 RegisterNetEvent(Events.TRIGGER_TRICK, function(data)
@@ -400,7 +498,7 @@ CreateThread(function()
             interaction
             and Halloween.Elapsed(interaction.started) >= settings.interaction.requestTimeout
         then
-            interaction = nil
+            clearInteraction()
         end
     end
 end)
@@ -408,22 +506,105 @@ end)
 CreateThread(function()
     while true do
         if nearest and canInteract(nearest) then
-            Wait(0)
-            BeginTextCommandDisplayHelp('STRING')
-            AddTextComponentString(
-                interaction and 'Looting pumpkin...' or 'Press ~INPUT_CONTEXT~ to loot pumpkin'
-            )
-            EndTextCommandDisplayHelp(0)
+            local key = GetControlInstructionalButton(0, settings.interaction.key, true):sub(3)
+            local text = interaction and 'Looting pumpkin...'
+                or ('~o~[%s]~s~ Loot pumpkin'):format(key)
+
+            if prompt ~= text then
+                prompt = text
+                ESX.TextUI(text, 'info')
+            end
 
             if not interaction and IsControlJustReleased(0, settings.interaction.key) then
                 interaction = { id = nearest, roundId = round.id, started = GetGameTimer() }
                 TriggerServerEvent(Events.HOUSE_INTERACT_REQUEST, nearest, round.id)
             end
+
+            Wait(0)
         else
+            hidePrompt()
             Wait(250)
         end
     end
 end)
+
+RegisterCommand('pumpkinstatus', function()
+    local coords = GetEntityCoords(PlayerPedId())
+    local model = GetHashKey(settings.pumpkinModel)
+    local closest, closestActive
+    local distance, activeDistance = math.huge, math.huge
+
+    print(
+        ('[esx_halloween] round=%s remaining=%.1fs props=%s model=%s valid=%s loaded=%s'):format(
+            round and tostring(round.id) or 'none',
+            timeRemaining() / 1000,
+            GetResourceState('esx_custom_props'),
+            settings.pumpkinModel,
+            tostring(IsModelInCdimage(model) and IsModelValid(model)),
+            tostring(HasModelLoaded(model))
+        )
+    )
+
+    for id, house in ipairs(settings.houses) do
+        local current = #(coords - house.coords)
+
+        if current < distance then
+            closest, distance = id, current
+        end
+
+        if round and round.available[id] and current < activeDistance then
+            closestActive, activeDistance = id, current
+        end
+    end
+
+    local function report(id)
+        if not id then
+            return
+        end
+
+        local point = settings.houses[id].coords
+        local object = pumpkins[id]
+        local exists = object and DoesEntityExist(object)
+
+        print(
+            ('[esx_halloween] point=%d configured=(%.2f, %.2f, %.2f) distance=%.2fm'):format(
+                id,
+                point.x,
+                point.y,
+                point.z,
+                #(coords - point)
+            )
+        )
+        print(
+            ('[esx_halloween] active=%s loading=%s entity=%s exists=%s'):format(
+                tostring(round ~= nil and round.available[id] == true),
+                tostring(loading[id] ~= nil),
+                tostring(object or 0),
+                tostring(exists == true)
+            )
+        )
+
+        if exists then
+            local actual = GetEntityCoords(object)
+
+            print(
+                ('[esx_halloween] actual=(%.2f, %.2f, %.2f) visible=%s alpha=%d'):format(
+                    actual.x,
+                    actual.y,
+                    actual.z,
+                    tostring(IsEntityVisible(object)),
+                    GetEntityAlpha(object)
+                )
+            )
+        end
+    end
+
+    report(closest)
+
+    if closestActive ~= closest then
+        report(closestActive)
+    end
+end, false)
 
 AddEventHandler('esx:onPlayerLogout', clear)
 AddEventHandler('onResourceStop', function(resource)

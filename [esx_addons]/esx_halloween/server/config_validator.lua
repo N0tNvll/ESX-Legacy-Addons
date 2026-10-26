@@ -65,7 +65,7 @@ function Halloween.ValidateItems()
         #missing > 0
         and settings.autoRegisterItems
         and not custom
-        and type(ESX.AddItems) == 'function'
+        and ESX.IsFunctionReference(ESX.AddItems)
     then
         local registered, err = pcall(ESX.AddItems, missing)
 

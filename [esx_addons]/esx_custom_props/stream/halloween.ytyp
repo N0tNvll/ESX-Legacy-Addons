@@ -6,13 +6,13 @@
       <lodDist value="100.00000000"/>
       <flags value="32"/>
       <specialAttribute value="0"/>
-      <bbMin x="-0.07768825" y="-0.03843416" z="-0.10890120"/>
-      <bbMax x="0.07806713" y="0.03833046" z="0.10858550"/>
-      <bsCentre x="0.00018944" y="-0.00005185" z="-0.00015788"/>
-      <bsRadius value="0.13915190"/>
+      <bbMin x="-0.22790428" y="-0.22769646" z="0.00023960"/>
+      <bbMax x="0.22742006" y="0.22791298" z="0.41071668"/>
+      <bsCentre x="-0.00024211" y="0.00010826" z="0.20547815"/>
+      <bsRadius value="0.38189963"/>
       <hdTextureDist value="100.00000000"/>
       <name>esx_jackolantern</name>
-      <textureDictionary>esx_jackolantern</textureDictionary>
+      <textureDictionary/>
       <clipDictionary/>
       <drawableDictionary/>
       <physicsDictionary>esx_jackolantern</physicsDictionary>

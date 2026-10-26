@@ -13,6 +13,8 @@ import type { VehicleSpawnerConfig } from "../stores/user.svelte";
 import { currentPage } from "../stores/navigation.svelte";
 import { stopSpectate } from "./admin";
 import { copyToClipboardChromium } from "../util/util";
+import { fetchNui } from "./fetchNUI";
+import { clipboard } from "../stores/clipboard.svelte";
 import type { Player } from "../../tabs/players/types/player";
 import type { Impound } from "../types/impounds";
 
@@ -27,7 +29,9 @@ type NuiMessage =
 	| { action: "updatePlayers"; data: Player[] }
 	| { action: "stopSpectate"; data: boolean }
 	| { action: "closeAdmin" }
-	| { action: "copyToClipboard"; data: string };
+	| { action: "copyToClipboard"; data: string; requestId?: number }
+	| { action: "showClipboard"; data: string; requestId?: number }
+	| { action: "closeClipboard"; requestId?: number };
 
 listenNui<NuiMessage>((msg) => {
 	switch (msg.action) {
@@ -99,11 +103,22 @@ listenNui<NuiMessage>((msg) => {
 
 		case "closeAdmin":
 			uiState.close();
+			clipboard.close();
+			break;
+		case "showClipboard":
+			clipboard.open(msg.data, msg.requestId);
+			break;
+		case "closeClipboard":
+			clipboard.close(msg.requestId);
 			break;
 
 		case "copyToClipboard":
 			if (!msg.data) return null;
-			copyToClipboardChromium(msg.data);
+			void copyToClipboardChromium(msg.data).then((success) => {
+				if (Number.isSafeInteger(msg.requestId)) {
+					void fetchNui("clipboardResult", { requestId: msg.requestId, success });
+				}
+			});
 			break;
 	}
 });

@@ -603,13 +603,6 @@ xLib.nui.register("adminMenu:setInputFocus", function(data, cb)
     return { success = true }
 end)
 
-RegisterNetEvent("esx-adminmenu:client:copyToClipboard", function(text)
-    xLib.nui.send({
-        action = "copyToClipboard",
-        data = text,
-    })
-end)
-
 RegisterNetEvent("esx-adminmenu:client:open", function(data)
     refreshInitData()
     ToggleNUIFocus(true, "dashboard")

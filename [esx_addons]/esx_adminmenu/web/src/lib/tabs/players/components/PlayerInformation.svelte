@@ -122,11 +122,10 @@
 	let copyTimeout: number | null = null;
 
 	async function copyToClipboard(text: string) {
-		copyToClipboardChromium(text);
-
-		await new Promise((r) => setTimeout(r, 0));
-
-		copiedText = t("copied_to_clipboard", "Copied to clipboard");
+		const copied = await copyToClipboardChromium(text);
+		copiedText = copied
+			? t("copied_to_clipboard", "Copied to clipboard")
+			: t("copy_failed", "Could not copy the text. Please try again.");
 
 		if (copyTimeout) clearTimeout(copyTimeout);
 		copyTimeout = window.setTimeout(() => {

@@ -177,6 +177,12 @@
     gap: 12px;
     padding: 12px;
 }
+.player-cluster.recording-layout {
+    left: 50%;
+    bottom: 14%;
+    transform: translateX(-50%) scale(var(--hud-scale));
+    transform-origin: bottom center;
+}
 .compass {
     width: 37px;
     height: 37px;

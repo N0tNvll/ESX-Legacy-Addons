@@ -85,6 +85,7 @@ TrickOrTreatConfig = {
         { coords = vec3(-174.35, 502.23, 137.42), heading = 45.0 },
         { coords = vec3(-682.04, 592.09, 145.39), heading = 315.0 },
         { coords = vec3(-902.27, 694.09, 151.43), heading = 135.0 },
+        { coords = vec3(-908.61, 693.73, 151.42), heading = 270.0 },
         -- Rockford Hills (mansion area)
         { coords = vec3(-1288.84, 439.82, 97.69), heading = 270.0 },
         { coords = vec3(-1405.81, 526.75, 123.83), heading = 90.0 },

@@ -41,6 +41,7 @@ server_scripts {
 dependencies {
     'esx_custom_props',
     'es_extended',
+    'esx_textui',
     'esx_death',
     'skinchanger',
     '/onesync',

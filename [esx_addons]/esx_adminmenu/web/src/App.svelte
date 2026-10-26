@@ -10,6 +10,7 @@
 	import Sidebar from "./lib/shared/components/Sidebar.svelte";
 	import TabContent from "./lib/shared/components/TabContent.svelte";
 	import Notifications from "./lib/shared/components/Notifications.svelte";
+	import ClipboardDialog from "./lib/shared/components/ClipboardDialog.svelte";
 	import AdminMenu from "./lib/tabs/admin-menu/AdminMenu.svelte";
 	import { fetchNui } from "./lib/shared/nui/fetchNUI";
 	import { currentPage } from "./lib/shared/stores/navigation.svelte";
@@ -61,6 +62,7 @@
 	<AdminMenu />
 {/if}
 <Notifications />
+<ClipboardDialog />
 {#if uiState.spectating}
 	<div class="spectate-tooltip-container">
 		<div class="spectate-tooltip">
