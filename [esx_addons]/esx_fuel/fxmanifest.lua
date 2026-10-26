@@ -23,7 +23,11 @@ shared_scripts {
 client_scripts {
     "client/main.lua",
     "client/mix.lua",
-    "client/pump.lua",
+    "client/pump/main.lua",
+    "client/pump/hose.lua",
+    "client/pump/refuel.lua",
+    "client/pump/ui.lua",
+    "client/pump/interact.lua",
     "client/jerrycan.lua",
     "client/stock.lua",
 }
