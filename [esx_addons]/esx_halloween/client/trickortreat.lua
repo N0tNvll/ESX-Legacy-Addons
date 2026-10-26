@@ -169,12 +169,14 @@ local function spawnPumpkin(id, state)
         end
 
         SetEntityAsMissionEntity(object, true, true)
-        SetEntityHeading(object, house.heading)
         -- Cast down from the configured point, including porches and raised surfaces.
         -- Probing from above the entrance can select its roof instead of the doorstep.
         if not PlaceObjectOnGroundOrObjectProperly(object) then
             failSpawn(id, 'ground placement failed; object kept at configured coordinates')
         end
+        local modelYawOffset = 90.0 -- example; determine this by checking the model
+        local yaw = (house.heading - modelYawOffset) % 360.0
+        SetEntityRotation(object, 0.0, 0.0, yaw, 1, true)
         FreezeEntityPosition(object, true)
         SetEntityInvincible(object, true)
         pumpkins[id] = object

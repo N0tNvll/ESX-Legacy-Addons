@@ -81,35 +81,26 @@ TrickOrTreatConfig = {
     ---House locations for trick-or-treating (xyz coordinates and heading)
     ---These are real Los Santos residential locations from across the map
     houses = {
-        -- Vinewood Hills (affluent area)
-        { coords = vec3(-174.35, 502.23, 137.42), heading = 45.0 },
-        { coords = vec3(-682.04, 592.09, 145.39), heading = 315.0 },
-        { coords = vec3(-902.27, 694.09, 151.43), heading = 135.0 },
-        { coords = vec3(-908.61, 693.73, 151.42), heading = 270.0 },
-        -- Rockford Hills (mansion area)
-        { coords = vec3(-1288.84, 439.82, 97.69), heading = 270.0 },
-        { coords = vec3(-1405.81, 526.75, 123.83), heading = 90.0 },
-        { coords = vec3(-1578.23, 764.94, 189.57), heading = 0.0 },
-        -- West Vinewood (residential)
-        { coords = vec3(-1922.32, 166.09, 84.66), heading = 180.0 },
-        { coords = vec3(-1965.46, 211.08, 86.80), heading = 45.0 },
-        -- Mirror Park (middle class)
-        { coords = vec3(1265.24, -647.03, 68.12), heading = 270.0 },
-        { coords = vec3(1010.47, -423.08, 65.35), heading = 135.0 },
-        -- Del Perro Heights (beachside)
-        { coords = vec3(-1467.83, -538.98, 55.62), heading = 45.0 },
-        { coords = vec3(-1529.51, -428.57, 35.60), heading = 315.0 },
-        -- Downtown (apartments)
-        { coords = vec3(-596.61, -282.36, 35.45), heading = 90.0 },
-        { coords = vec3(-273.00, -957.37, 31.22), heading = 270.0 },
-        -- Grove Street (residential)
-        { coords = vec3(127.94, -1930.14, 21.38), heading = 180.0 },
-        { coords = vec3(91.54, -1960.98, 20.75), heading = 0.0 },
-        -- Sandy Shores (outer areas)
-        { coords = vec3(1661.15, 3819.82, 35.18), heading = 45.0 },
-        { coords = vec3(1702.75, 4819.56, 42.06), heading = 315.0 },
-        -- Paleto Bay (rural)
-        { coords = vec3(-146.86, 6341.49, 31.49), heading = 135.0 },
-        { coords = vec3(-1291.01, -1439.87, 4.31), heading = 270.0 },
+        { coords = vec3(-178.37246704102,502.0654296875,135.8270111084), heading = 270.0 }, 
+        { coords = vec3(-687.14166259766,595.67144775391,142.64710998535), heading = 315.0 },
+        { coords = vec3(-888.4541015625,700.06134033203,149.69592285156), heading = 270.0 }, 
+        { coords = vec3(-910.33557128906,693.93438720703,150.4351348877), heading = 270.0 },
+        { coords = vec3(-1292.7266845703,454.37738037109,96.672241210938), heading = 270.0 }, 
+        { coords = vec3(-1405.6368408203,528.28857421875,122.8362121582), heading = 360.0 }, 
+        { coords = vec3(-1518.7095947266,852.43664550781,180.59475708008), heading = 270.0 }, 
+        { coords = vec3(-1922.9255371094,161.28923034668,83.602005004883), heading = 180.0 }, 
+        { coords = vec3(-1960.7307128906,211.09573364258,85.807815551758), heading = 220.0 }, 
+        { coords = vec3(1267.5646972656,-648.51525878906,66.856468200684), heading = 270.0 },
+        { coords = vec3(1011.9693603516,-424.53192138672,63.957683563232), heading = 220.0 },
+        { coords = vec3(1028.9694824219,-411.6432800293,64.949264526367), heading = 120.0 },
+        { coords = vec3(-1464.1306152344,-703.89886474609,25.790525436401), heading = 90.0 },
+        { coords = vec3(-543.88671875,-203.47373962402,37.220127105713), heading = 90.0 },
+        { coords = vec3(-264.23968505859,-971.16247558594,30.219585418701), heading = 90.0 },
+        { coords = vec3(125.44569396973,-1930.5848388672,20.382429122925), heading = 290.0 },
+        { coords = vec3(85.39673614502,-1959.9094238281,20.126684188843), heading = 280.0 },
+        { coords = vec3(1662.1208496094,3819.0009765625,34.47473526001), heading = 220.0 },
+        { coords = vec3(1687.0096435547,4818.8173828125,40.990341186523), heading = 380.0 },
+        { coords = vec3(-131.72650146484,6377.767578125,31.180015563965), heading = 320.0 },
+        { coords = vec3(-166.20640563965,6388.0239257812,30.486497879028), heading = 120.0 },
     },
 }
