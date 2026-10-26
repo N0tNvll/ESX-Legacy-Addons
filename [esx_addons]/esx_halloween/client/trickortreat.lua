@@ -174,7 +174,7 @@ local function spawnPumpkin(id, state)
         if not PlaceObjectOnGroundOrObjectProperly(object) then
             failSpawn(id, 'ground placement failed; object kept at configured coordinates')
         end
-        local modelYawOffset = 90.0 -- example; determine this by checking the model
+        local modelYawOffset = 90.0
         local yaw = (house.heading - modelYawOffset) % 360.0
         SetEntityRotation(object, 0.0, 0.0, yaw, 1, true)
         FreezeEntityPosition(object, true)
