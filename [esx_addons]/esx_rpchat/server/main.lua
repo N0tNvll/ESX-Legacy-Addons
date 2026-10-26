@@ -1,6 +1,11 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
+if GetResourceState('esx_chat') ~= 'missing' then
+	print('[esx_rpchat] esx_chat is installed and replaces esx_rpchat, its commands are disabled.')
+	return
+end
+
 local function getCooldown(name, fallback)
 	local cooldown = tonumber(Config[name]) or fallback
 	if cooldown < 0 then
