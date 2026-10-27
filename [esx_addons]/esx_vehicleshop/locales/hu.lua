@@ -62,4 +62,9 @@ Locales['hu'] = {
     ['customer_plate']          = 'Rendszám',
     ['customer_soldby']         = 'Értékesítette',
     ['customer_date']           = 'Dátum',
+	-- Keep labels used by the current gateway resources.
+	["purchase_type"] = "a vásárlás típusa",
+	["society_type"] = "vállalkozás",
+	["staff_type"] = "személyes használat",
+	["set_vehicle_owner_sell_society"] = "jármü kijelölése [Sale] [Society]",
 }

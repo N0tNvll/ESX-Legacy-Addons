@@ -360,5 +360,7 @@ Locales["hu"] = {
   ["no_valid_changes"] = "Nincs megvásárolható módosítás.",
   ["purchase_invalid_changes"] = "A vásárlás érvénytelen módosításokat tartalmaz.",
   ["purchase_vehicle_mismatch"] = "A vásárlás nem ehhez a járműhöz tartozik.",
-  ["tuning_applied"] = "A tuning alkalmazva: %s%s."
+  ["tuning_applied"] = "A tuning alkalmazva: %s%s.",
+	-- Keep labels used by the current gateway resources.
+	["espresso"] = "eszpresszó barna",
 }

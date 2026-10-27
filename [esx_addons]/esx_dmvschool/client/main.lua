@@ -4,6 +4,14 @@
 local CurrentAction     = nil
 local CurrentActionMsg  = nil
 local CurrentActionData = nil
+local textUIMessage
+
+local function hideActionTextUI()
+	if textUIMessage then
+		ESX.HideUI()
+		textUIMessage = nil
+	end
+end
 local Licenses          = {}
 local CurrentTest       = nil
 local CurrentTestType   = nil
@@ -218,6 +226,19 @@ end)
 AddEventHandler('esx_dmvschool:hasExitedMarker', function(zone)
 	CurrentAction = nil
 	ESX.CloseContext()
+	hideActionTextUI()
+end)
+
+ESX.SecureNetEvent('esx:onPlayerLogout', function()
+	CurrentAction = nil
+	HasAlreadyEnteredMarker = false
+	hideActionTextUI()
+end)
+
+AddEventHandler('onResourceStop', function(resource)
+	if resource == GetCurrentResourceName() then
+		hideActionTextUI()
+	end
 end)
 
 RegisterNetEvent('esx_dmvschool:loadLicenses')
@@ -240,8 +261,6 @@ end)
 
 -- Display markers
 CreateThread(function()
-	local TextUI = false
-
 	while true do
 		local sleep = 1500
 		local playerPed = PlayerPedId()
@@ -314,21 +333,20 @@ CreateThread(function()
 			end
 		end
 
-		if CurrentAction then
+		if CurrentAction and ESX.PlayerLoaded and not ESX.PlayerData.dead then
 			sleep = 0
 
-			if not TextUI then
+			if textUIMessage ~= CurrentActionMsg then
 				ESX.TextUI(CurrentActionMsg)
-				TextUI = true
+				textUIMessage = CurrentActionMsg
 			end
 
 			if (IsControlJustReleased(0, 38)) and (CurrentAction == 'dmvschool_menu') then
 				OpenDMVSchoolMenu()
 				CurrentAction = nil
 			end
-		elseif TextUI then
-			ESX.HideUI()
-			TextUI = false
+		else
+			hideActionTextUI()
 		end
 		
 		local isInMarker  = false

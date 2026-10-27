@@ -166,5 +166,8 @@ Locales["hu"] = {
     ["society_police"] = "Rendőrség",
     ["s_m_y_sheriff_01"] = "Seriff karakter",
     ["s_m_y_cop_01"] = "Rendőr karakter",
-    ["s_m_y_swat_01"] = "SWAT karakter"
+    ["s_m_y_swat_01"] = "SWAT karakter",
+	-- Keep labels used by the current gateway resources.
+	["helicopter_notauthorized"] = "Nem használhatsz helikoptert.",
+	["id"] = "ID: %s",
 }

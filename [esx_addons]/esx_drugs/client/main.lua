@@ -54,7 +54,7 @@ end)
 CreateThread(function ()
 	while true do 
 		local Sleep = 1500
-		if inZoneDrugShop and not menuOpen then
+		if inZoneDrugShop and not menuOpen and ESX.PlayerLoaded and not ESX.PlayerData.dead then
 			Sleep = 0
 			if not dealerTextUIShown then
 				ESX.TextUI(TranslateCap('dealer_prompt'))
@@ -162,6 +162,10 @@ end
 ESX.SecureNetEvent('esx:onPlayerLogout', function()
     licenseRequest = nil
     menuOpen = false
+    if dealerTextUIShown then
+        ESX.HideUI()
+        dealerTextUIShown = false
+    end
 end)
 
 function CreateBlipCircle(coords, text, radius, color, sprite)

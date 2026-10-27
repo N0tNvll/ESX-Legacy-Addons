@@ -4,6 +4,14 @@
 local HasAlreadyEnteredMarker, OnJob, IsNearCustomer, CustomerIsEnteringVehicle, CustomerEnteredVehicle,
     CurrentActionData = false, false, false, false, false, {}
 local CurrentCustomer, CurrentCustomerBlip, DestinationBlip, targetCoords, LastZone, CurrentAction, CurrentActionMsg, lastSelectedNPC
+local textUIMessage
+
+local function hideActionTextUI()
+    if textUIMessage then
+        ESX.HideUI()
+        textUIMessage = nil
+    end
+end
 
 function OpenTaxiMenu(menuType, name, title, elements, submit, cancel, change, close)
     return ESX.UI.Menu.Open(menuType, GetCurrentResourceName(), name, {
@@ -23,11 +31,23 @@ RegisterNetEvent('esx:onPlayerLogout')
 AddEventHandler('esx:onPlayerLogout', function()
     ESX.PlayerLoaded = false
     ESX.PlayerData = {}
+    CurrentAction = nil
+    hideActionTextUI()
 end)
 
 RegisterNetEvent('esx:setJob')
 AddEventHandler('esx:setJob', function(job)
     ESX.PlayerData.job = job
+    if not job or job.name ~= 'taxi' then
+        CurrentAction = nil
+        hideActionTextUI()
+    end
+end)
+
+AddEventHandler('onResourceStop', function(resource)
+    if resource == GetCurrentResourceName() then
+        hideActionTextUI()
+    end
 end)
 
 function DrawSub(msg, time)
@@ -695,16 +715,14 @@ end)
 
 -- Key Controls
 CreateThread(function()
-    local TextUI = false
-
     while true do
         local sleep = 1500
-        if CurrentAction and not ESX.PlayerData.dead then
+        if CurrentAction and ESX.PlayerLoaded and not ESX.PlayerData.dead and ESX.PlayerData.job and ESX.PlayerData.job.name == 'taxi' then
             sleep = 0
 
-            if not TextUI then
+            if textUIMessage ~= CurrentActionMsg then
                 ESX.TextUI(CurrentActionMsg)
-                TextUI = true
+                textUIMessage = CurrentActionMsg
             end
 
             if IsControlJustReleased(0, 38) and ESX.PlayerData.job and ESX.PlayerData.job.name == 'taxi' then
@@ -720,9 +738,8 @@ CreateThread(function()
 
                 CurrentAction = nil
             end
-        elseif TextUI then
-            ESX.HideUI()
-            TextUI = false
+        else
+            hideActionTextUI()
         end
         Wait(sleep)
     end
