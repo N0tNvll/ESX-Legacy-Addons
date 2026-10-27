@@ -3,6 +3,7 @@
 
 local MechanicJob = ESXMechanicJob
 local PlayerWorkStates = MechanicJob.PlayerWorkStates
+local workSessions = {}
 local WORK_ACTION_DELAY = 4000
 local WORK_ACTION_DISTANCE = 3.0
 local WORK_ACTION_START_COOLDOWN = 1000
@@ -66,8 +67,8 @@ local WORK_ACTIONS = {
 	}
 }
 
-local function isWorkshopActionActive(source, actionName)
-	return PlayerWorkStates[source] == actionName
+local function isWorkshopActionActive(source, actionName, session)
+	return PlayerWorkStates[source] == actionName and workSessions[source] == session
 end
 
 local function setWorkshopAction(source, actionName, active)
@@ -77,6 +78,7 @@ local function setWorkshopAction(source, actionName, active)
 		end
 
 		PlayerWorkStates[source] = actionName
+		workSessions[source] = {}
 		return true
 	end
 
@@ -85,6 +87,7 @@ local function setWorkshopAction(source, actionName, active)
 	end
 
 	PlayerWorkStates[source] = nil
+	workSessions[source] = nil
 	return true
 end
 
@@ -93,19 +96,22 @@ local function hasCraftingMaterials(xPlayer, action)
 	return item and (item.count or 0) > 0
 end
 
-local function processWorkshopAction(source, actionName)
+local function processWorkshopAction(source, actionName, session)
 	local action = WORK_ACTIONS[actionName]
 	if not action then
 		return
 	end
 
 	SetTimeout(WORK_ACTION_DELAY, function()
-		if not isWorkshopActionActive(source, actionName) then
+		if not isWorkshopActionActive(source, actionName, session) then
+			if workSessions[source] == session then
+				workSessions[source] = nil
+			end
 			return
 		end
 
 		local xPlayer = MechanicJob.getWorkshopMechanicPlayer(source)
-		if not xPlayer or not MechanicJob.isPlayerNearZone(source, action.zone, WORK_ACTION_DISTANCE) then
+		if not xPlayer or xPlayer.getIdentifier() ~= session.identifier or not MechanicJob.isPlayerNearZone(source, action.zone, WORK_ACTION_DISTANCE) then
 			setWorkshopAction(source, actionName, false)
 			return
 		end
@@ -119,7 +125,11 @@ local function processWorkshopAction(source, actionName)
 				return
 			end
 
-			xPlayer.addInventoryItem(action.item, 1)
+			if not xPlayer.canCarryItem(action.item, 1) or xPlayer.addInventoryItem(action.item, 1) ~= true then
+				TriggerClientEvent('esx:showNotification', source, TranslateCap('you_do_not_room'))
+				setWorkshopAction(source, actionName, false)
+				return
+			end
 		elseif action.mode == 'craft' then
 			if not hasCraftingMaterials(xPlayer, action) then
 				TriggerClientEvent('esx:showNotification', source, TranslateCap(action.missingNotification))
@@ -127,14 +137,30 @@ local function processWorkshopAction(source, actionName)
 				return
 			end
 
-			xPlayer.removeInventoryItem(action.input, 1)
-			xPlayer.addInventoryItem(action.output, 1)
+			if not xPlayer.canSwapItem(action.input, 1, action.output, 1) then
+				TriggerClientEvent('esx:showNotification', source, TranslateCap('you_do_not_room'))
+				setWorkshopAction(source, actionName, false)
+				return
+			end
+
+			if xPlayer.removeInventoryItem(action.input, 1) ~= true then
+				setWorkshopAction(source, actionName, false)
+				return
+			end
+
+			if xPlayer.addInventoryItem(action.output, 1) ~= true then
+				if xPlayer.addInventoryItem(action.input, 1) ~= true then
+					print(('[esx_mechanicjob] Failed to restore %s for player %s'):format(action.input, source))
+				end
+				setWorkshopAction(source, actionName, false)
+				return
+			end
 		else
 			setWorkshopAction(source, actionName, false)
 			return
 		end
 
-		processWorkshopAction(source, actionName)
+		processWorkshopAction(source, actionName, session)
 	end)
 end
 
@@ -165,14 +191,20 @@ local function startWorkshopAction(source, actionName)
 	if not setWorkshopAction(source, actionName, true) then
 		return
 	end
+	local session = workSessions[source]
+	session.identifier = xPlayer.getIdentifier()
 
 	TriggerClientEvent('esx:showNotification', source, TranslateCap(action.startNotification))
-	processWorkshopAction(source, actionName)
+	processWorkshopAction(source, actionName, session)
 end
 
 local function stopWorkshopAction(source, actionName)
 	setWorkshopAction(source, actionName, false)
 end
+
+AddEventHandler('playerDropped', function()
+	workSessions[source] = nil
+end)
 
 for actionName, action in pairs(WORK_ACTIONS) do
 	local registeredActionName = actionName

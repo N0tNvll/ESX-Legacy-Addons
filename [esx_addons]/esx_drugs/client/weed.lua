@@ -23,7 +23,7 @@ CreateThread(function()
 		local playerPed = PlayerPedId()
 		local coords = GetEntityCoords(playerPed)
 
-		if #(coords - Config.CircleZones.WeedProcessing.coords) < 1 then
+		if ESX.PlayerLoaded and not ESX.PlayerData.dead and #(coords - Config.CircleZones.WeedProcessing.coords) < 1 then
 			wait = 2
 			if not isProcessing then
 				if not processTextUIShown then
@@ -97,7 +97,7 @@ CreateThread(function()
 			end
 		end
 
-		if nearbyObject and IsPedOnFoot(playerPed) then
+		if nearbyObject and ESX.PlayerLoaded and not ESX.PlayerData.dead and IsPedOnFoot(playerPed) then
 			Sleep = 0
 			if not isPickingUp then
 				if not pickupTextUIShown then
@@ -151,6 +151,13 @@ AddEventHandler('onResourceStop', function(resource)
 		for k, v in pairs(weedPlants) do
 			xLib.game.deleteObject(v)
 		end
+	end
+end)
+
+ESX.SecureNetEvent('esx:onPlayerLogout', function()
+	if processTextUIShown or pickupTextUIShown then
+		ESX.HideUI()
+		processTextUIShown, pickupTextUIShown = false, false
 	end
 end)
 

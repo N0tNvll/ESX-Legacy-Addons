@@ -106,7 +106,7 @@ local function setCursor(enabled)
 end
 
 AddEventHandler('esx_pausemenu:closed', function()
-    if dead then
+    if dead and not recovering and ESX.PlayerLoaded and not IsPauseMenuActive() then
         setCursor(true)
     end
 end)

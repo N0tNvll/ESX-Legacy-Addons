@@ -247,4 +247,13 @@ Locales["hu"] = {
 	["must_be_in_vehicle"] = "Járműben kell lenned.",
 	["no_permission_command"] = "Nincs jogosultságod a parancs használatához.",
 	["database_unavailable"] = "Az adatbázis nem érhető el.",
+	-- Keep labels used by the current gateway resources.
+	["copy_failed"] = "Nem sikerült másolni a szöveget. Próbáld újra.",
+	["clipboard_failed"] = "Nem sikerült másolni. A koordinátákat vagy a szöveget az F8 konzolban találod.",
+	["clipboard_busy"] = "Zárd be a másik menüt, majd próbáld újra. A szöveg az F8 konzolban is elérhető.",
+	["clipboard_title"] = "Koordináták vagy szöveg másolása",
+	["clipboard_hint"] = "Másold a kijelölt szöveget a Ctrl+C billentyűkkel, vagy kattints a Másolás gombra.",
+	["clipboard_text"] = "Másolandó szöveg",
+	["clipboard_manual"] = "Kattints a szövegre, majd nyomd meg a Ctrl+A és Ctrl+C billentyűket. Az F8 konzolban is megtalálod.",
+	["clipboard_copy"] = "Másolás",
 }

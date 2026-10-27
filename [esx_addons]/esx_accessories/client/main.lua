@@ -5,6 +5,14 @@
 local HasAlreadyEnteredMarker = false
 local LastZone, CurrentAction, CurrentActionMsg
 local CurrentActionData = {}
+local textUIMessage
+
+local function hideActionTextUI()
+    if textUIMessage then
+        ESX.HideUI()
+        textUIMessage = nil
+    end
+end
 
 function OpenAccessoryMenu()
     local elements = {
@@ -113,6 +121,18 @@ end)
 AddEventHandler('esx_accessories:hasExitedMarker', function(zone)
     ESX.CloseContext()
     CurrentAction = nil
+    hideActionTextUI()
+end)
+
+ESX.SecureNetEvent('esx:onPlayerLogout', function()
+    CurrentAction = nil
+    hideActionTextUI()
+end)
+
+AddEventHandler('onResourceStop', function(resource)
+    if resource == GetCurrentResourceName() then
+        hideActionTextUI()
+    end
 end)
 
 -- Create Blips
@@ -175,26 +195,23 @@ end)
 
 -- Key controls
 CreateThread(function()
-    local TextUI = false
-
     while true do
         local Sleep = 1500
 
-        if CurrentAction then
+        if CurrentAction and ESX.PlayerLoaded and not ESX.PlayerData.dead then
             Sleep = 0
 
-            if not TextUI then
+            if textUIMessage ~= CurrentActionMsg then
                 ESX.TextUI(CurrentActionMsg)
-                TextUI = true
+                textUIMessage = CurrentActionMsg
             end
 
             if IsControlJustReleased(0, 38) and CurrentActionData.accessory then
                 OpenShopMenu(CurrentActionData.accessory)
                 CurrentAction = nil
             end
-        elseif TextUI then
-            ESX.HideUI()
-            TextUI = false
+        else
+            hideActionTextUI()
         end
 
         Wait(Sleep)
