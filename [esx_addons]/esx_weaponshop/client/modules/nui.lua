@@ -3,6 +3,8 @@
 
 local currentShop = nil
 local uiOpen = false
+local payAtShop
+local licenseRequest = nil
 
 local function NormalizeUiInteger(value)
 	value = tonumber(value)
@@ -211,6 +213,7 @@ local function OpenNui(zone, mode, selectedName, stateOverrides)
 	local items = BuildShopItems(zone)
 	ApplyItemStateOverrides(items, stateOverrides)
 
+	licenseRequest = nil
 	currentShop = zone
 	uiOpen = true
 
@@ -241,10 +244,37 @@ end
 ---Opens the weapon license purchase view
 ---@param zone string Shop zone name
 function OpenBuyLicenseMenu(zone)
-	OpenNui(zone, 'license')
+	if licenseRequest or uiOpen or not Config.Zones[zone] or GetNearbyZone() ~= zone then
+		return
+	end
+
+	local request = {}
+	licenseRequest = request
+	currentShop = zone
+	uiOpen = false
+	ESX.HideUI()
+
+	local bought = payAtShop(
+		Config.LicensePrice,
+		TranslateCap('shop_menu_title'),
+		'esx_weaponshop:buyLicense'
+	)
+
+	if licenseRequest ~= request then
+		return
+	end
+
+	licenseRequest = nil
+
+	if bought and currentShop == zone and GetNearbyZone() == zone then
+		OpenShop(zone)
+	elseif currentShop == zone then
+		currentShop = nil
+	end
 end
 
 function CloseShop()
+	licenseRequest = nil
 	xLib.nui.close({ type = 'closeShop' })
 	currentShop = nil
 	uiOpen = false
@@ -259,7 +289,7 @@ end
 ---Checks if UI is open
 ---@return boolean
 function IsUIOpen()
-	return uiOpen
+	return uiOpen or licenseRequest ~= nil
 end
 
 -- NUI Ready Callback
@@ -287,7 +317,7 @@ local function upgradePrice(data)
     end
 end
 
-local function payAtShop(amount, title, callbackName, ...)
+payAtShop = function(amount, title, callbackName, ...)
     local shop = currentShop
     local zone = shop and Config.Zones[shop]
 
@@ -395,12 +425,13 @@ end)
 
 -- License callback
 xLib.nui.register('buyLicense', function(_, reply)
+    local shop = currentShop
     local bought =
         payAtShop(Config.LicensePrice, TranslateCap('shop_menu_title'), 'esx_weaponshop:buyLicense')
     reply({ ok = bought and true or false })
 
-    if bought and currentShop then
-        OpenShop(currentShop)
+    if bought and shop and currentShop == shop and uiOpen and GetNearbyZone() == shop then
+        OpenShop(shop)
     end
 end)
 
