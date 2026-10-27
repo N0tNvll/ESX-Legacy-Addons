@@ -2,6 +2,7 @@
 -- Copyright (C) 2022-2026 ESX Framework
 
 local menuOpen = false
+local licenseRequest = nil
 local inZoneDrugShop = false
 local inRangeMarkerDrugShop = false
 local cfgMarker = Config.Marker;
@@ -115,32 +116,42 @@ AddEventHandler('onResourceStop', function(resource)
 end)
 
 function OpenBuyLicenseMenu(licenseName)
-	menuOpen = true
-	local license = Config.LicensePrices[licenseName]
+    local license = Config.LicensePrices[licenseName]
 
-	local elements = {
-		{unselectable = true, title = TranslateCap('purchase_license')},
-		{title = ('%s - <span style="color:green;">%s</span>'):format(license.label, TranslateCap('dealer_item', ESX.Math.GroupDigits(license.price))), value = licenseName, price = license.price, licenseName = license.label}
-	}
+    if not license or licenseRequest then
+        return
+    end
 
-	ESX.OpenContext("right", elements, function(menu,element)
-        PaymentGateway.Pay({
-            amount = element.price,
-            title = element.licenseName,
-        }, 'esx_drugs:buyLicense', function(boughtLicense, paymentFailure)
-			if boughtLicense then
-				ESX.CloseContext()
-				ESX.ShowNotification(TranslateCap('license_bought', element.licenseName, ESX.Math.GroupDigits(element.price)))
-			else
-                PaymentGateway.NotifyFailure(
-                    paymentFailure,
-                    TranslateCap('license_bought_fail', element.licenseName))
-			end
-		end, element.value)
-	end, function(menu)
-		menuOpen = false
-	end)
+    local request = {}
+    licenseRequest = request
+    menuOpen = true
+
+    PaymentGateway.Pay({
+        amount = license.price,
+        title = license.label,
+    }, 'esx_drugs:buyLicense', function(boughtLicense, paymentFailure)
+        if licenseRequest ~= request then
+            return
+        end
+
+        licenseRequest = nil
+        menuOpen = false
+
+        if boughtLicense then
+            ESX.ShowNotification(TranslateCap('license_bought', license.label, ESX.Math.GroupDigits(license.price)))
+        else
+            PaymentGateway.NotifyFailure(
+                paymentFailure,
+                TranslateCap('license_bought_fail', license.label)
+            )
+        end
+    end, licenseName)
 end
+
+ESX.SecureNetEvent('esx:onPlayerLogout', function()
+    licenseRequest = nil
+    menuOpen = false
+end)
 
 function CreateBlipCircle(coords, text, radius, color, sprite)
 	if radius then

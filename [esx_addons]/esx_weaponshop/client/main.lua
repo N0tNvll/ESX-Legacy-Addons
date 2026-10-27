@@ -5,6 +5,12 @@ CreateThread(function()
 	RegisterWeaponShopMarkers()
 end)
 
+ESX.SecureNetEvent('esx:onPlayerLogout', function()
+	if IsUIOpen() then
+		CloseShop()
+	end
+end)
+
 AddEventHandler('onResourceStop', function(resource)
 	if resource == GetCurrentResourceName() then
 		if IsUIOpen() then
