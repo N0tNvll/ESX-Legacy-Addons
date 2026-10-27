@@ -6,3 +6,7 @@
 <p align='center'><b>ESX Legacy is the best-in-class framework for FiveM, it provides an extremely performant and feature-rich server base, all while being completely beginner-friendly</b></p>
 
 <hr>
+
+## Seasonal resources
+
+`esx_halloween` and its required `esx_custom_props` resource have moved to [ESX Legacy Seasonal](https://github.com/esx-framework/ESX-Legacy-Seasonal). Install them from `[esx_seasonal]` and remove older copies from `[esx_addons]` to avoid duplicate resource names.
