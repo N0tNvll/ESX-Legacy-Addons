@@ -23,6 +23,7 @@ export interface Vehicle {
   customName?: string;
   lastUsed?: number;
   props?: VehicleProps;
+  job?: string;
 }
 
 export type MileageUnit = 'mi' | 'km';

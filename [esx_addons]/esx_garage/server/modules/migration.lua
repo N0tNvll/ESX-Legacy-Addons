@@ -10,6 +10,7 @@ local INDEX_MIGRATION_NAME <const> = 'performance_indexes'
 local FILTER_INDEX_MIGRATION_NAME <const> = 'filter_indexes'
 local MILEAGE_PRECISION_MIGRATION_NAME <const> = 'mileage_precision'
 local POUND_NORMALIZATION_MIGRATION_NAME <const> = 'pound_normalization'
+local JOB_FLEETS_MIGRATION_NAME <const> = 'job_fleets'
 local MIGRATION_VERSION <const> = '1.16.0'
 
 ---@param name string
@@ -355,6 +356,13 @@ MySQL.ready(function()
 
         if ensureIndex('idx_owned_vehicles_plate_stored_pound', '(`plate`, `stored`, `pound`)') then
             indexed = indexed + 1
+        end
+
+        if not migrationApplied(appliedMigrationVersion(JOB_FLEETS_MIGRATION_NAME)) then
+            ensureMigrationTable()
+            if ensureColumn('job', 'VARCHAR(20) NULL DEFAULT NULL') then added = added + 1 end
+            if ensureIndex('idx_owned_vehicles_job_plate', '(`job`, `plate`)') then indexed = indexed + 1 end
+            markMigrationApplied(JOB_FLEETS_MIGRATION_NAME)
         end
 
         recoverOrphanedVehicles()

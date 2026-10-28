@@ -25,6 +25,7 @@ interface GarageState {
 
   // Data
   selectedGarage: Garage | null;
+  fleetGarageId: string;
   selectedVehicle: Vehicle | null;
   vehicles: Vehicle[];
   filter: VehicleFilter;
@@ -42,6 +43,7 @@ interface GarageState {
   updateVehiclePage: (page: VehiclePageResponse) => void;
   setFilter: (filter: Partial<VehicleFilter>) => void;
   loadVehicles: (page?: number) => Promise<void>;
+  selectFleet: (garageId: string) => Promise<void>;
   resetFilter: () => void;
 
   // Vehicle Actions
@@ -72,6 +74,7 @@ const defaultStats: VehicleStats = {
 
 const pendingFavoriteToggles = new Set<string>();
 const pendingVehicleRetrievals = new Set<string>();
+let vehiclePageRequest = 0;
 
 const handleGarageActionError = (message: string, error: unknown): void => {
   showErrorNotification(error, message);
@@ -110,6 +113,7 @@ export const useGarageStore = create<GarageState>()(
       isOpen: false,
       isLoading: false,
       selectedGarage: null,
+      fleetGarageId: '',
       selectedVehicle: null,
       vehicles: [],
       filter: defaultFilter,
@@ -125,6 +129,9 @@ export const useGarageStore = create<GarageState>()(
       setOpen: (open) => set((state) => {
         state.isOpen = open;
         if (!open) {
+          vehiclePageRequest += 1;
+          state.isLoading = false;
+          state.fleetGarageId = '';
           // Reset state when closing
           state.selectedGarage = null;
           state.selectedVehicle = null;
@@ -145,6 +152,9 @@ export const useGarageStore = create<GarageState>()(
       }),
 
       selectGarage: (garage) => set((state) => {
+        vehiclePageRequest += 1;
+        state.isLoading = false;
+        state.fleetGarageId = '';
         state.selectedGarage = garage;
       }),
 
@@ -180,28 +190,48 @@ export const useGarageStore = create<GarageState>()(
       loadVehicles: async (page = get().pagination.page) => {
         const garage = get().selectedGarage;
         if (!garage) return;
+        const request = ++vehiclePageRequest;
+        const fleetGarageId = get().fleetGarageId;
+        const isCurrent = () => request === vehiclePageRequest && get().isOpen && get().selectedGarage?.id === garage.id;
+        const query = { page, pageSize: get().pagination.pageSize, filter: get().filter, fleetGarageId };
+        const fetchPage = () => fetchNui<VehiclePageResponse>(NuiCallbackType.GET_VEHICLES, query);
 
         set((state) => { state.isLoading = true; });
 
         try {
-          const result = await fetchNui<VehiclePageResponse>(
-            NuiCallbackType.GET_VEHICLES,
-            {
-              page,
-              pageSize: get().pagination.pageSize,
-              filter: get().filter
-            }
-          );
+          let result: VehiclePageResponse;
+          try {
+            result = await fetchPage();
+          } catch (error) {
+            if (!isErrorCode(error, 'rate_limited') || !isCurrent()) throw error;
+            // Opening an impound and immediately changing fleets shares the existing cooldown.
+            await new Promise(resolve => window.setTimeout(resolve, 1600));
+            if (!isCurrent()) return;
+            result = await fetchPage();
+          }
 
+          if (!isCurrent()) return;
           get().updateVehiclePage(result);
           set((state) => {
             state.selectedVehicle = null;
           });
         } catch (error) {
-          handleGarageActionError('Failed to load vehicles.', error);
+          if (request === vehiclePageRequest) handleGarageActionError('Failed to load vehicles.', error);
         } finally {
-          set((state) => { state.isLoading = false; });
+          if (request === vehiclePageRequest) set((state) => { state.isLoading = false; });
         }
+      },
+
+      selectFleet: async (garageId) => {
+        set((state) => {
+          state.fleetGarageId = garageId;
+          state.selectedVehicle = null;
+          state.vehicles = [];
+          state.stats = { ...defaultStats };
+          state.filter = defaultFilter;
+          state.pagination.page = 1;
+        });
+        await get().loadVehicles(1);
       },
 
       resetFilter: () => set((state) => {

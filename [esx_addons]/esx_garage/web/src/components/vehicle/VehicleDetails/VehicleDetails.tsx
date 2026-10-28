@@ -468,7 +468,7 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ vehicle, onClose
           </>
         ) : (
           <>
-            {selectedGarage?.keys && (
+            {selectedGarage?.keys && !vehicle.job && (
               <ActionButton $primary onClick={handleGiveKeys}>
                 Give Keys
               </ActionButton>
@@ -476,9 +476,9 @@ export const VehicleDetails: React.FC<VehicleDetailsProps> = ({ vehicle, onClose
             <ActionButton onClick={openRename}>
               Rename Vehicle
             </ActionButton>
-            <ActionButton onClick={openTransfer}>
+            {!vehicle.job && <ActionButton onClick={openTransfer}>
               Transfer Vehicle
-            </ActionButton>
+            </ActionButton>}
           </>
         )}
       </ActionsSection>

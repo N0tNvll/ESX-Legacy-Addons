@@ -64,7 +64,8 @@ export const VehicleSchema = z.object({
   isFavorite: z.boolean().optional(),
   customName: z.string().optional(),
   lastUsed: z.number().optional(),
-  props: VehiclePropsSchema.optional()
+  props: VehiclePropsSchema.optional(),
+  job: z.string().optional()
 });
 
 export const GarageSchema = z.object({
@@ -98,7 +99,8 @@ export const GarageSchema = z.object({
   maxVehicles: z.number().optional(),
   logo: z.string().optional(),
   color: z.string().optional(),
-  keys: z.boolean().optional()
+  keys: z.boolean().optional(),
+  fleets: z.array(z.object({ id: z.string(), name: z.string() })).optional()
 });
 
 export const VehiclePaginationSchema = z.object({

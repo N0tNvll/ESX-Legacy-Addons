@@ -29,6 +29,9 @@
 ---@field blip? GarageBlip
 ---@field ped? GaragePed
 ---@field access? GarageAccess
+---@field job? string Required for type='job', or use access.jobs. Matches owned_vehicles.job.
+---@field minGrade? integer Minimum current job grade (default 0).
+---@field shared? boolean Job fleet shared across employees (default true); false also requires owner.
 ---@field logo? string Image url or nui path shown in the menu header.
 ---@field color? string Hex accent color applied to the menu.
 ---@field pound? string Linked impound lot id.
@@ -54,6 +57,8 @@
 ---@field maxVehiclesPerMenu integer
 
 ---@class OwnedVehicleRow
+---@field owner? string Internal database owner; not returned in the vehicle list.
+---@field job? string NULL/empty identifies personal vehicles.
 ---@field plate string
 ---@field vehicle string
 ---@field type vehicle_type
@@ -66,6 +71,7 @@
 ---@field mileage number
 
 ---@class GarageVehicle
+---@field job? string Job association; job vehicles cannot transfer ownership or grant personal keys.
 ---@field id string
 ---@field plate string
 ---@field model string
