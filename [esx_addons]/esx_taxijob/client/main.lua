@@ -161,90 +161,6 @@ function OpenCloakroom()
     end)
 end
 
-function OpenVehicleSpawnerMenu()
-    if Config.EnableSocietyOwnedVehicles then
-        xLib.callback('esx_society:getVehiclesInGarage', false, function(vehicles)
-            local elements = {}
-
-            for i = 1, #vehicles, 1 do
-                elements[#elements+1] = {
-                    label = GetDisplayNameFromVehicleModel(vehicles[i].model) .. ' [' .. vehicles[i].plate .. ']',
-                    value = vehicles[i]
-                }
-            end
-
-            OpenTaxiMenu('default', 'vehicle_spawner', TranslateCap('spawn_veh'), elements, function(data, menu)
-                if not xLib.game.isSpawnPointClear(Config.Zones.VehicleSpawnPoint.Pos, 5.0) then
-                    ESX.ShowNotification(TranslateCap('spawnpoint_blocked'))
-                    return
-                end
-
-                local vehicleProps = data.current.value
-                xLib.callback("esx_taxijob:SpawnVehicle", false, function()
-                    return
-                end, vehicleProps.model, vehicleProps)
-                menu.close()
-            end, function(data, menu)
-                menu.close()
-                CurrentAction = 'vehicle_spawner'
-                CurrentActionMsg = TranslateCap('spawner_prompt')
-                CurrentActionData = {}
-            end)
-        end, 'taxi')
-    else -- not society vehicles
-        if #Config.AuthorizedVehicles == 0 then
-            ESX.ShowNotification(TranslateCap('empty_authorized_vehicles_table'), "error")
-            return
-        end
-
-        local elements = {}
-        for i = 1, #Config.AuthorizedVehicles do
-            elements[#elements+1] = {
-                label = Config.AuthorizedVehicles[i].title or Config.AuthorizedVehicles[i].label or Config.AuthorizedVehicles[i].model,
-                model = Config.AuthorizedVehicles[i].model
-            }
-        end
-
-        OpenTaxiMenu('default', 'vehicle_spawner', TranslateCap('spawn_veh'), elements, function(data, menu)
-            if not data.current.model or string.len(data.current.model) == 0 then
-                ESX.ShowNotification(TranslateCap('unknow_model'), "error")
-                return
-            end
-            if not xLib.game.isSpawnPointClear(Config.Zones.VehicleSpawnPoint.Pos, 5.0) then
-                ESX.ShowNotification(TranslateCap('spawnpoint_blocked'))
-                return
-            end
-            xLib.callback("esx_taxijob:SpawnVehicle", false, function()
-                ESX.ShowNotification(TranslateCap('vehicle_spawned', data.current.label), "success")
-            end, data.current.model, {plate = "TAXI JOB"})
-            menu.close()
-        end, function(data, menu)
-            menu.close()
-            CurrentAction = 'vehicle_spawner'
-            CurrentActionMsg = TranslateCap('spawner_prompt')
-            CurrentActionData = {}
-        end)
-    end
-end
-
-function DeleteJobVehicle()
-    local playerPed = PlayerPedId()
-
-    if Config.EnableSocietyOwnedVehicles then
-        local vehicleProps = xLib.game.getVehicleProperties(CurrentActionData.vehicle)
-        TriggerServerEvent('esx_society:putVehicleInGarage', 'taxi', vehicleProps)
-        xLib.game.deleteVehicle(CurrentActionData.vehicle)
-    else
-        if IsInAuthorizedVehicle() then
-            xLib.game.deleteVehicle(CurrentActionData.vehicle)
-
-            xLib.callback('esx_service:disableService', false, function() end, 'taxi')
-        else
-            ESX.ShowNotification(TranslateCap('only_taxi'))
-        end
-    end
-end
-
 function OpenTaxiActionsMenu()
     local elements = {
         {label = TranslateCap('deposit_stock'), value = 'put_stock'}, 
@@ -439,22 +355,7 @@ function OpenPutStocksMenu()
 end
 
 AddEventHandler('esx_taxijob:hasEnteredMarker', function(zone)
-    if zone == 'VehicleSpawner' then
-        CurrentAction = 'vehicle_spawner'
-        CurrentActionMsg = TranslateCap('spawner_prompt')
-        CurrentActionData = {}
-    elseif zone == 'VehicleDeleter' then
-        local playerPed = PlayerPedId()
-        local vehicle = GetVehiclePedIsIn(playerPed, false)
-
-        if IsPedInAnyVehicle(playerPed, false) and GetPedInVehicleSeat(vehicle, -1) == playerPed then
-            CurrentAction = 'delete_vehicle'
-            CurrentActionMsg = TranslateCap('store_veh')
-            CurrentActionData = {
-                vehicle = vehicle
-            }
-        end
-    elseif zone == 'TaxiActions' then
+    if zone == 'TaxiActions' then
         CurrentAction = 'taxi_actions_menu'
         CurrentActionMsg = TranslateCap('press_to_open')
         CurrentActionData = {}
@@ -506,7 +407,7 @@ CreateThread(function()
 
             for k, v in pairs(Config.Zones) do
                 local zonePos = vector3(v.Pos.x, v.Pos.y, v.Pos.z)
-                local distance = #(coords - zonePos)
+                local distance = (k == 'VehicleSpawner' or k == 'VehicleDeleter') and math.huge or #(coords - zonePos)
 
                 if v.Type ~= -1 and distance < Config.DrawDistance then
                     sleep = 0
@@ -730,10 +631,6 @@ CreateThread(function()
                     OpenTaxiActionsMenu()
                 elseif CurrentAction == 'cloakroom' then
                     OpenCloakroom()
-                elseif CurrentAction == 'vehicle_spawner' then
-                    OpenVehicleSpawnerMenu()
-                elseif CurrentAction == 'delete_vehicle' then
-                    DeleteJobVehicle()
                 end
 
                 CurrentAction = nil

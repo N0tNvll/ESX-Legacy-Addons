@@ -16,6 +16,7 @@ lua54 'yes'
 ui_page 'web/dist/index.html'
 
 files {
+    'integrations/config.lua',
     'web/dist/index.html',
     'web/dist/**/*',
     'locales/*.lua',
@@ -32,7 +33,11 @@ shared_scripts {
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
     '@esx_lib/imports/catalog/bootstrap.lua',
-    'server/modules/*.lua',
+    'server/modules/categories.lua',
+    'server/modules/registry.lua',
+    'server/modules/migration.lua',
+    'server/modules/vehicle.lua',
+    'server/modules/fleets.lua',
 }
 
 client_scripts {

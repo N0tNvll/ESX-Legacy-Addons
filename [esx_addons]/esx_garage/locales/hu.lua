@@ -34,6 +34,7 @@ return {
   ["store_error_plate_conflict"] = "Ezt a rendszámot egy másik aktív jármű használja.",
   ["store_error_plate_mismatch"] = "A jármű rendszáma nem egyezik a nyilvántartott saját jármű rendszámával.",
   ["store_error_too_far"] = "Túl messze vagy a garázstól.",
+  ["store_error_wrong_category"] = "Ez a garázs nem fogad ilyen típusú járművet.",
   ["received_vehicle"] = "Kaptál egy járművet (rendszám: %s).",
   ["open_garage"] = "Garázs megnyitása"
 }

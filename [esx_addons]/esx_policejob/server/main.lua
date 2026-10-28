@@ -683,34 +683,6 @@ xLib.callback.registerCompat('esx_policejob:buyJobVehicle', function(source, cb,
     )
 end)
 
-xLib.callback.registerCompat('esx_policejob:storeNearbyVehicle', function(source, cb, plates)
-    local xPlayer = ESX.Player(source)
-
-    if not isPoliceOnDuty(xPlayer) or type(plates) ~= 'table' or #plates == 0 then
-        return cb(false)
-    end
-
-    local job = xPlayer.getJob()
-    local identifier = xPlayer.getIdentifier()
-    local plate = MySQL.scalar.await('SELECT plate FROM owned_vehicles WHERE owner = ? AND plate IN (?) AND job = ?', { identifier, plates, job.name })
-
-    if plate then
-        MySQL.update(
-            'UPDATE owned_vehicles SET `stored` = true WHERE owner = ? AND plate = ? AND job = ?',
-            { identifier, plate, job.name },
-            function(rowsChanged)
-                if rowsChanged == 0 then
-                    cb(false)
-                else
-                    cb(plate)
-                end
-            end
-        )
-    else
-        cb(false)
-    end
-end)
-
 function getPriceFromHash(vehicleHash, jobGrade, type)
     local vehicles = Config.AuthorizedVehicles[type]?[jobGrade] or {}
 

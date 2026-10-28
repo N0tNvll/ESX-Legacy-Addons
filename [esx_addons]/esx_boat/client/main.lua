@@ -98,50 +98,6 @@ function OpenBoatShop(shop)
 	end)
 end
 
-function OpenBoatGarage(garage)
-	xLib.callback('esx_boat:getGarage', false, function (ownedBoats)
-		if #ownedBoats == 0 then
-			ESX.ShowNotification(TranslateCap('garage_noboats'))
-		else
-			-- get all available boats
-			local elements = {
-				{unselectable = true, icon = "fas fa-ship", title = TranslateCap('garage')}
-			}
-			for i=1, #ownedBoats, 1 do
-				ownedBoats[i] = json.decode(ownedBoats[i])
-
-				elements[#elements+1] = {
-					icon = "fas fa-ship",
-					title = getVehicleLabelFromHash(ownedBoats[i].model),
-					vehicleProps = ownedBoats[i]
-				}
-			end
-
-			ESX.OpenContext("right", elements, function(menu,element)
-				local playerPed = PlayerPedId()
-				local vehicleProps = element.vehicleProps
-
-				if xLib.game.isSpawnPointClear(garage.SpawnPoint, 4.0) then
-					TriggerServerEvent('esx_boat:takeOutVehicle', vehicleProps.plate)
-					ESX.ShowNotification(TranslateCap('garage_taken'))
-
-					xLib.game.spawnVehicle(vehicleProps.model, garage.SpawnPoint, garage.SpawnPoint.w, function(vehicle)
-						TaskWarpPedIntoVehicle(playerPed, vehicle, -1)
-						xLib.game.setVehicleProperties(vehicle, vehicleProps)
-					end)
-
-					ESX.CloseContext()
-				else
-					ESX.ShowNotification(TranslateCap('garage_blocked'))
-				end
-			end, function(menu)
-				CurrentAction     = 'garage_out'
-				CurrentActionMsg  = TranslateCap('garage_open')
-			end)
-		end
-	end)
-end
-
 function OpenLicenceMenu(shop)
     PaymentGateway.Pay({
         amount = Config.LicensePrice,
@@ -164,24 +120,6 @@ function OpenLicenceMenu(shop)
             CurrentActionMsg = TranslateCap('boat_shop_open')
         end
     end)
-end
-
-function StoreBoatInGarage(vehicle, teleportCoords)
-	local vehicleProps = xLib.game.getVehicleProperties(vehicle)
-
-	xLib.callback('esx_boat:storeVehicle', false, function (rowsChanged)
-		if rowsChanged > 0 then
-			xLib.game.deleteVehicle(vehicle)
-			ESX.ShowNotification(TranslateCap('garage_stored'))
-			local playerPed = PlayerPedId()
-
-			xLib.entity.Teleport(playerPed, teleportCoords, function()
-				SetEntityHeading(playerPed, teleportCoords.w)
-			end)
-		else
-			ESX.ShowNotification(TranslateCap('garage_notowner'))
-		end
-	end, vehicleProps.plate)
 end
 
 -- Key controls

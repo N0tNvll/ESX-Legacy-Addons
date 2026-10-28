@@ -337,16 +337,6 @@ xLib.callback.registerCompat('esx_ambulancejob:buyJobVehicle', function(source, 
     )
 end)
 
-xLib.callback.registerCompat('esx_ambulancejob:storeNearbyVehicle', function(source, cb, plates)
-    local player = ESX.GetPlayerFromId(source)
-
-    if not isAmbulanceOnDuty(player) then
-        return cb(false)
-    end
-
-    cb(exports.es_extended:StoreJobVehicle(source, plates, Config.Hospitals))
-end)
-
 function getPriceFromHash(vehicleHash, jobGrade, type)
     local vehicles = Config.AuthorizedVehicles[type][jobGrade]
 

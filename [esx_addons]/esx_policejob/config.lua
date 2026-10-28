@@ -27,6 +27,10 @@ Config.EnableFinePresets = false -- Set to false to use a custom input fields fo
 
 Config.Locale = GetConvar('esx:locale', 'en')
 
+-- Unified persistent garages; existing shop/vehicle positions below are reused.
+Config.GarageIntegration = { minGrade = 0, shared = true, vehiclesPerModel = 4 }
+
+
 Config.OxInventory = ESX.GetConfig().OxInventory
 
 Config.PoliceStations = {

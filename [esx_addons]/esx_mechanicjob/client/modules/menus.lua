@@ -31,80 +31,6 @@ local function openAmountMenu(name, title, maxAmount, callback)
 	end)
 end
 
-local function spawnServiceVehicle(model, heading, vehicleProps)
-	xLib.game.spawnVehicle(model, Config.Zones.VehicleSpawnPoint.Pos, heading or 90.0, function(vehicle)
-		if vehicleProps then
-			xLib.game.setVehicleProperties(vehicle, vehicleProps)
-		end
-
-		TaskWarpPedIntoVehicle(PlayerPedId(), vehicle, -1)
-	end)
-end
-
-local function openSocietyVehicleMenu()
-	local elements = {
-	}
-
-	xLib.callback('esx_society:getVehiclesInGarage', false, function(vehicles)
-		for i = 1, #vehicles do
-			elements[#elements + 1] = {
-				icon = 'fas fa-car',
-				label = GetDisplayNameFromVehicleModel(vehicles[i].model) .. ' [' .. vehicles[i].plate .. ']',
-				value = vehicles[i]
-			}
-		end
-
-		openMenu('society_vehicles', TranslateCap('service_vehicle'), elements, function(data, menu)
-			if not data.current.value then
-				return
-			end
-
-			menu.close()
-			spawnServiceVehicle(data.current.value.model, 270.0, data.current.value)
-			TriggerServerEvent('esx_society:removeVehicleFromGarage', 'mechanic', data.current.value)
-		end)
-	end, 'mechanic')
-end
-
-local function openStaticVehicleMenu()
-	local elements = {
-		{ icon = "fas fa-truck", label = TranslateCap('flat_bed'),  value = 'flatbed' },
-		{ icon = "fas fa-truck", label = TranslateCap('tow_truck'), value = 'towtruck2' }
-	}
-
-	if Config.EnablePlayerManagement and ESX.PlayerData.job
-		and (ESX.PlayerData.job.grade_name == 'boss'
-			or ESX.PlayerData.job.grade_name == 'chief'
-			or ESX.PlayerData.job.grade_name == 'experimente') then
-		elements[#elements + 1] = {
-			icon = 'fas fa-truck',
-			label = 'Slamvan',
-			value = 'slamvan3'
-		}
-	end
-
-	openMenu('static_vehicles', TranslateCap('service_vehicle'), elements, function(data, menu)
-		if not data.current.value then
-			return
-		end
-
-		if Config.MaxInService == -1 then
-			menu.close()
-			spawnServiceVehicle(data.current.value, 90.0)
-			return
-		end
-
-		xLib.callback('esx_service:enableService', false, function(canTakeService, maxInService, inServiceCount)
-			if canTakeService then
-				menu.close()
-				spawnServiceVehicle(data.current.value, 90.0)
-			else
-				ESX.ShowNotification(TranslateCap('service_full') .. inServiceCount .. '/' .. maxInService)
-			end
-		end, 'mechanic')
-	end)
-end
-
 local function hasUniform(uniform)
 	return type(uniform) == 'table' and next(uniform) ~= nil
 end
@@ -125,7 +51,6 @@ end
 
 function Mechanic.openActionsMenu()
 	local elements = {
-		{ icon = "fas fa-car",   label = TranslateCap('vehicle_list'),   value = 'vehicle_list' },
 		{ icon = "fas fa-shirt", label = TranslateCap('work_wear'),      value = 'cloakroom' },
 		{ icon = "fas fa-shirt", label = TranslateCap('civ_wear'),       value = 'cloakroom2' },
 		{ icon = "fas fa-box",   label = TranslateCap('deposit_stock'),  value = 'put_stock' },
@@ -141,14 +66,7 @@ function Mechanic.openActionsMenu()
 	end
 
 	openMenu('mechanic_actions', TranslateCap('mechanic'), elements, function(data, menu)
-		if data.current.value == 'vehicle_list' then
-			menu.close()
-			if Config.EnableSocietyOwnedVehicles then
-				openSocietyVehicleMenu()
-			else
-				openStaticVehicleMenu()
-			end
-		elseif data.current.value == 'cloakroom' then
+		if data.current.value == 'cloakroom' then
 			menu.close()
 			xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
 				local uniform = getWorkWear(skin, jobSkin)

@@ -28,10 +28,6 @@ CreateThread(function()
 							end
 						end, GetPlayerServerId(PlayerId()), 'boat')
 					end
-				elseif CurrentAction == 'garage_out' then
-					OpenBoatGarage(Config.Zones.Garages[CurrentActionData.zoneNum])
-				elseif CurrentAction == 'garage_in' then
-					StoreBoatInGarage(CurrentActionData.vehicle, Config.Zones.Garages[CurrentActionData.zoneNum].StoreTP)
 				end
 
 				CurrentAction = nil
@@ -48,23 +44,6 @@ AddEventHandler('esx_boat:hasEnteredMarker', function(zone, zoneNum)
 		CurrentAction     = 'boat_shop'
 		CurrentActionMsg  = TranslateCap('boat_shop_open')
 		CurrentActionData = { zoneNum = zoneNum }
-	elseif zone == 'garage_out' then
-		CurrentAction     = 'garage_out'
-		CurrentActionMsg  = TranslateCap('garage_open')
-		CurrentActionData = { zoneNum = zoneNum }
-	elseif zone == 'garage_in' then
-		local playerPed = PlayerPedId()
-		local coords    = GetEntityCoords(playerPed)
-	
-		if IsPedInAnyVehicle(playerPed, false) then
-			local vehicle = GetVehiclePedIsIn(playerPed, false)
-	
-			if DoesEntityExist(vehicle) and GetPedInVehicleSeat(vehicle, -1) == playerPed then
-				CurrentAction     = 'garage_in'
-				CurrentActionMsg  = TranslateCap('garage_store')
-				CurrentActionData = { vehicle = vehicle, zoneNum = zoneNum }
-			end
-		end
 	end
 	ESX.TextUI(CurrentActionMsg)
 end)
@@ -103,34 +82,6 @@ CreateThread(function()
 			end
 		end
 
-		for i=1, #Config.Zones.Garages, 1 do
-			local distance = #(coords - Config.Zones.Garages[i].GaragePos)
-
-			if distance < Config.DrawDistance then
-				DrawMarker(Config.MarkerType, Config.Zones.Garages[i].GaragePos, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Config.Marker.x, Config.Marker.y, Config.Marker.z, Config.Marker.r, Config.Marker.g, Config.Marker.b, 100, false, true, 2, false, nil, nil, false)
-				letSleep = false
-			end
-
-			if distance < Config.Marker.x then
-				isInMarker     = true
-				currentZone    = 'garage_out'
-				currentZoneNum = i
-			end
-
-			distance = #(coords - Config.Zones.Garages[i].StorePos)
-
-			if distance < Config.DrawDistance then
-				DrawMarker(Config.MarkerType, Config.Zones.Garages[i].StorePos, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Config.StoreMarker.x, Config.StoreMarker.y, Config.StoreMarker.z, Config.StoreMarker.r, Config.StoreMarker.g, Config.StoreMarker.b, 100, false, true, 2, false, nil, nil, false)
-				letSleep = false
-			end
-
-			if distance < Config.StoreMarker.x then
-				isInMarker     = true
-				currentZone    = 'garage_in'
-				currentZoneNum = i
-			end
-		end
-
 		if isInMarker and not HasAlreadyEnteredMarker or (isInMarker and (LastZone ~= currentZone or LastZoneNum ~= currentZoneNum)) then
 			if
 				(LastZone ~= nil and LastZoneNum ~= nil) and
@@ -161,16 +112,6 @@ end)
 -- Blips
 CreateThread(function()
 	local blipList = {}
-
-	for i=1, #Config.Zones.Garages, 1 do
-		table.insert(blipList, {
-			coords = Config.Zones.Garages[i].GaragePos,
-			text   = TranslateCap('blip_garage'),
-			sprite = 356,
-			color  = 3,
-			scale  = 1.0
-		})
-	end
 
 	for i=1, #Config.Zones.BoatShops, 1 do
 		table.insert(blipList, {

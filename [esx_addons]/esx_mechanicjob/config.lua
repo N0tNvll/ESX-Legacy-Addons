@@ -4,6 +4,11 @@
 Config                            = {}
 Config.Locale = GetConvar('esx:locale', 'en')
 
+-- Unified persistent garages; existing shop/vehicle positions below are reused.
+Config.GarageIntegration = { minGrade = 0, shared = true, vehiclesPerModel = 4 }
+Config.GarageFleet = { { model = 'flatbed', count = 2 }, { model = 'towtruck2', count = 2 }, { model = 'slamvan3', count = 1 } }
+
+
 Config.Controls = {
 	mechanicMenu = "F6",
 	toggleNPCJob = "F7"

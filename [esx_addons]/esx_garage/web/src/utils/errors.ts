@@ -31,6 +31,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   too_far: 'You are too far from the garage.',
   use_impound: 'This vehicle can only be recovered from an impound.',
   wrong_garage: 'This vehicle is parked in another garage.',
+  wrong_vehicle_category: 'This garage does not accept this type of vehicle.',
 };
 
 let lastQuietNotificationAt = 0;

@@ -20,6 +20,7 @@ client_scripts {
     '@es_extended/locale.lua',
     'locales/*.lua',
     'config.lua',
+    '@esx_garage/integrations/config.lua',
     'client/modules/init.lua',
     'client/modules/utils.lua',
     'client/modules/npc_jobs.lua',
@@ -35,10 +36,12 @@ server_scripts {
     '@es_extended/locale.lua',
     'locales/*.lua',
     'config.lua',
+    '@esx_garage/integrations/config.lua',
     'server/modules/init.lua',
     'server/modules/utils.lua',
     'server/main.lua',
     'server/modules/impound.lua',
+    '@esx_garage/integrations/server.lua',
     'server/modules/workshop.lua',
     'server/modules/npc_jobs.lua',
     'server/modules/items.lua',
@@ -46,6 +49,8 @@ server_scripts {
 }
 
 dependencies {
+    'esx_garage',
+    'esx_datastore',
     'esx_lib',
     'es_extended',
     'esx_society',

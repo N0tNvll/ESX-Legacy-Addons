@@ -20,6 +20,7 @@ client_scripts {
     '@es_extended/locale.lua',
     'locales/*.lua',
     'config.lua',
+    '@esx_garage/integrations/config.lua',
     'client/*.lua',
 }
 
@@ -29,10 +30,15 @@ server_scripts {
     '@es_extended/locale.lua',
     'locales/*.lua',
     'config.lua',
+    '@esx_garage/integrations/config.lua',
     'server/*.lua',
+    '@esx_garage/integrations/server.lua',
 }
 
 dependencies {
+    'esx_garage',
+    'esx_datastore',
+    'esx_society',
     'esx_lib',
     'es_extended',
 }
