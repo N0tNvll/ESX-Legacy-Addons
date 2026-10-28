@@ -18,6 +18,8 @@ export interface LocaleTranslations {
     search: string;
     noVehicles: string;
     loading: string;
+    fleetContext: string;
+    personalVehicles: string;
   };
   vehicle: {
     stored: string;

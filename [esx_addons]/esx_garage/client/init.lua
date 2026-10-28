@@ -5,6 +5,10 @@ local blips = {}
 local pedSpawns = {}
 local points = {}
 local markers = {}
+local fleetGarages = {}
+local menuFleetGarageId
+local locationEpoch = 0
+local pageRequestSequence = 0
 
 ---@type table<string, Impound>
 local impoundsById = {}
@@ -145,6 +149,9 @@ local function clearWorld()
     blips, pedSpawns, points, markers = {}, {}, {}, {}
     activeLocations = {}
     currentLocation = nil
+    menuFleetGarageId = nil
+    pageRequestSequence = pageRequestSequence + 1
+    xLib.nui.close({ type = 'closeGarage', payload = {} })
 
     if ESX.HideUI then
         ESX.HideUI()
@@ -295,11 +302,16 @@ local function refresh()
         return
     end
     refreshing = true
+    local epoch = locationEpoch
 
     local ok, data = pcall(xLib.callback.await, "esx_garage:getGarages", false)
-    if ok and type(data) == "table" and type(data.garages) == "table" and type(data.impounds) == "table" then
+    if epoch == locationEpoch and ok and type(data) == "table" and type(data.garages) == "table" and type(data.impounds) == "table" then
         pcall(function()
             clearWorld()
+            fleetGarages = {}
+            for _, garage in ipairs(data.garages) do
+                if garage.type == 'job' then fleetGarages[#fleetGarages + 1] = { id = garage.id, name = garage.label } end
+            end
 
             impoundsById = {}
             for i = 1, #data.impounds do
@@ -317,6 +329,9 @@ local function refresh()
     end
 
     refreshing = false
+    if ok and type(data) == 'table' and data.error == 'rate_limited' then
+        SetTimeout(1600, function() if epoch == locationEpoch then refresh() end end)
+    end
 
     if refreshPending then
         refreshPending = false
@@ -379,6 +394,7 @@ local function wrap(row, currentLot, useKmh)
         customName = row.custom_name,
         lastUsed = row.last_used,
         props = props,
+        job = type(row.job) == 'string' and row.job ~= '' and row.job or nil,
     }
 end
 
@@ -427,14 +443,19 @@ local function fetchVehiclePage(data)
 
     local page = tonumber(data and data.page) or 1
     local pageSize = tonumber(data and data.pageSize)
+    local fleetGarageId = data and data.fleetGarageId
+    fleetGarageId = type(fleetGarageId) == 'string' and fleetGarageId ~= '' and fleetGarageId or nil
+    pageRequestSequence = pageRequestSequence + 1
+    local sequence = pageRequestSequence
     local result = serverCall("esx_garage:getVehicles", {
         garageId = loc.id,
         page = page,
         pageSize = pageSize,
         filter = data and data.filter or nil,
+        fleetGarageId = fleetGarageId,
     })
 
-    if currentLocation ~= loc then
+    if currentLocation ~= loc or sequence ~= pageRequestSequence then
         return nil, "no_location"
     end
 
@@ -445,6 +466,7 @@ local function fetchVehiclePage(data)
     if type(result) ~= "table" or type(result.vehicles) ~= "table" then
         return nil, "error"
     end
+    menuFleetGarageId = fleetGarageId
 
     local currentLot = impoundsById[loc.id]
     local vehicles = {}
@@ -501,6 +523,7 @@ local function openMenu()
                 logo = garage.logo,
                 color = garage.color,
                 keys = Config.Settings.vehicleKeys,
+                fleets = loc.action == 'impound' and fleetGarages or nil,
             },
             vehicles = page.vehicles,
             mileageUnit = page.mileageUnit,
@@ -605,6 +628,8 @@ local function pickClearSpawn(spawns)
 end
 
 local function closeMenu()
+    menuFleetGarageId = nil
+    pageRequestSequence = pageRequestSequence + 1
     xLib.nui.close({ type = "closeGarage", payload = {} })
 end
 
@@ -655,6 +680,7 @@ xLib.nui.register("garage:retrieveVehicle", function(data)
         plate = data.vehicleId,
         garageId = currentLocation.id,
         spawn = { x = spawn.x, y = spawn.y, z = spawn.z, w = spawn.w },
+        fleetGarageId = menuFleetGarageId,
     })
 
     if result and result.success and result.data and result.data.netId then
@@ -678,22 +704,26 @@ xLib.nui.register("garage:retrieveVehicle", function(data)
 end)
 
 xLib.nui.register("garage:toggleFavorite", function(data)
-    local result = serverCall("esx_garage:toggleFavorite", { plate = data.vehicleId, isFavorite = data.isFavorite })
+    if not currentLocation then return { success = false, error = 'no_location' } end
+    local result = serverCall("esx_garage:toggleFavorite", { plate = data.vehicleId, isFavorite = data.isFavorite, garageId = currentLocation.id, fleetGarageId = menuFleetGarageId })
     return result or { success = false }
 end)
 
 xLib.nui.register("garage:renameVehicle", function(data)
-    local result = serverCall("esx_garage:renameVehicle", { plate = data.vehicleId, name = data.newName or data.name })
+    if not currentLocation then return { success = false, error = 'no_location' } end
+    local result = serverCall("esx_garage:renameVehicle", { plate = data.vehicleId, name = data.newName or data.name, garageId = currentLocation.id, fleetGarageId = menuFleetGarageId })
     return result or { success = false }
 end)
 
 xLib.nui.register("garage:transferVehicle", function(data)
-    local result = serverCall("esx_garage:transferVehicle", { plate = data.vehicleId, targetId = data.targetId })
+    if not currentLocation then return { success = false, error = 'no_location' } end
+    local result = serverCall("esx_garage:transferVehicle", { plate = data.vehicleId, targetId = data.targetId, garageId = currentLocation.id, fleetGarageId = menuFleetGarageId })
     return result or { success = false }
 end)
 
 xLib.nui.register("garage:giveKeys", function(data)
-    local result = serverCall("esx_garage:giveKeys", { plate = data.vehicleId })
+    if not currentLocation then return { success = false, error = 'no_location' } end
+    local result = serverCall("esx_garage:giveKeys", { plate = data.vehicleId, garageId = currentLocation.id, fleetGarageId = menuFleetGarageId })
     return result or { success = false }
 end)
 
@@ -710,8 +740,14 @@ end)
 AddEventHandler("xLib:cache:vehicle", updateCurrentLocation)
 
 RegisterNetEvent("esx_garage:refresh", refresh)
-RegisterNetEvent("esx:playerLoaded", refresh)
-RegisterNetEvent("esx:setJob", refresh)
+local function invalidateGarageContext()
+    locationEpoch = locationEpoch + 1
+    clearWorld()
+end
+
+RegisterNetEvent("esx:playerLoaded", function() invalidateGarageContext(); refresh() end)
+RegisterNetEvent("esx:setJob", function() invalidateGarageContext(); refresh() end)
+ESX.SecureNetEvent('esx:onPlayerLogout', invalidateGarageContext)
 
 AddEventHandler("onResourceStop", function(resource)
     if resource == GetCurrentResourceName() then

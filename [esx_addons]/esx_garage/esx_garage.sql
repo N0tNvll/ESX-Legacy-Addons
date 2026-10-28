@@ -13,6 +13,19 @@ CREATE TABLE IF NOT EXISTS `esx_garage_migrations` (
     PRIMARY KEY (`name`)
 );
 
+-- Reuse the standard ESX discriminator; never rewrite existing owners/jobs.
+SET @add_garage_job := (SELECT IF(
+    EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'owned_vehicles' AND COLUMN_NAME = 'job'),
+    'SELECT 1',
+    'ALTER TABLE `owned_vehicles` ADD COLUMN `job` VARCHAR(20) NULL DEFAULT NULL'));
+PREPARE s FROM @add_garage_job; EXECUTE s; DEALLOCATE PREPARE s;
+
+SET @add_job_plate_index := (SELECT IF(
+    EXISTS(SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'owned_vehicles' AND INDEX_NAME = 'idx_owned_vehicles_job_plate'),
+    'SELECT 1',
+    'ALTER TABLE `owned_vehicles` ADD INDEX `idx_owned_vehicles_job_plate` (`job`, `plate`)'));
+PREPARE s FROM @add_job_plate_index; EXECUTE s; DEALLOCATE PREPARE s;
+
 SET @fix_migration_version_column := (SELECT IF(
     EXISTS(SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'esx_garage_migrations' AND COLUMN_NAME = 'version' AND DATA_TYPE = 'varchar'),
     'SELECT 1',
@@ -140,4 +153,8 @@ ON DUPLICATE KEY UPDATE `version` = '1.16.0', `applied_at` = UNIX_TIMESTAMP();
 
 INSERT INTO `esx_garage_migrations` (`name`, `version`, `applied_at`)
 VALUES ('pound_normalization', '1.16.0', UNIX_TIMESTAMP())
+ON DUPLICATE KEY UPDATE `version` = '1.16.0', `applied_at` = UNIX_TIMESTAMP();
+
+INSERT INTO `esx_garage_migrations` (`name`, `version`, `applied_at`)
+VALUES ('job_fleets', '1.16.0', UNIX_TIMESTAMP())
 ON DUPLICATE KEY UPDATE `version` = '1.16.0', `applied_at` = UNIX_TIMESTAMP();

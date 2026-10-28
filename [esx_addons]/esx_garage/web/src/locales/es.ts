@@ -7,6 +7,8 @@ import type { LocaleTranslations } from '@/types/locale.types';
 
 export const es: LocaleTranslations = {
     garage: {
+    fleetContext: 'Propiedad de los vehículos',
+    personalVehicles: 'Vehículos personales',
         title: 'Garaje',
         subtitle: 'Gestión de vehículos',
         search: 'Buscar por matrícula o nombre...',

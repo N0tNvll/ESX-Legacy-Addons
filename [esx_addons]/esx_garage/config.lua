@@ -19,6 +19,29 @@ Config.Settings = {
 
 ---@type Garage[]
 Config.Garages = {
+	-- Existing public garages remain personal: owner=current character, job=NULL/empty.
+	-- Job examples: uncomment/configure positions for your map. Existing owned_vehicles
+	-- rows with job='police'/'ambulance'/'mechanic' are reused without changing owner.
+	--[[
+	{
+		id = "police_fleet", label = "Police Fleet", type = "job", job = "police",
+		minGrade = 2, shared = true,
+		entryPoint = vec3(459.15, -1008.01, 28.26), storePoint = vec3(452.4, -1007.7, 28.5),
+		spawns = { vec4(446.8, -1024.5, 28.6, 5.0) }, pound = "los_santos",
+	},
+	{
+		id = "ambulance_fleet", label = "Ambulance Fleet", type = "job", job = "ambulance",
+		minGrade = 0, shared = true,
+		entryPoint = vec3(294.8, -600.8, 43.3), storePoint = vec3(294.8, -610.3, 43.3),
+		spawns = { vec4(289.8, -610.3, 43.2, 70.0) }, pound = "los_santos",
+	},
+	{
+		id = "mechanic_fleet", label = "Mechanic Fleet", type = "job", job = "mechanic",
+		minGrade = 1, shared = true,
+		entryPoint = vec3(-356.0, -128.0, 39.4), storePoint = vec3(-370.0, -115.0, 38.7),
+		spawns = { vec4(-365.0, -108.0, 38.7, 160.0) }, pound = "los_santos",
+	},
+	]]
 	{
 		id = "vespucci_boulevard",
 		label = "Vespucci Boulevard",

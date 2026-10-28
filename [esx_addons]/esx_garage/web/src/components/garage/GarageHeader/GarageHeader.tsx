@@ -184,7 +184,7 @@ const CloseButton = styled.button`
 // Spacer removed - use margin-left: auto instead
 
 export const GarageHeader: React.FC = () => {
-  const { selectedGarage, filter, setFilter, loadVehicles, setOpen } = useGarageStore();
+  const { selectedGarage, fleetGarageId, selectFleet, isLoading, filter, setFilter, loadVehicles, setOpen } = useGarageStore();
   const { sendCallback } = useNui();
   const { t } = useTranslation();
   const [searchValue, setSearchValue] = useState('');
@@ -241,6 +241,13 @@ export const GarageHeader: React.FC = () => {
       </GarageName>
 
       <ControlsContainer>
+        {selectedGarage?.type === 'impound' && !!selectedGarage.fleets?.length && (
+          <FleetSelect aria-label={t('garage.fleetContext')} value={fleetGarageId} disabled={isLoading}
+            onChange={(event) => { void selectFleet(event.target.value); }}>
+            <option value="">{t('garage.personalVehicles')}</option>
+            {selectedGarage.fleets.map((fleet) => <option key={fleet.id} value={fleet.id}>{fleet.name}</option>)}
+          </FleetSelect>
+        )}
         <CounterButton
           aria-label={t('filters.showStored')}
           title={t('filters.showStored')}
@@ -281,3 +288,12 @@ export const GarageHeader: React.FC = () => {
     </HeaderContainer>
   );
 };
+
+const FleetSelect = styled.select`
+  max-width: 13rem;
+  padding: 0.5rem;
+  color: ${props => props.theme.colors.text.primary};
+  background: ${props => props.theme.colors.backgroundSecondary};
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: ${props => props.theme.sizes.borderRadius.sm};
+`;

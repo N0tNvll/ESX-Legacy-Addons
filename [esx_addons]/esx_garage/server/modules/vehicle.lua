@@ -22,6 +22,7 @@ local VEHICLE_SELECT_COLUMNS <const> = table.concat({
     "`is_favorite`",
     "`last_used`",
     "`mileage`",
+    "`job`",
 }, ", ")
 
 ---@param p string
@@ -236,29 +237,36 @@ local function escapeLike(value)
     return (value:gsub("([\\%%_])", "\\%1"))
 end
 
----@param identifier string
+local function ownershipCondition(scope)
+    if scope.kind == 'job' then
+        if scope.owner then return '`owner` = ? AND `job` = ?', { scope.owner, scope.job } end
+        return '`job` = ?', { scope.job }
+    end
+    return "`owner` = ? AND (`job` IS NULL OR `job` = '')", { scope.owner }
+end
+
+local function personalScope(source, player)
+    return { kind = 'personal', owner = player.identifier, player = player, source = source }
+end
+
+local function actionScope(source, player, data)
+    if data.garageId ~= nil or data.fleetGarageId ~= nil then
+        return ResolveGarageScope(source, data.garageId, data.fleetGarageId)
+    end
+    -- Keep legacy personal callbacks compatible, without exposing job vehicles.
+    return personalScope(source, player)
+end
+
+---@param scope table
 ---@param plate string
 ---@return OwnedVehicleRow?
-local function ownedRow(identifier, plate)
+local function ownedRow(scope, plate)
     local condition, plateParams = plateCondition(plate)
-    local params = { identifier }
+    local ownership, params = ownershipCondition(scope)
     appendParams(params, plateParams)
 
     return MySQL.single.await(
-        ("SELECT `plate`, `vehicle`, `type`, `stored`, `parking`, `pound`, `custom_name`, `is_favorite`, `last_used`, `mileage` FROM `owned_vehicles` WHERE `owner` = ? AND %s LIMIT 1"):format(condition),
-        params)
-end
-
----@param identifier string
----@param plate string
----@return string?
-local function ownedPlate(identifier, plate)
-    local condition, plateParams = plateCondition(plate)
-    local params = { identifier }
-    appendParams(params, plateParams)
-
-    return MySQL.scalar.await(
-        ("SELECT `plate` FROM `owned_vehicles` WHERE `owner` = ? AND %s LIMIT 1"):format(condition),
+        ("SELECT `owner`, %s FROM `owned_vehicles` WHERE %s AND %s LIMIT 1"):format(VEHICLE_SELECT_COLUMNS, ownership, condition),
         params)
 end
 
@@ -447,6 +455,12 @@ local function appendNullableCondition(conditions, params, column, value)
     params[#params + 1] = value
 end
 
+local function rowOwnershipCondition(row)
+    local conditions, params = { '`owner` = ?', '`plate` = ?' }, { row.owner, row.plate }
+    appendNullableCondition(conditions, params, 'job', row.job)
+    return table.concat(conditions, ' AND '), params
+end
+
 ---@param a any
 ---@param b any
 ---@return boolean
@@ -454,35 +468,39 @@ local function sameOptionalLocation(a, b)
     return activePound(a) == activePound(b)
 end
 
----@param identifier string
+---@param scope table
 ---@param row OwnedVehicleRow
 ---@param stored integer
 ---@return string, table
-local function retrieveStateCondition(identifier, row, stored)
+local function retrieveStateCondition(scope, row, stored)
     local conditions = { "`owner` = ?", "`plate` = ?", "`stored` = ?" }
-    local params = { identifier, row.plate, stored }
+    local params = { row.owner, row.plate, stored }
 
+    appendNullableCondition(conditions, params, 'job', row.job)
     appendNullableCondition(conditions, params, "parking", row.parking)
     appendNullableCondition(conditions, params, "pound", row.pound)
 
     return table.concat(conditions, " AND "), params
 end
 
----@param identifier string
+---@param scope table
 ---@param row OwnedVehicleRow
-local function restoreRetrieveState(identifier, row)
+local function restoreRetrieveState(scope, row)
     local assignments = { "`stored` = ?" }
     local params = { storedValue(row.stored) }
 
     appendNullableAssignment(assignments, params, "parking", row.parking)
     appendNullableAssignment(assignments, params, "pound", row.pound)
     appendNullableAssignment(assignments, params, "last_used", row.last_used)
+    appendNullableAssignment(assignments, params, 'vehicle', row.vehicle)
 
-    params[#params + 1] = identifier
+    params[#params + 1] = row.owner
     params[#params + 1] = row.plate
+    local condition = { '`owner` = ?', '`plate` = ?' }
+    appendNullableCondition(condition, params, 'job', row.job)
 
     local ok, err = pcall(MySQL.update.await,
-        ("UPDATE `owned_vehicles` SET %s WHERE `owner` = ? AND `plate` = ?"):format(table.concat(assignments, ", ")),
+        ("UPDATE `owned_vehicles` SET %s WHERE %s"):format(table.concat(assignments, ", "), table.concat(condition, ' AND ')),
         params)
 
     if not ok then
@@ -501,11 +519,11 @@ local function deleteRetrievedVehicle(xVehicle)
     end
 end
 
----@param identifier string
+---@param scope table
 ---@param row OwnedVehicleRow
 ---@return boolean, string?
-local function prepareRetrieveSpawn(identifier, row)
-    local condition, params = retrieveStateCondition(identifier, row, storedValue(row.stored))
+local function prepareRetrieveSpawn(scope, row)
+    local condition, params = retrieveStateCondition(scope, row, storedValue(row.stored))
     local ok, result = pcall(MySQL.update.await,
         ("UPDATE `owned_vehicles` SET `stored` = 1 WHERE %s"):format(condition),
         params)
@@ -521,12 +539,12 @@ local function prepareRetrieveSpawn(identifier, row)
     return true
 end
 
----@param identifier string
+---@param scope table
 ---@param current OwnedVehicleRow
 ---@param lastUsed integer
 ---@return boolean, string?
-local function finalizeCurrentRetrieveState(identifier, current, lastUsed)
-    local condition, params = retrieveStateCondition(identifier, current, storedValue(current.stored))
+local function finalizeCurrentRetrieveState(scope, current, lastUsed)
+    local condition, params = retrieveStateCondition(scope, current, storedValue(current.stored))
     local queryParams = { lastUsed }
     appendParams(queryParams, params)
 
@@ -542,7 +560,7 @@ local function finalizeCurrentRetrieveState(identifier, current, lastUsed)
         return true
     end
 
-    local refreshed = ownedRow(identifier, current.plate)
+    local refreshed = ownedRow(scope, current.plate)
     if refreshed and storedValue(refreshed.stored) == 0 and not activePound(refreshed.pound) then
         return true
     end
@@ -550,12 +568,12 @@ local function finalizeCurrentRetrieveState(identifier, current, lastUsed)
     return false, "state_changed"
 end
 
----@param identifier string
+---@param scope table
 ---@param row OwnedVehicleRow
 ---@return boolean, string?
-local function commitRetrieveState(identifier, row)
+local function commitRetrieveState(scope, row)
     local lastUsed = os.time()
-    local condition, params = retrieveStateCondition(identifier, row, 1)
+    local condition, params = retrieveStateCondition(scope, row, 1)
     local queryParams = { lastUsed }
     appendParams(queryParams, params)
 
@@ -568,7 +586,7 @@ local function commitRetrieveState(identifier, row)
     end
 
     if affectedRows(result) < 1 then
-        local current = ownedRow(identifier, row.plate)
+        local current = ownedRow(scope, row.plate)
         if current then
             local currentStored = storedValue(current.stored)
             local canFinalize = false
@@ -581,7 +599,7 @@ local function commitRetrieveState(identifier, row)
             end
 
             if canFinalize then
-                return finalizeCurrentRetrieveState(identifier, current, lastUsed)
+                return finalizeCurrentRetrieveState(scope, current, lastUsed)
             end
         end
 
@@ -727,9 +745,17 @@ local function vehiclePageSize(requested)
     return math.min(size, maxPageSize)
 end
 
+---@return boolean
+local function parkingMatchesScope(scope, garage)
+    if scope.kind == 'personal' then return garage.type ~= 'job' end
+    return garage.type == 'job' and (garage.job == scope.job
+        or (not garage.job and garage.access and garage.access.jobs and garage.access.jobs[scope.job] ~= nil))
+end
+
 ---@param garageId string?
+---@param scope table
 ---@return string, table
-local function garageScopeCondition(garageId)
+local function garageScopeCondition(garageId, scope)
     if not Config.Settings.restrictToGarage or not garageId then
         return "", {}
     end
@@ -737,8 +763,8 @@ local function garageScopeCondition(garageId)
     local params = { garageId }
     local garageIds = {}
 
-    for id in pairs(Garages) do
-        garageIds[#garageIds + 1] = id
+    for id, garage in pairs(Garages) do
+        if parkingMatchesScope(scope, garage) then garageIds[#garageIds + 1] = id end
     end
 
     local invalidParkingCondition = ""
@@ -804,22 +830,15 @@ xLib.callback.registerCompat("esx_garage:getVehicles", function(source, cb, data
     local request = type(data) == "table" and data or { garageId = data }
     local garageId = request.garageId
 
-    local garage = garageId and Garages[garageId]
-    local impound = garageId and Impounds[garageId]
-    local location = garage or impound
-    if not location then
-        return cb({ success = false, error = "no_location" })
-    end
-
-    if garage and not CanAccessGarage(source, garage) then
-        return cb(false)
-    end
+    local scope, scopeError = ResolveGarageScope(source, garageId, request.fleetGarageId)
+    if not scope then return cb({ success = false, error = scopeError }) end
+    local impound = scope.impound
 
     local page = vehiclePage(request.page)
     local pageSize = vehiclePageSize(request.pageSize)
     local offset = (page - 1) * pageSize
-    local scopeSql, scopeParams = garageScopeCondition(garageId)
-    local baseParams = { xPlayer.identifier }
+    local scopeSql, scopeParams = garageScopeCondition(garageId, scope)
+    local ownerSql, baseParams = ownershipCondition(scope)
 
     for i = 1, #scopeParams do
         baseParams[#baseParams + 1] = scopeParams[i]
@@ -864,9 +883,11 @@ xLib.callback.registerCompat("esx_garage:getVehicles", function(source, cb, data
     params[#params + 1] = offset
 
     local rows = MySQL.query.await(
-        ("SELECT %s FROM `owned_vehicles` WHERE `owner` = ?%s ORDER BY %s LIMIT ? OFFSET ?")
-            :format(VEHICLE_SELECT_COLUMNS, pageSql, orderSql),
+        ("SELECT %s FROM `owned_vehicles` WHERE %s%s ORDER BY %s LIMIT ? OFFSET ?")
+            :format(VEHICLE_SELECT_COLUMNS, ownerSql, pageSql, orderSql),
         params) or {}
+
+    if not CanUseGarageScope(scope) then return cb({ success = false, error = 'not_allowed' }) end
 
     local hasNext = #rows > pageSize
     if hasNext then
@@ -874,6 +895,7 @@ xLib.callback.registerCompat("esx_garage:getVehicles", function(source, cb, data
     end
 
     applyCachedHudMileage(rows)
+    if not CanUseGarageScope(scope) then return cb({ success = false, error = 'not_allowed' }) end
 
     cb({
         vehicles = rows,
@@ -897,6 +919,10 @@ xLib.callback.registerCompat("esx_garage:retrieveVehicle", function(source, cb, 
         return cb({ success = false, error = "player" })
     end
 
+    if type(data) ~= 'table' then return cb({ success = false, error = 'invalid' }) end
+    local scope, scopeError = ResolveGarageScope(source, data.garageId, data.fleetGarageId)
+    if not scope then return cb({ success = false, error = scopeError }) end
+
     local plate = data and data.plate
     local spawn = data and data.spawn
     if not validPlate(plate) or type(spawn) ~= "table"
@@ -912,22 +938,13 @@ xLib.callback.registerCompat("esx_garage:retrieveVehicle", function(source, cb, 
     end
 
     local ok, result = pcall(function()
-        local row = ownedRow(xPlayer.identifier, plate)
+        local row = ownedRow(scope, plate)
         if not row then
             return { success = false, error = "not_owned" }
         end
 
-        local location = data.garageId and (Garages[data.garageId] or Impounds[data.garageId])
-        if not location then
-            return { success = false, error = "no_location" }
-        end
-
-        local garage = Garages[data.garageId]
-        local impound = Impounds[data.garageId]
-
-        if garage and not CanAccessGarage(source, garage) then
-            return { success = false, error = "not_allowed" }
-        end
+        if not CanUseGarageScope(scope) then return { success = false, error = 'not_allowed' } end
+        local location, garage, impound = scope.location, scope.garage, scope.impound
 
         if not isConfiguredSpawn(location, spawn) then
             return { success = false, error = "bad_spawn" }
@@ -984,6 +1001,7 @@ xLib.callback.registerCompat("esx_garage:retrieveVehicle", function(source, cb, 
                 return { success = false, error = "not_stored" }
             end
             if Config.Settings.restrictToGarage and row.parking and Garages[row.parking]
+                and parkingMatchesScope(scope, Garages[row.parking])
                 and row.parking ~= data.garageId then
                 return { success = false, error = "wrong_garage" }
             end
@@ -1002,35 +1020,46 @@ xLib.callback.registerCompat("esx_garage:retrieveVehicle", function(source, cb, 
         if existing then
             existing:delete()
         elseif not isStored(row.stored) then
-            local prepared, prepareError = prepareRetrieveSpawn(xPlayer.identifier, row)
+            local prepared, prepareError = prepareRetrieveSpawn(scope, row)
             if not prepared then
                 return { success = false, error = prepareError or "error" }
             end
             transitionApplied = true
         end
 
+        if not CanUseGarageScope(scope) then
+            if transitionApplied then restoreRetrieveState(scope, row) end
+            return { success = false, error = 'not_allowed' }
+        end
+
         local coords = vec4(spawn.x, spawn.y, spawn.z, spawn.w or spawn.h or 0.0)
-        local spawned, xVehicle = pcall(ESX.CreateExtendedVehicle, xPlayer.identifier, row.plate, coords)
+        local spawned, xVehicle = pcall(ESX.CreateExtendedVehicle, row.owner, row.plate, coords)
         if not spawned or not xVehicle then
-            restoreRetrieveState(xPlayer.identifier, row)
+            restoreRetrieveState(scope, row)
             return { success = false, error = "spawn_failed" }
+        end
+
+        if not CanUseGarageScope(scope) then
+            deleteRetrievedVehicle(xVehicle)
+            restoreRetrieveState(scope, row)
+            return { success = false, error = 'not_allowed' }
         end
 
         local chargedOk, charged, chargeAccount = pcall(charge, xPlayer, fee, data.paymentAccount)
         if not chargedOk or not charged then
             deleteRetrievedVehicle(xVehicle)
             if transitionApplied then
-                restoreRetrieveState(xPlayer.identifier, row)
+                restoreRetrieveState(scope, row)
             end
             return { success = false, error = chargedOk and "no_money" or "error" }
         end
 
-        local committed, commitError = commitRetrieveState(xPlayer.identifier, row)
-        if not committed then
+        local committed, commitError = commitRetrieveState(scope, row)
+        if not committed or not CanUseGarageScope(scope) then
             deleteRetrievedVehicle(xVehicle)
             refundCharge(xPlayer, fee, chargeAccount)
-            restoreRetrieveState(xPlayer.identifier, row)
-            return { success = false, error = commitError or "error" }
+            restoreRetrieveState(scope, row)
+            return { success = false, error = commitError or "not_allowed" }
         end
 
         return { success = true, data = { netId = xVehicle:getNetId() } }
@@ -1044,6 +1073,28 @@ xLib.callback.registerCompat("esx_garage:retrieveVehicle", function(source, cb, 
 
     cb(result)
 end)
+
+local function waitForVehicleRemoval(entity)
+    local deadline = GetGameTimer() + 2000
+    while DoesEntityExist(entity) and GetGameTimer() < deadline do Wait(0) end
+    return not DoesEntityExist(entity)
+end
+
+local function persistStoredVehicle(scope, row, garageId, encoded)
+    if not CanUseGarageScope(scope) then return false, 'not_allowed' end
+    if not isNearPoint(scope.source, scope.garage.storePoint or scope.garage.entryPoint) then return false, 'too_far' end
+    local condition, conditions = retrieveStateCondition(scope, row, 0)
+    local params = { garageId, encoded, os.time() }
+    appendParams(params, conditions)
+    local affected = MySQL.update.await(
+        ('UPDATE `owned_vehicles` SET `stored` = 1, `parking` = ?, `pound` = NULL, `vehicle` = ?, `last_used` = ? WHERE %s'):format(condition), params)
+    if affectedRows(affected) ~= 1 then return false, 'state_changed' end
+    if not CanUseGarageScope(scope) then
+        restoreRetrieveState(scope, row)
+        return false, 'not_allowed'
+    end
+    return true
+end
 
 xLib.callback.registerCompat("esx_garage:storeVehicle", function(source, cb, data)
     if rejectRateLimited(source, cb, "esx_garage:storeVehicle") then
@@ -1059,6 +1110,8 @@ xLib.callback.registerCompat("esx_garage:storeVehicle", function(source, cb, dat
         return cb({ success = false, error = "player" })
     end
 
+    if type(data) ~= 'table' then return cb({ success = false, error = 'invalid' }) end
+
     local plate = data and data.plate
     local props = data and data.props
     if not validPlate(plate) or type(props) ~= "table" then
@@ -1071,14 +1124,9 @@ xLib.callback.registerCompat("esx_garage:storeVehicle", function(source, cb, dat
     end
 
     local garageId = data.garageId
-    local garage = garageId and Garages[garageId]
-    if not garage then
-        return cb({ success = false, error = "no_location" })
-    end
-
-    if not CanAccessGarage(source, garage) then
-        return cb({ success = false, error = "not_allowed" })
-    end
+    local scope, scopeError = ResolveGarageScope(source, garageId)
+    if not scope or not scope.garage then return cb({ success = false, error = scopeError or 'no_location' }) end
+    local garage = scope.garage
 
     if not isNearPoint(source, garage.storePoint or garage.entryPoint) then
         return cb({ success = false, error = "too_far" })
@@ -1091,14 +1139,17 @@ xLib.callback.registerCompat("esx_garage:storeVehicle", function(source, cb, dat
     end
 
     local ok, result = pcall(function()
-        local row = ownedRow(xPlayer.identifier, plate)
+        local row = ownedRow(scope, plate)
         if not row then
             return { success = false, error = "not_owned" }
         end
 
+        if not CanUseGarageScope(scope) then return { success = false, error = 'not_allowed' } end
+
         if isStored(row.stored) then
             return { success = false, error = "already_stored" }
         end
+        if activePound(row.pound) then return { success = false, error = 'use_impound' } end
 
         props.plate = row.plate
 
@@ -1109,13 +1160,16 @@ xLib.callback.registerCompat("esx_garage:storeVehicle", function(source, cb, dat
         local xVehicle = ESX.GetExtendedVehicleFromPlate(row.plate)
         if xVehicle then
             local managedOwner = extendedVehicleOwner(xVehicle)
-            if managedOwner and managedOwner ~= xPlayer.identifier then
+            if managedOwner and managedOwner ~= row.owner then
                 return { success = false, error = "plate_conflict" }
             end
 
             local entity = xVehicle:getEntity()
             if not (entity and entity > 0 and DoesEntityExist(entity)) then
                 return { success = false, error = "no_vehicle" }
+            end
+            if normPlate(GetVehicleNumberPlateText(entity) or '') ~= key then
+                return { success = false, error = 'plate_mismatch' }
             end
 
             if pedVehicle ~= entity and (not pedCoords or #(pedCoords - GetEntityCoords(entity)) > 6.0) then
@@ -1134,10 +1188,14 @@ xLib.callback.registerCompat("esx_garage:storeVehicle", function(source, cb, dat
                 return { success = false, error = "invalid" }
             end
 
-            xVehicle:delete(garageId)
-
-            MySQL.update.await("UPDATE `owned_vehicles` SET `vehicle` = ? WHERE `owner` = ? AND `plate` = ?",
-                { encoded, xPlayer.identifier, row.plate })
+            local saved, saveError = persistStoredVehicle(scope, row, garageId, encoded)
+            if not saved then return { success = false, error = saveError } end
+            local deleted, deleteError = pcall(function() xVehicle:delete(garageId) end)
+            if not waitForVehicleRemoval(entity) then
+                restoreRetrieveState(scope, row)
+                return { success = false, error = 'error' }
+            end
+            if not deleted then print(('[esx_garage] stored %s but vehicle cleanup failed: %s'):format(row.plate, tostring(deleteError))) end
         else
             local entity = pedVehicle
 
@@ -1168,15 +1226,14 @@ xLib.callback.registerCompat("esx_garage:storeVehicle", function(source, cb, dat
                 return { success = false, error = "invalid" }
             end
 
-            DeleteEntity(entity)
-
-            MySQL.update.await(
-                "UPDATE `owned_vehicles` SET `stored` = 1, `parking` = ?, `pound` = NULL, `vehicle` = ? WHERE `owner` = ? AND `plate` = ?",
-                { garageId, encoded, xPlayer.identifier, row.plate })
+            local saved, saveError = persistStoredVehicle(scope, row, garageId, encoded)
+            if not saved then return { success = false, error = saveError } end
+            local deleted = pcall(DeleteEntity, entity)
+            if not deleted or not waitForVehicleRemoval(entity) then
+                restoreRetrieveState(scope, row)
+                return { success = false, error = 'error' }
+            end
         end
-
-        MySQL.update.await("UPDATE `owned_vehicles` SET `last_used` = ? WHERE `owner` = ? AND `plate` = ?",
-            { os.time(), xPlayer.identifier, row.plate })
 
         return { success = true, data = true }
     end)
@@ -1189,6 +1246,19 @@ xLib.callback.registerCompat("esx_garage:storeVehicle", function(source, cb, dat
 
     cb(result)
 end)
+
+local function updateMetadata(scope, row, column, value)
+    local condition, params = rowOwnershipCondition(row)
+    local values = { value }
+    appendParams(values, params)
+    local affected = affectedRows(MySQL.update.await(
+        ('UPDATE `owned_vehicles` SET `%s` = ? WHERE %s'):format(column, condition), values))
+    if not CanUseGarageScope(scope) then return false end
+    if affected == 1 then return true end
+    -- MySQL can report zero changed rows when a name/favorite is already equal.
+    local current = ownedRow(scope, row.plate)
+    return current ~= nil and current[column] == value and CanUseGarageScope(scope)
+end
 
 xLib.callback.registerCompat("esx_garage:toggleFavorite", function(source, cb, data)
     if rejectRateLimited(source, cb, "esx_garage:toggleFavorite") then
@@ -1204,22 +1274,22 @@ xLib.callback.registerCompat("esx_garage:toggleFavorite", function(source, cb, d
         return cb({ success = false })
     end
 
+    if type(data) ~= 'table' then return cb({ success = false, error = 'invalid' }) end
+    local scope, scopeError = actionScope(source, xPlayer, data)
+    if not scope then return cb({ success = false, error = scopeError }) end
+
     local plate = data and data.plate
     if not validPlate(plate) or type(data.isFavorite) ~= "boolean" then
         return cb({ success = false, error = "invalid" })
     end
 
     local ok, updated = pcall(function()
-        local dbPlate = ownedPlate(xPlayer.identifier, plate)
-        if not dbPlate then
+        local row = ownedRow(scope, plate)
+        if not row or not CanUseGarageScope(scope) then
             return false
         end
 
-        MySQL.update.await(
-            "UPDATE `owned_vehicles` SET `is_favorite` = ? WHERE `owner` = ? AND `plate` = ?",
-            { data.isFavorite and 1 or 0, xPlayer.identifier, dbPlate })
-
-        return true
+        return updateMetadata(scope, row, 'is_favorite', data.isFavorite and 1 or 0)
     end)
 
     if not ok then
@@ -1247,6 +1317,10 @@ xLib.callback.registerCompat("esx_garage:renameVehicle", function(source, cb, da
         return cb({ success = false })
     end
 
+    if type(data) ~= 'table' then return cb({ success = false, error = 'invalid' }) end
+    local scope, scopeError = actionScope(source, xPlayer, data)
+    if not scope then return cb({ success = false, error = scopeError }) end
+
     local plate = data and data.plate
     local name = data and data.name
     if not validPlate(plate) or type(name) ~= "string" or #name < 1 or #name > 50 then
@@ -1254,16 +1328,12 @@ xLib.callback.registerCompat("esx_garage:renameVehicle", function(source, cb, da
     end
 
     local ok, updated = pcall(function()
-        local dbPlate = ownedPlate(xPlayer.identifier, plate)
-        if not dbPlate then
+        local row = ownedRow(scope, plate)
+        if not row or not CanUseGarageScope(scope) then
             return false
         end
 
-        MySQL.update.await(
-            "UPDATE `owned_vehicles` SET `custom_name` = ? WHERE `owner` = ? AND `plate` = ?",
-            { name, xPlayer.identifier, dbPlate })
-
-        return true
+        return updateMetadata(scope, row, 'custom_name', name)
     end)
 
     if not ok then
@@ -1290,6 +1360,10 @@ xLib.callback.registerCompat("esx_garage:transferVehicle", function(source, cb, 
     if not xPlayer then
         return cb({ success = false })
     end
+
+    if type(data) ~= 'table' then return cb({ success = false, error = 'invalid' }) end
+    local scope, scopeError = actionScope(source, xPlayer, data)
+    if not scope or scope.kind ~= 'personal' then return cb({ success = false, error = scopeError or 'not_allowed' }) end
 
     local plate = data and data.plate
     local targetId = tonumber(data and data.targetId)
@@ -1325,17 +1399,21 @@ xLib.callback.registerCompat("esx_garage:transferVehicle", function(source, cb, 
     end
 
     local ok, result = pcall(function()
-        local row = ownedRow(xPlayer.identifier, plate)
+        local row = ownedRow(scope, plate)
         if not row then
             return { success = false, error = "not_owned" }
         end
+
+        if not CanUseGarageScope(scope) then return { success = false, error = 'not_allowed' } end
 
         if not isStored(row.stored) then
             return { success = false, error = "not_stored" }
         end
 
-        local affected = MySQL.update.await("UPDATE `owned_vehicles` SET `owner` = ? WHERE `owner` = ? AND `plate` = ?",
-            { target.identifier, xPlayer.identifier, row.plate })
+        local condition, conditions = rowOwnershipCondition(row)
+        local params = { target.identifier }
+        appendParams(params, conditions)
+        local affected = MySQL.update.await(('UPDATE `owned_vehicles` SET `owner` = ? WHERE %s AND `stored` = 1'):format(condition), params)
 
         if (affected or 0) < 1 then
             return { success = false }
@@ -1375,17 +1453,21 @@ xLib.callback.registerCompat("esx_garage:giveKeys", function(source, cb, data)
         return cb({ success = false })
     end
 
+    if type(data) ~= 'table' then return cb({ success = false, error = 'invalid' }) end
+    local scope, scopeError = actionScope(source, xPlayer, data)
+    if not scope or scope.kind ~= 'personal' then return cb({ success = false, error = scopeError or 'not_allowed' }) end
+
     local plate = data and data.plate
     if not validPlate(plate) then
         return cb({ success = false, error = "invalid" })
     end
 
-    local ok, row = pcall(ownedRow, xPlayer.identifier, plate)
+    local ok, row = pcall(ownedRow, scope, plate)
     if not ok then
         return cb({ success = false, error = "error" })
     end
 
-    if not row then
+    if not row or not CanUseGarageScope(scope) then
         return cb({ success = false, error = "not_owned" })
     end
 

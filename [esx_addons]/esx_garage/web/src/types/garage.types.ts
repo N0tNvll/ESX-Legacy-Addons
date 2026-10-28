@@ -17,6 +17,7 @@ export interface Garage {
   logo?: string;
   color?: string;
   keys?: boolean;
+  fleets?: { id: string; name: string }[];
 }
 
 export const GarageType = {
