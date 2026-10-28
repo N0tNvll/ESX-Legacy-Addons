@@ -37,6 +37,7 @@ return {
     ["store_error_plate_conflict"] = "Otro vehículo activo está usando esta matrícula.",
     ["store_error_plate_mismatch"] = "La matrícula del vehículo no coincide con este vehículo propio.",
     ["store_error_too_far"] = "Estás demasiado lejos del garaje.",
+    ["store_error_wrong_category"] = "Este garaje no admite este tipo de vehículo.",
     ["received_vehicle"] = "Has recibido un vehículo (matrícula: %s).",
 
     ["open_garage"] = "Abrir garaje"

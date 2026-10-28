@@ -5,6 +5,10 @@ Config = {}
 
 Config.Locale = GetConvar("esx:locale", "en")
 
+-- For legacy rows whose type is only "aircraft", map each model to helicopter/plane.
+-- e.g. { maverick = "helicopter", luxor = "plane" }. No owner/type data is rewritten.
+Config.VehicleCategoryOverrides = {}
+
 ---@type GarageSettings
 Config.Settings = {
 	interactionDistance = 3.0,
@@ -19,33 +23,12 @@ Config.Settings = {
 
 ---@type Garage[]
 Config.Garages = {
-	-- Existing public garages remain personal: owner=current character, job=NULL/empty.
-	-- Job examples: uncomment/configure positions for your map. Existing owned_vehicles
-	-- rows with job='police'/'ambulance'/'mechanic' are reused without changing owner.
-	--[[
-	{
-		id = "police_fleet", label = "Police Fleet", type = "job", job = "police",
-		minGrade = 2, shared = true,
-		entryPoint = vec3(459.15, -1008.01, 28.26), storePoint = vec3(452.4, -1007.7, 28.5),
-		spawns = { vec4(446.8, -1024.5, 28.6, 5.0) }, pound = "los_santos",
-	},
-	{
-		id = "ambulance_fleet", label = "Ambulance Fleet", type = "job", job = "ambulance",
-		minGrade = 0, shared = true,
-		entryPoint = vec3(294.8, -600.8, 43.3), storePoint = vec3(294.8, -610.3, 43.3),
-		spawns = { vec4(289.8, -610.3, 43.2, 70.0) }, pound = "los_santos",
-	},
-	{
-		id = "mechanic_fleet", label = "Mechanic Fleet", type = "job", job = "mechanic",
-		minGrade = 1, shared = true,
-		entryPoint = vec3(-356.0, -128.0, 39.4), storePoint = vec3(-370.0, -115.0, 38.7),
-		spawns = { vec4(-365.0, -108.0, 38.7, 160.0) }, pound = "los_santos",
-	},
-	]]
+	-- Job garages register from each job config; ownership and category are independent.
 	{
 		id = "vespucci_boulevard",
 		label = "Vespucci Boulevard",
 		type = "public",
+		vehicleCategories = { "ground" },
 		entryPoint = vec3(-285.2, -886.5, 31.0),
 		storePoint = vec3(-298.8, -889.7, 31.0),
 		spawns = {
@@ -59,6 +42,7 @@ Config.Garages = {
 		id = "san_andreas_avenue",
 		label = "San Andreas Avenue",
 		type = "public",
+		vehicleCategories = { "ground" },
 		entryPoint = vec3(216.29, -808.96, 30.73),
 		storePoint = vec3(220.1, -805.2, 30.8),
 		spawns = {
@@ -67,6 +51,54 @@ Config.Garages = {
 		blip = { sprite = 357, scale = 0.8, color = 3 },
 		ped = { model = `s_m_m_gentransport`, z = 30.73, heading = 250.0 },
 		pound = "los_santos",
+	},
+	{
+		id = 'boat_port_1', label = 'Marina 1', type = 'public', vehicleCategories = { 'boat' },
+		entryPoint = vec3(-772.4, -1430.9, 0.5), storePoint = vec3(-798.4, -1456.0, 0.0),
+		spawns = { vec4(-785.39, -1426.3, 0.0, 146.0) }, exitPoint = vec4(-791.4, -1452.5, 1.5, 318.9), pound = 'marine_impound',
+		blip = { sprite = 356, scale = 0.8, color = 3 },
+	},
+	{
+		id = 'boat_port_2', label = 'Marina 2', type = 'public', vehicleCategories = { 'boat' },
+		entryPoint = vec3(3864.9, 4463.9, 1.6), storePoint = vec3(3857.0, 4446.9, 0.0),
+		spawns = { vec4(3854.4, 4477.2, 0.0, 273.0) }, exitPoint = vec4(3854.7, 4458.6, 1.8, 355.3), pound = 'marine_impound',
+		blip = { sprite = 356, scale = 0.8, color = 3 },
+	},
+	{
+		id = 'boat_port_3', label = 'Marina 3', type = 'public', vehicleCategories = { 'boat' },
+		entryPoint = vec3(-1614.0, 5260.1, 2.8), storePoint = vec3(-1600.3, 5261.9, 0.0),
+		spawns = { vec4(-1622.5, 5247.1, 0.0, 21.0) }, exitPoint = vec4(-1605.7, 5259.0, 2.0, 25.0), pound = 'marine_impound',
+		blip = { sprite = 356, scale = 0.8, color = 3 },
+	},
+	{
+		id = 'boat_port_4', label = 'Marina 4', type = 'public', vehicleCategories = { 'boat' },
+		entryPoint = vec3(712.6, 4093.3, 33.7), storePoint = vec3(705.1, 4110.1, 30.2),
+		spawns = { vec4(712.8, 4080.2, 29.3, 181.0) }, exitPoint = vec4(711.9, 4110.5, 31.3, 180.0), pound = 'marine_impound',
+		blip = { sprite = 356, scale = 0.8, color = 3 },
+	},
+	{
+		id = 'boat_port_5', label = 'Marina 5', type = 'public', vehicleCategories = { 'boat' },
+		entryPoint = vec3(23.8, -2806.8, 4.8), storePoint = vec3(-1.0, -2799.2, 0.5),
+		spawns = { vec4(23.3, -2828.6, 0.8, 181.0) }, exitPoint = vec4(12.6, -2793.8, 2.5, 355.2), pound = 'marine_impound',
+		blip = { sprite = 356, scale = 0.8, color = 3 },
+	},
+	{
+		id = 'boat_port_6', label = 'Marina 6', type = 'public', vehicleCategories = { 'boat' },
+		entryPoint = vec3(-3427.3, 956.9, 7.3), storePoint = vec3(-3436.5, 946.6, 0.3),
+		spawns = { vec4(-3448.9, 953.8, 0.0, 75.0) }, exitPoint = vec4(-3427.0, 952.6, 8.3, 0.0), pound = 'marine_impound',
+		blip = { sprite = 356, scale = 0.8, color = 3 },
+	},
+	{
+		id = 'civil_helipad', label = 'Vespucci Helipad', type = 'public', vehicleCategories = { 'helicopter' },
+		entryPoint = vec3(-745.5, -1468.6, 5.0), storePoint = vec3(-724.7, -1444.0, 5.0),
+		spawns = { vec4(-724.7, -1444.0, 5.0, 140.0) }, pound = 'helicopter_impound',
+		blip = { sprite = 43, scale = 0.8, color = 3 },
+	},
+	{
+		id = 'civil_hangar', label = 'LSIA Hangar', type = 'public', vehicleCategories = { 'plane' },
+		entryPoint = vec3(-1617.1, -3154.0, 13.9), storePoint = vec3(-1656.0, -3144.0, 13.9),
+		spawns = { vec4(-1656.0, -3144.0, 13.9, 330.0) }, pound = 'plane_impound',
+		blip = { sprite = 90, scale = 0.8, color = 3 },
 	},
 }
 
@@ -103,4 +135,13 @@ Config.Impounds = {
 		blip = { sprite = 524, scale = 0.8, color = 1 },
 		cost = 3000,
 	},
+	{ id = 'marine_impound', label = 'Marine Impound', vehicleCategories = { 'boat' },
+		getOutPoint = vec3(-772.4, -1430.9, 0.5), spawns = { vec4(-785.39, -1426.3, 0.0, 146.0) },
+		blip = { sprite = 356, scale = 0.8, color = 1 }, cost = 3000 },
+	{ id = 'helicopter_impound', label = 'Helicopter Impound', vehicleCategories = { 'helicopter' },
+		getOutPoint = vec3(-761.1, -1454.0, 5.0), spawns = { vec4(-745.0, -1468.0, 5.0, 140.0) },
+		blip = { sprite = 43, scale = 0.8, color = 1 }, cost = 3000 },
+	{ id = 'plane_impound', label = 'Aircraft Impound', vehicleCategories = { 'plane' },
+		getOutPoint = vec3(-980.0, -2994.0, 13.9), spawns = { vec4(-1004.0, -3007.0, 13.9, 60.0) },
+		blip = { sprite = 90, scale = 0.8, color = 1 }, cost = 3000 },
 }

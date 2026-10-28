@@ -23,17 +23,21 @@ server_scripts {
     '@es_extended/locale.lua',
     'locales/*.lua',
     'config.lua',
+    '@esx_garage/integrations/config.lua',
     'server/*.lua',
+    '@esx_garage/integrations/server.lua',
 }
 
 client_scripts {
     '@es_extended/locale.lua',
     'locales/*.lua',
     'config.lua',
+    '@esx_garage/integrations/config.lua',
     'client/*.lua',
 }
 
 dependencies {
+    'esx_garage',
     'esx_lib',
     'es_extended',
     'esx_paymentgateway',

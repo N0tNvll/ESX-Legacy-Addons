@@ -1,8 +1,9 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
----@alias GarageType 'public' | 'job' | 'gang' | 'impound'
+---@alias GarageType 'public' | 'private' | 'job' | 'gang' | 'house' | 'boat' | 'aircraft' | 'impound'
 ---@alias vehicle_type 'car' | 'motorcycle' | 'boat' | 'aircraft' | 'bicycle' | 'truck' | 'emergency'
+---@alias GarageVehicleCategory 'ground' | 'boat' | 'helicopter' | 'plane' | 'train'
 
 ---@class GarageBlip
 ---@field sprite integer
@@ -32,12 +33,19 @@
 ---@field job? string Required for type='job', or use access.jobs. Matches owned_vehicles.job.
 ---@field minGrade? integer Minimum current job grade (default 0).
 ---@field shared? boolean Job fleet shared across employees (default true); false also requires owner.
+---@field vehicleCategories? GarageVehicleCategory[] Defaults to ground; independent of public/job ownership.
+---@field models? string[] | fun(source:integer):string[] Optional server-side model allowlist.
+---@field exitPoint? vector4 Safe place for the driver after storing a boat.
+---@field reserve? fun(source:integer):table|false Server-side service reservation before spawn.
+---@field release? fun(source:integer, token:table) Undo a reservation when retrieval fails.
+---@field onStored? fun(source:integer) Server-side service cleanup after successful storage.
 ---@field logo? string Image url or nui path shown in the menu header.
 ---@field color? string Hex accent color applied to the menu.
 ---@field pound? string Linked impound lot id.
 ---@field maxVehicles? integer
 
 ---@class Impound
+---@field vehicleCategories? GarageVehicleCategory[] Defaults to ground.
 ---@field id string
 ---@field label string
 ---@field getOutPoint vector3

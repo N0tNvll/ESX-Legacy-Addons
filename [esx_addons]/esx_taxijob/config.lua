@@ -14,6 +14,10 @@ Config.EnableSocietyOwnedVehicles = false
 
 Config.Locale = GetConvar('esx:locale', 'en')
 
+-- Unified persistent garages; existing shop/vehicle positions below are reused.
+Config.GarageIntegration = { minGrade = 0, shared = true, vehiclesPerModel = 4 }
+
+
 Config.OxInventory                = ESX.GetConfig().OxInventory
 
 Config.AuthorizedVehicles = {

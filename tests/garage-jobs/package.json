@@ -1,7 +1,7 @@
 {
   "name": "esx-garage-job-regressions",
   "private": true,
-  "scripts": { "test": "node run.cjs" },
+  "scripts": { "test": "node structure.cjs && node run.cjs" },
   "engines": { "node": ">=22.13" },
   "devDependencies": { "fengari": "0.1.5" }
 }

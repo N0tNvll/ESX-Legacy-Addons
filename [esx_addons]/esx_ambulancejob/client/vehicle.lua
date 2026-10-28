@@ -3,11 +3,9 @@
 
 local spawnedVehicles = {}
 
-function OpenVehicleSpawnerMenu(type, hospital, part, partNum)
+function OpenVehicleShopMenu(type, hospital, part, partNum)
 	local playerCoords = GetEntityCoords(PlayerPedId())
 	local elements = {
-		{label = TranslateCap('garage_storeditem'), action = 'garage'},
-		{label = TranslateCap('garage_storeitem'), action = 'store_garage'},
 		{label = TranslateCap('garage_buyitem'), action = 'buy_vehicle'}
 	}
 
@@ -41,160 +39,10 @@ function OpenVehicleSpawnerMenu(type, hospital, part, partNum)
 			else
 				ESX.ShowNotification(TranslateCap('garage_notauthorized'))
 			end
-		elseif data.current.action == "garage" then
-			local garage = {}
-
-			xLib.callback('esx_vehicleshop:retrieveJobVehicles', false, function(jobVehicles)
-				if #jobVehicles > 0 then
-					local allVehicleProps = {}
-
-					for k,v in ipairs(jobVehicles) do
-						local props = json.decode(v.vehicle)
-
-						if IsModelInCdimage(props.model) then
-							local vehicleName = GetLabelText(GetDisplayNameFromVehicleModel(props.model))
-							local label = ('%s - <span style="color:darkgoldenrod;">%s</span>: '):format(vehicleName, props.plate)
-
-							if v.stored == 1 or v.stored == true then
-								label = label .. ('<span style="color:green;">%s</span>'):format(TranslateCap('garage_stored'))
-							elseif v.stored == 0 or v.stored == false then
-								label = label .. ('<span style="color:darkred;">%s</span>'):format(TranslateCap('garage_notstored'))
-							end
-
-							garage[#garage+1] = {
-								label = label,
-								stored = v.stored,
-								model = props.model,
-								plate = props.plate
-							}
-
-							allVehicleProps[props.plate] = props
-						end
-					end
-
-					if #garage > 0 then
-						OpenAmbulanceMenu('default', 'vehicle_garage', 'Garage', garage, function(dataG, menuG)
-							if dataG.current.stored == 1 then
-								local foundSpawn, spawnPoint = GetAvailableVehicleSpawnPoint(hospital, part, partNum)
-
-								if foundSpawn then
-									menuG.close()
-									menu.close()
-
-									xLib.game.spawnVehicle(dataG.current.model, spawnPoint.coords, spawnPoint.heading, function(vehicle)
-										local vehicleProps = allVehicleProps[dataG.current.plate]
-										xLib.game.setVehicleProperties(vehicle, vehicleProps)
-
-										TriggerServerEvent('esx_vehicleshop:setJobVehicleState', dataG.current.plate, false)
-										ESX.ShowNotification(TranslateCap('garage_released'))
-									end)
-								end
-							else
-								ESX.ShowNotification(TranslateCap('garage_notavailable'))
-							end
-						end, function(dataG, menuG)
-							menuG.close()
-						end)
-					else
-						ESX.ShowNotification(TranslateCap('garage_empty'))
-					end
-				else
-					ESX.ShowNotification(TranslateCap('garage_empty'))
-				end
-			end, type)
-		elseif data.current.action == "store_garage" then
-			StoreNearbyVehicle(playerCoords)
 		end
 	end, function(data, menu)
 		menu.close()
 	end)
-end
-
-function StoreNearbyVehicle(playerCoords)
-	local vehicles, plates, index = xLib.game.getVehiclesInArea(playerCoords, 30.0), {}, {}
-
-	if next(vehicles) then
-		for i = 1, #vehicles do
-			local vehicle = vehicles[i]
-			
-			-- Make sure the vehicle we're saving is empty, or else it won't be deleted
-			if GetVehicleNumberOfPassengers(vehicle) == 0 and IsVehicleSeatFree(vehicle, -1) then
-				local plate = ESX.Math.Trim(GetVehicleNumberPlateText(vehicle))
-				plates[#plates + 1] = plate
-				index[plate] = vehicle
-			end
-		end
-	else
-		ESX.ShowNotification(TranslateCap('garage_store_nearby'))
-		return
-	end
-
-	xLib.callback('esx_ambulancejob:storeNearbyVehicle', false, function(plate)
-		if plate then
-			local vehicleId = index[plate]
-			local attempts = 0
-			xLib.game.deleteVehicle(vehicleId)
-			isBusy = true
-
-			CreateThread(function()
-				BeginTextCommandBusyspinnerOn('STRING')
-				AddTextComponentSubstringPlayerName(TranslateCap('garage_storing'))
-				EndTextCommandBusyspinnerOn(4)
-
-				while isBusy do
-					Wait(100)
-				end
-
-				BusyspinnerOff()
-			end)
-
-			-- Workaround for vehicle not deleting when other players are near it.
-			while DoesEntityExist(vehicleId) do
-				Wait(500)
-				attempts = attempts + 1
-
-				-- Give up
-				if attempts > 30 then
-					break
-				end
-
-				vehicles = xLib.game.getVehiclesInArea(playerCoords, 30.0)
-				if #vehicles > 0 then
-					for i = 1, #vehicles do
-						local vehicle = vehicles[i]
-						if ESX.Math.Trim(GetVehicleNumberPlateText(vehicle)) == plate then
-							xLib.game.deleteVehicle(vehicle)
-							break
-						end
-					end
-				end
-			end
-
-			isBusy = false
-			ESX.ShowNotification(TranslateCap('garage_has_stored'))
-		else
-			ESX.ShowNotification(TranslateCap('garage_has_notstored'))
-		end
-	end, plates)
-end
-
-function GetAvailableVehicleSpawnPoint(hospital, part, partNum)
-	local spawnPoints = Config.Hospitals[hospital][part][partNum].SpawnPoints
-	local found, foundSpawnPoint = false, nil
-
-	for i=1, #spawnPoints, 1 do
-		if xLib.game.isSpawnPointClear(spawnPoints[i].coords, spawnPoints[i].radius) then
-			found, foundSpawnPoint = true, spawnPoints[i]
-			break
-		end
-	end
-
-	if found then
-		return true, foundSpawnPoint
-	else
-		ESX.ShowNotification(TranslateCap('garage_blocked'))
-		return false
-	end
 end
 
 function OpenShopMenu(elements, restoreCoords, shopCoords)

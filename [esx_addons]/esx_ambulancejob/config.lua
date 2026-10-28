@@ -13,6 +13,10 @@ Config.LoadIpl                    = true -- Disable if you're using fivem-ipl or
 
 Config.Locale = GetConvar('esx:locale', 'en')
 
+-- Unified persistent garages; existing shop/vehicle positions below are reused.
+Config.GarageIntegration = { minGrade = 0, shared = true, vehiclesPerModel = 4 }
+
+
 Config.DistressBlip = {
 	Sprite = 310,
 	Color = 48,

@@ -16,12 +16,14 @@ shared_scripts {
     '@es_extended/locale.lua',
     'locales/*.lua',
     'config.lua',
+    '@esx_garage/integrations/config.lua',
 }
 
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
     '@esx_lib/imports/catalog/bootstrap.lua',
     'server/*.lua',
+    '@esx_garage/integrations/server.lua',
 }
 
 client_scripts {
@@ -29,6 +31,7 @@ client_scripts {
 }
 
 dependencies {
+    'esx_garage',
     'esx_lib',
     'esx_death',
     'es_extended',

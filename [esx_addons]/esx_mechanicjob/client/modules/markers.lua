@@ -37,14 +37,6 @@ AddEventHandler('esx_mechanicjob:hasEnteredMarker', function(zone)
 		Mechanic.setCurrentAction('mechanic_harvest_menu', TranslateCap('harvest_menu'), {})
 	elseif zone == 'Craft' then
 		Mechanic.setCurrentAction('mechanic_craft_menu', TranslateCap('craft_menu'), {})
-	elseif zone == 'VehicleDeleter' then
-		local playerPed = PlayerPedId()
-
-		if IsPedInAnyVehicle(playerPed, false) then
-			Mechanic.setCurrentAction('delete_vehicle', TranslateCap('veh_stored'), {
-				vehicle = GetVehiclePedIsIn(playerPed, false)
-			})
-		end
 	end
 
 	if zone ~= 'VehicleSpawnPoint' and zone ~= 'VehicleDelivery' then
@@ -129,7 +121,7 @@ CreateThread(function()
 			local currentZone = nil
 
 			for zoneName, zone in pairs(Config.Zones) do
-				if #(coords - zone.Pos) < zone.Size.x then
+				if zoneName ~= 'VehicleDeleter' and #(coords - zone.Pos) < zone.Size.x then
 					sleep = 0
 					isInMarker = true
 					currentZone = zoneName
@@ -200,21 +192,6 @@ CreateThread(function()
 					Mechanic.openHarvestMenu()
 				elseif State.currentAction == 'mechanic_craft_menu' then
 					Mechanic.openCraftMenu()
-				elseif State.currentAction == 'delete_vehicle' then
-					local vehicle = State.currentActionData.vehicle
-
-					if Config.EnableSocietyOwnedVehicles then
-						local vehicleProps = xLib.game.getVehicleProperties(vehicle)
-						TriggerServerEvent('esx_society:putVehicleInGarage', 'mechanic', vehicleProps)
-					else
-						local entityModel = GetEntityModel(vehicle)
-
-						if entityModel == `flatbed` or entityModel == `towtruck2` or entityModel == `slamvan3` then
-							xLib.callback('esx_service:disableService', false, function() end, 'mechanic')
-						end
-					end
-
-					Mechanic.deleteVehicle(vehicle)
 				elseif State.currentAction == 'remove_entity' then
 					DeleteEntity(State.currentActionData.entity)
 				end

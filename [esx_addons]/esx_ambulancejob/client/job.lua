@@ -355,9 +355,9 @@ CreateThread(function()
 				elseif CurrentAction == 'Pharmacy' then
 					OpenPharmacyMenu()
 				elseif CurrentAction == 'Vehicles' then
-					OpenVehicleSpawnerMenu('car', CurrentActionData.hospital, CurrentAction, CurrentActionData.partNum)
+					OpenVehicleShopMenu('car', CurrentActionData.hospital, CurrentAction, CurrentActionData.partNum)
 				elseif CurrentAction == 'Helicopters' then
-					OpenVehicleSpawnerMenu('helicopter', CurrentActionData.hospital, CurrentAction, CurrentActionData.partNum)
+					OpenVehicleShopMenu('helicopter', CurrentActionData.hospital, CurrentAction, CurrentActionData.partNum)
 				elseif CurrentAction == 'FastTravelsPrompt' then
 					FastTravel(CurrentActionData.to, CurrentActionData.heading)
 				end

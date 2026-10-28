@@ -156,113 +156,6 @@ local function hasSocietyBossAccess(xPlayer, society)
     return job and society and job.name == society.name and Config.BossGrades[job.grade_name] and true or false
 end
 
-local function normalizePlate(plate)
-    return xLib.vehiclePlate.normalize(plate, {
-        maxLength = 12,
-    })
-end
-
-local getPlayerCoords = xLib.player.getCoords
-
-local function toVector3(coords)
-    if not coords then
-        return nil
-    end
-
-    if type(coords) == 'vector3' then
-        return coords
-    end
-
-    if coords.x and coords.y and coords.z then
-        return vector3(coords.x, coords.y, coords.z)
-    end
-
-    return nil
-end
-
-local function isNearSocietyGarage(source, societyName)
-    local coords = getPlayerCoords(source)
-    local zones = Config.SocietyGarageZones and Config.SocietyGarageZones[societyName]
-
-    if not coords or type(zones) ~= 'table' then
-        return false
-    end
-
-    for i = 1, #zones do
-        local zoneCoords = toVector3(zones[i])
-
-        if zoneCoords and #(coords - zoneCoords) <= (Config.SocietyGarageDistance or 12.0) then
-            return true
-        end
-    end
-
-    return false
-end
-
-local function canAccessSocietyGarage(source, society)
-    local xPlayer = ESX.Player(source)
-    local job = xPlayer and xPlayer.getJob()
-
-    if not job or not society or job.name ~= society.name then
-        return false
-    end
-
-    return isNearSocietyGarage(source, society.name)
-end
-
-local function validateGarageVehicle(vehicle)
-    if type(vehicle) ~= 'table' then
-        return false
-    end
-
-    local plate = normalizePlate(vehicle.plate)
-
-    if not plate then
-        return false
-    end
-
-    if vehicle.model ~= nil and type(vehicle.model) ~= 'number' and type(vehicle.model) ~= 'string' then
-        return false
-    end
-
-    vehicle.plate = plate
-    return true
-end
-
-local function getGarageVehicleEntity(source, vehicle)
-    local ped = GetPlayerPed(source)
-
-    if not ped or ped == 0 then
-        return nil
-    end
-
-    local entity = GetVehiclePedIsIn(ped, false)
-
-    if not entity or entity == 0 then
-        entity = GetVehiclePedIsIn(ped, true)
-    end
-
-    if not entity or entity == 0 or not DoesEntityExist(entity) then
-        return nil
-    end
-
-    if #(GetEntityCoords(ped) - GetEntityCoords(entity)) > 10.0 then
-        return nil
-    end
-
-    if normalizePlate(GetVehicleNumberPlateText(entity)) ~= vehicle.plate then
-        return nil
-    end
-
-    local model = type(vehicle.model) == 'string' and (tonumber(vehicle.model) or joaat(vehicle.model)) or vehicle.model
-
-    if model ~= nil and GetEntityModel(entity) ~= model then
-        return nil
-    end
-
-    return entity
-end
-
 local function getValidJobGrade(job, grade)
     grade = tonumber(grade)
 
@@ -414,66 +307,6 @@ AddEventHandler('esx_society:washMoney', function(society, amount)
     else
         xPlayer.showNotification(TranslateCap('invalid_amount'))
     end
-end)
-
-RegisterServerEvent('esx_society:putVehicleInGarage')
-
-AddEventHandler('esx_society:putVehicleInGarage', function(societyName, vehicle)
-    local source = source
-    local society = GetSociety(societyName)
-
-    if not society or not canAccessSocietyGarage(source, society) or not validateGarageVehicle(vehicle) then
-        print(('[^3WARNING^7] Player ^5%s^7 attempted to put vehicle in non-existing society garage - ^5%s^7!'):format(source, societyName))
-        return
-    end
-
-    local entity = getGarageVehicleEntity(source, vehicle)
-
-    if not entity then
-        print(('[^3WARNING^7] Player ^5%s^7 attempted to store a vehicle they are not using in society garage - ^5%s^7!'):format(source, societyName))
-        return
-    end
-
-    vehicle.model = GetEntityModel(entity)
-
-    TriggerEvent('esx_datastore:getSharedDataStore', society.datastore, function(store)
-        local garage = store.get('garage') or {}
-
-        for i = 1, #garage do
-            if normalizePlate(garage[i].plate) == vehicle.plate then
-                return
-            end
-        end
-
-        table.insert(garage, vehicle)
-        store.set('garage', garage)
-        DeleteEntity(entity)
-    end)
-end)
-
-RegisterServerEvent('esx_society:removeVehicleFromGarage')
-
-AddEventHandler('esx_society:removeVehicleFromGarage', function(societyName, vehicle)
-    local source = source
-    local society = GetSociety(societyName)
-
-    if not society or not canAccessSocietyGarage(source, society) or not validateGarageVehicle(vehicle) then
-        print(('[^3WARNING^7] Player ^5%s^7 attempted to remove vehicle from non-existing society garage - ^5%s^7!'):format(source, societyName))
-        return
-    end
-
-    TriggerEvent('esx_datastore:getSharedDataStore', society.datastore, function(store)
-        local garage = store.get('garage') or {}
-
-        for i = 1, #garage, 1 do
-            if normalizePlate(garage[i].plate) == vehicle.plate then
-                table.remove(garage, i)
-                break
-            end
-        end
-
-        store.set('garage', garage)
-    end)
 end)
 
 xLib.callback.registerCompat('esx_society:getSocietyMoney', function(source, cb, societyName)
@@ -930,21 +763,6 @@ xLib.callback.registerCompat('esx_society:getOnlinePlayers', function(source, cb
     end -- Wait for the xPlayer loop to finish
 
     cb(onlinePlayers)
-end)
-
-xLib.callback.registerCompat('esx_society:getVehiclesInGarage', function(source, cb, societyName)
-    local society = GetSociety(societyName)
-
-    if not society or not canAccessSocietyGarage(source, society) then
-        print(('[^3WARNING^7] Attempting To get a non-existing society - %s!'):format(societyName))
-        return cb({})
-    end
-
-    TriggerEvent('esx_datastore:getSharedDataStore', society.datastore, function(store)
-        local garage = store.get('garage') or {}
-
-        cb(garage)
-    end)
 end)
 
 xLib.callback.registerCompat('esx_society:isBoss', function(source, cb, job)

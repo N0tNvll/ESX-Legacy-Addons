@@ -63,6 +63,25 @@ local function disableService(source, name)
 	return true
 end
 
+-- Server integrations reserve a slot before spawning and undo only new reservations on failure.
+exports('TryEnableService', function(name, playerId)
+	local player = ESX.GetPlayerFromId(playerId)
+	if not player or not player.job or player.job.name ~= name or not ensureService(name) then return false end
+	if InService[name][playerId] then return true, false end
+	if MaxInService[name] ~= -1 and GetInServiceCount(name) >= MaxInService[name] then return false end
+	InService[name][playerId] = true
+	GlobalState[name] = GetInServiceCount(name)
+	return true, true
+end)
+
+exports('DisableService', function(name, playerId)
+	return disableService(playerId, name)
+end)
+
+exports('IsInService', function(name, playerId)
+	return InService[name] ~= nil and InService[name][playerId] == true
+end)
+
 AddEventHandler('esx_service:disableService', function(name, target)
 	if not validateInternalCall('esx_service:disableService') then return end
 

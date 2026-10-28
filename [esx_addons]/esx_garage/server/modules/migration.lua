@@ -174,6 +174,17 @@ local function recoverOrphanedVehicles()
         )
         assert(type(rows) == 'table', 'Unable to read out vehicles for startup recovery')
         if #rows == 0 then break end
+        if GarageCategories then
+            local plates, placeholders, byPlate = {}, {}, {}
+            for _, row in ipairs(rows) do plates[#plates + 1] = row.plate; placeholders[#placeholders + 1] = '?' end
+            local metadata = MySQL.query.await(('SELECT `plate`, `type`, `vehicle` FROM `owned_vehicles` WHERE `plate` IN (%s)'):format(table.concat(placeholders, ',')), plates)
+            assert(type(metadata) == 'table', 'Unable to read recovery vehicle categories')
+            for _, row in ipairs(metadata) do byPlate[row.plate] = row end
+            for _, row in ipairs(rows) do
+                local meta = byPlate[row.plate]
+                if meta then row.type, row.vehicle = meta.type, meta.vehicle end
+            end
+        end
 
         local livePlates = {}
         for _, entity in ipairs(GetAllVehicles()) do
@@ -192,10 +203,13 @@ local function recoverOrphanedVehicles()
             local entity = vehicle and vehicle:getEntity()
 
             if not livePlates[key] and not (entity and entity ~= 0 and DoesEntityExist(entity)) then
-                local affected = MySQL.update.await(
+                local lotId = lot.id
+                if GarageCategories then lotId = GarageCategories.impound(row) end
+                local affected = 0
+                if lotId then affected = MySQL.update.await(
                     'UPDATE `owned_vehicles` SET `stored` = 1, `pound` = ?, `parking` = NULL WHERE `plate` = ? AND `stored` = 0 AND `pound` IS NULL',
-                    { lot.id, row.plate }
-                )
+                    { lotId, row.plate }
+                ) end
                 assert(type(affected) == 'number', 'Unable to recover out vehicle')
                 recovered = recovered + affected
             end
@@ -208,10 +222,28 @@ local function recoverOrphanedVehicles()
     end
 
     if recovered > 0 then
-        print(('[esx_garage] startup recovery: moved %d orphaned vehicle(s) to %s'):format(recovered, lot.id))
+        print(('[esx_garage] startup recovery: moved %d orphaned vehicle(s) to compatible impounds'):format(recovered))
     end
 
     return recovered
+end
+
+local function repairImpoundCategories()
+    local cursor = ''
+    while true do
+        local rows = MySQL.query.await('SELECT `plate`, `type`, `vehicle`, `pound` FROM `owned_vehicles` WHERE `stored` = 1 AND `pound` IS NOT NULL AND `plate` > ? ORDER BY `plate` LIMIT 100', { cursor })
+        assert(type(rows) == 'table', 'Unable to inspect impound categories')
+        if #rows == 0 then return end
+        for _, row in ipairs(rows) do
+            local lot = GarageCategories.impound(row, row.pound)
+            if lot and lot ~= row.pound then
+                MySQL.update.await('UPDATE `owned_vehicles` SET `pound` = ?, `parking` = NULL WHERE `plate` = ? AND `stored` = 1 AND `pound` = ?', { lot, row.plate, row.pound })
+            end
+        end
+        cursor = rows[#rows].plate
+        if #rows < 100 then return end
+        Wait(0)
+    end
 end
 
 MySQL.ready(function()
@@ -365,6 +397,7 @@ MySQL.ready(function()
             markMigrationApplied(JOB_FLEETS_MIGRATION_NAME)
         end
 
+        if GarageCategories then repairImpoundCategories() end
         recoverOrphanedVehicles()
     end)
 
@@ -378,6 +411,7 @@ MySQL.ready(function()
     end
 
     GarageReady = true
+    if type(TriggerEvent) == 'function' then TriggerEvent('esx_garage:ready') end
 
     if added > 0 or indexed > 0 or legacy > 0 or adjusted > 0 then
         print(

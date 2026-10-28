@@ -65,6 +65,8 @@ local NUI_TYPE_MAP <const> = {
     amphibious_quadbike = "car",
     bike = "motorcycle",
     heli = "aircraft",
+    helicopter = "aircraft",
+    airplane = "aircraft",
     plane = "aircraft",
     blimp = "aircraft",
     submarine = "boat",
@@ -310,7 +312,7 @@ local function refresh()
             clearWorld()
             fleetGarages = {}
             for _, garage in ipairs(data.garages) do
-                if garage.type == 'job' then fleetGarages[#fleetGarages + 1] = { id = garage.id, name = garage.label } end
+                if garage.type == 'job' then fleetGarages[#fleetGarages + 1] = { id = garage.id, name = garage.label, vehicleCategories = garage.vehicleCategories } end
             end
 
             impoundsById = {}
@@ -420,6 +422,7 @@ local STORE_ERROR_LOCALES <const> = {
     plate_conflict = "store_error_plate_conflict",
     plate_mismatch = "store_error_plate_mismatch",
     too_far = "store_error_too_far",
+    wrong_vehicle_category = "store_error_wrong_category",
 }
 
 ---@param result table?
@@ -510,6 +513,16 @@ local function openMenu()
 
     local garage = loc.garage
 
+    local fleets = {}
+    if loc.action == 'impound' then
+        local categories = {}
+        for _, category in ipairs(garage.vehicleCategories or { 'ground' }) do categories[category] = true end
+        for _, fleet in ipairs(fleetGarages) do
+            for _, category in ipairs(fleet.vehicleCategories or { 'ground' }) do
+                if categories[category] then fleets[#fleets + 1] = { id = fleet.id, name = fleet.name }; break end
+            end
+        end
+    end
     xLib.nui.send({ type = "setLocale", payload = Config.Locale })
 
     xLib.nui.send({
@@ -523,7 +536,7 @@ local function openMenu()
                 logo = garage.logo,
                 color = garage.color,
                 keys = Config.Settings.vehicleKeys,
-                fleets = loc.action == 'impound' and fleetGarages or nil,
+                fleets = loc.action == 'impound' and fleets or nil,
             },
             vehicles = page.vehicles,
             mileageUnit = page.mileageUnit,
@@ -554,6 +567,7 @@ local function storeCurrentVehicle()
         return
     end
 
+    local location = currentLocation
     local ped = PlayerPedId()
     local vehicle = GetVehiclePedIsIn(ped, false)
     if vehicle == 0 then
@@ -576,6 +590,10 @@ local function storeCurrentVehicle()
     })
 
     if result and result.success then
+        local exit = location.garage.exitPoint
+        if exit then
+            xLib.entity.Teleport(ped, vec3(exit.x, exit.y, exit.z), function() SetEntityHeading(ped, exit.w or 0) end)
+        end
         ESX.ShowNotification(TranslateCap("veh_stored"), "success")
     else
         showStoreError(result)

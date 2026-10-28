@@ -35,6 +35,7 @@ client_scripts {
 }
 
 dependencies {
+    'esx_garage',
     'esx_lib',
     'es_extended',
     'esx_paymentgateway',

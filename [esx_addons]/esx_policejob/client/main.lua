@@ -1410,9 +1410,9 @@ xLib.addKeybind({
 		if isOffDuty() then
 			ESX.ShowNotification(TranslateCap('off_duty'))
 		elseif not Config.EnableESXService then
-			OpenVehicleSpawnerMenu('car', CurrentActionData.station, CurrentActionData.part, CurrentActionData.partNum)
+			OpenVehicleShopMenu('car', CurrentActionData.station, CurrentActionData.part, CurrentActionData.partNum)
 		elseif playerInService then
-			OpenVehicleSpawnerMenu('car', CurrentActionData.station, CurrentActionData.part, CurrentActionData.partNum)
+			OpenVehicleShopMenu('car', CurrentActionData.station, CurrentActionData.part, CurrentActionData.partNum)
 		else
 			ESX.ShowNotification(TranslateCap('service_not'))
 		end
@@ -1420,9 +1420,9 @@ xLib.addKeybind({
 		if isOffDuty() then
 			ESX.ShowNotification(TranslateCap('off_duty'))
 		elseif not Config.EnableESXService then
-			OpenVehicleSpawnerMenu('helicopter', CurrentActionData.station, CurrentActionData.part, CurrentActionData.partNum)
+			OpenVehicleShopMenu('helicopter', CurrentActionData.station, CurrentActionData.part, CurrentActionData.partNum)
 		elseif playerInService then
-			OpenVehicleSpawnerMenu('helicopter', CurrentActionData.station, CurrentActionData.part, CurrentActionData.partNum)
+			OpenVehicleShopMenu('helicopter', CurrentActionData.station, CurrentActionData.part, CurrentActionData.partNum)
 		else
 			ESX.ShowNotification(TranslateCap('service_not'))
 		end

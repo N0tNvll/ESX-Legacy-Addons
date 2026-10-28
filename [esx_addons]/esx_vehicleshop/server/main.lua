@@ -716,46 +716,4 @@ xLib.callback.registerCompat('esx_vehicleshop:isPlateTaken', function(source, cb
     end)
 end)
 
-xLib.callback.registerCompat('esx_vehicleshop:retrieveJobVehicles', function(source, cb, type)
-    local xPlayer = ESX.Player(source)
-
-    if not xPlayer then
-        return cb({})
-    end
-
-    MySQL.query(
-        'SELECT * FROM owned_vehicles WHERE owner = ? AND type = ? AND job = ?',
-        { xPlayer.getIdentifier(), type, xPlayer.getJob().name },
-        function(result)
-            cb(result)
-        end
-    )
-end)
-
-RegisterNetEvent('esx_vehicleshop:setJobVehicleState')
-
-AddEventHandler('esx_vehicleshop:setJobVehicleState', function(plate, state)
-    local source = source
-    local xPlayer = ESX.Player(source)
-
-    plate = normalizePlate(plate)
-
-    if state ~= true and state ~= false and state ~= 0 and state ~= 1 then
-        return
-    end
-
-    state = state == true or state == 1
-
-    if not xPlayer or not plate or not isNearVehicleWithPlate(source, plate, 12.0) then
-        return
-    end
-
-    if state then
-        return
-    end
-
-    MySQL.update(
-        'UPDATE owned_vehicles SET stored = 0 WHERE owner = ? AND plate = ? AND job = ? AND stored = 1',
-        { xPlayer.getIdentifier(), plate, xPlayer.getJob().name }
-    )
-end)
+-- Job fleet listing/state transitions are owned by esx_garage.

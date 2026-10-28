@@ -34,6 +34,7 @@ return {
     ['store_error_plate_conflict'] = 'Another active vehicle is using this plate.',
     ['store_error_plate_mismatch'] = 'The vehicle plate does not match this owned vehicle.',
     ['store_error_too_far'] = 'You are too far from the garage.',
+    ['store_error_wrong_category'] = 'This garage does not accept this type of vehicle.',
     ['received_vehicle'] = 'you received a vehicle (plate: %s).',
     ['open_garage'] = 'Open garage'
 }

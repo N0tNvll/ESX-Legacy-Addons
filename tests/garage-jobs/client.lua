@@ -4,7 +4,7 @@ local mt={}
 local function v(x,y,z)return setmetatable({x=x,y=y,z=z},mt)end
 mt.__sub=function(a,b)return v(a.x-b.x,a.y-b.y,a.z-b.z)end
 mt.__len=function(a)return math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z)end
-local function fixture()
+local function fixture(category)
     local state={events={},nui={},messages={},requests={},points={},timers={}}
     local env=setmetatable({}, {__index=_G})
     env.Config={Locale='en',Settings={interactionDistance=3,showMarker=false,vehicleKeys=true,defaultImpoundFee=100}}
@@ -13,6 +13,10 @@ local function fixture()
     local garage={id='police',label='Police Fleet',type='job',job='police',entryPoint=v(0,0,0),spawns=spawns}
     local impound={id='pound',label='Impound',getOutPoint=v(0,0,0),spawns=spawns,cost=100}
     state.garages={garages={garage},impounds={impound}}
+    if category then
+        garage.vehicleCategories={'ground'};impound.vehicleCategories={category}
+        state.garages.garages[2]={id='police_air',label='Police Air',type='job',job='police',entryPoint=v(0,0,0),spawns=spawns,vehicleCategories={category}}
+    end
     state.page={vehicles={{plate='COP',job='police',type='car',stored=1,vehicle=JSON_ENCODE({model=123,plate='COP',fuelLevel=35})}},page=1,pageSize=30,hasNext=false}
     env.json={decode=JSON_DECODE,encode=JSON_ENCODE}
     env.ESX={PlayerData={},IsPlayerLoaded=function()return true end,GetVehicleTypeClient=function()return'car'end,TextUI=function()end,HideUI=function()end,ShowNotification=function()end}
@@ -45,6 +49,7 @@ local function fixture()
             return{success=true}
         end}}
     env.xLib.point.new=function(_,properties)state.points[#state.points+1]=properties;return properties end
+    state.env=env
     assert(load(SOURCES.client,'client','t',env))()
     state.events['esx:playerLoaded']()
     function state.enter(index)state.points[index].enter()end
@@ -74,5 +79,15 @@ end)
 test('a stale page cannot reopen the previous job menu after a job change',function()
     local s=fixture();s.enter(1);s.onPage=function()s.events['esx:setJob']()end;s.interact()
     assert(s.opens()==0)
+end)
+test('aerial impounds offer only compatible authorized job garages',function()
+    local s=fixture('helicopter');s.enter(3);s.interact()
+    local fleets=s.messages[#s.messages].payload.garage.fleets
+    assert(#fleets==1 and fleets[1].id=='police_air')
+end)
+
+test('legacy helicopter types remain aircraft in the existing UI',function()
+    local s=fixture();s.page.vehicles[1].type='helicopter';s.enter(1);s.interact()
+    assert(s.messages[#s.messages].payload.vehicles[1].type=='aircraft')
 end)
 print(('Passed %d unified garage client scenarios.'):format(cases))

@@ -3,6 +3,7 @@
 
 ---@type table<string, Garage>
 Garages = {}
+local garageResources = {}
 
 ---@type table<string, Impound>
 Impounds = {}
@@ -172,7 +173,14 @@ function CanUseGarageScope(scope)
     if ESX.GetPlayerFromId(scope.source) ~= scope.player then return false end
     if not scope.garageId then return scope.kind == 'personal' end
     local current = ResolveGarageScope(scope.source, scope.garageId, scope.fleetGarageId)
-    return current ~= nil and current.kind == scope.kind and current.job == scope.job and current.owner == scope.owner
+    if current == nil or current.kind ~= scope.kind or current.job ~= scope.job or current.owner ~= scope.owner then return false end
+    if scope.vehicle then
+        for _, location in ipairs({ current.location, current.fleetGarageId and Garages[current.fleetGarageId] }) do
+            if not GarageCategories.accepts(location, scope.vehicle)
+                or not GarageCategories.acceptsModel(location, scope.vehicle, scope.source) then return false end
+        end
+    end
+    return true
 end
 
 ---@param v any
@@ -233,6 +241,8 @@ local function garagePayload(garage)
         color = garage.color,
         pound = garage.pound,
         job = garage.type == 'job' and garage.job or nil,
+        vehicleCategories = garage.vehicleCategories,
+        exitPoint = garage.exitPoint and vec4t(garage.exitPoint) or nil,
     }
 end
 
@@ -247,6 +257,7 @@ local function impoundPayload(impound)
         blip = impound.blip,
         ped = pedT(impound.ped),
         cost = impound.cost,
+        vehicleCategories = impound.vehicleCategories,
     }
 end
 
@@ -283,6 +294,8 @@ end)
 ---@param def Garage
 local function registerGarage(def)
     assert(type(def) == "table" and type(def.id) == "string", "registerGarage: a garage table with a string id is required")
+    GarageCategories.validate(def)
+    assert(not def.reserve or def.release, 'registerGarage: reserve requires a matching release callback')
     if def.type == 'job' then
         assert((type(def.job) == 'string' and def.job ~= '') or (def.access and type(def.access.jobs) == 'table' and next(def.access.jobs)),
             'registerGarage: a job garage needs job or access.jobs')
@@ -303,8 +316,17 @@ local function registerGarage(def)
     end
 
     Garages[def.id] = def
+    garageResources[def.id] = GetInvokingResource()
     TriggerClientEvent("esx_garage:refresh", -1)
 end
+
+AddEventHandler('onResourceStop', function(resource)
+    local changed = false
+    for id, owner in pairs(garageResources) do
+        if owner == resource then Garages[id] = nil; garageResources[id] = nil; changed = true end
+    end
+    if changed then TriggerClientEvent('esx_garage:refresh', -1) end
+end)
 
 ---@param registry table<string, table>
 ---@return table[]

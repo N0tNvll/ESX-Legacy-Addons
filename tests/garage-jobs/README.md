@@ -9,7 +9,7 @@ npm test --prefix tests/garage-jobs
 
 The runner loads the actual garage registry, vehicle, migration and client modules in Fengari. It strips Lua 5.4 `<const>` annotations for the Lua 5.3 test runtime, simulates FiveM/ESX/oxmysql APIs, and executes the vehicle SQL predicates and updates against an in-memory SQLite database. Migration DDL is simulated and inspected separately. SQLite is not a MySQL compatibility test.
 
-Coverage includes personal/fleet isolation, shared and assigned fleets, job/grade changes during reads/spawn/store, custom authorization, original ESX owners, plate locks, world duplication prevention, props/fuel/damage persistence, failed writes/deletion, impound fees and ownership selection, transfer/key restrictions, hostile input, independent/idempotent migration, closed-on-failure startup, stale client requests and logout.
+Coverage includes personal/fleet isolation, shared and assigned fleets, job/grade changes during reads/spawn/store, custom authorization, original ESX owners, plate locks, world duplication prevention, props/fuel/damage persistence, failed writes/deletion, impound fees and ownership selection, transfer/key restrictions, hostile input, independent/idempotent migration, closed-on-failure startup, stale client requests and logout. It also checks categories before pagination, native entity types, marine/aerial impound recovery, model permissions, job adapter configuration, service caps, job resource cleanup, archived legacy fleet imports, plate collisions, stock slot idempotency and transactional rollback. The structural check parses the affected resources' Lua files and verifies that retired garage routes are absent while shop/purchase entry points remain.
 
 For the built NUI smoke check, install Playwright separately or point `PLAYWRIGHT_PATH` to an existing Playwright module, and have Microsoft Edge installed:
 
@@ -35,5 +35,12 @@ Use a staging server and a database backup. Keep the original fleet rows/owners,
 - [ ] Attempt job transfer/key callbacks as the original owner and a coworker; neither may convert ownership or grant personal keys. Check personal actions still succeed.
 - [ ] Stop/restart the garage with a job vehicle out and confirm the existing orphan/impound recovery path works without duplication. Ensure other garage scripts do not operate on the same test fleet concurrently.
 - [ ] Simulate a failed store/database write in staging; the vehicle must remain usable and the row must not be falsely marked as parked.
+- [ ] At civilian and job land garages, marinas, helipads and hangars, verify that only the compatible category can list/retrieve/store, including direct callbacks. Test large planes and submersibles with suitable spawn points.
+- [ ] Check all six former boat garage locations and shore exits. Verify that the original boat shop and licence payment still work.
+- [ ] Verify station/hospital shops and garage markers do not overlap on your map; set explicit `ShopPoint` where needed. Purchase a car/helicopter and retrieve it through the matching unified garage.
+- [ ] Check native `heli` and ESX `helicopter` rows, and configure overrides for ambiguous `aircraft` or mislabelled custom models. No type or owner rewrite is expected.
+- [ ] Park legacy taxi/mechanic society vehicles before deployment. Verify that the import retains fuel/damage and its original datastore archive; test restart, a partial failure, plate conflict and unchanged existing owners/out state.
+- [ ] Verify initial fleet quantities and that restarting cannot restock recorded slots or duplicate a vehicle. Check configured mechanic model grades, duty flags, enabled ESX service requirements and service limits.
+- [ ] Recover boats/helicopters/planes after crash/resource stop and from old land impounds; confirm compatible lots, fees and absence of cross-category access through a road fleet context.
 
 Automated results do not mark these live checks as completed.

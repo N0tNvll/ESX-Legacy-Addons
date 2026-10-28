@@ -3,22 +3,6 @@
 
 ESXCatalog.awaitReady()
 
-function ParkBoats()
-	MySQL.update('UPDATE owned_vehicles SET `stored` = true WHERE `stored` = false AND type = @type', {
-		['@type'] = 'boat'
-	}, function (rowsChanged)
-		if rowsChanged > 0 then
-			print(('[^2INFO^7] Stored ^5%s^7 %s !'):format(rowsChanged, rowsChanged > 1 and 'boats' or 'boat'))
-		end
-	end)
-end
-
-MySQL.ready(function()
-	ParkBoats()
-end)
-
-local normalizePlate = xLib.vehiclePlate.normalize
-
 local function generateBoatPlate()
 	return xLib.vehiclePlate.generateUnique({
 		prefix = 'BO',
@@ -42,36 +26,6 @@ local function isNearBoatShop(source)
 	for i = 1, #(Config.Zones.BoatShops or {}) do
 		local shop = Config.Zones.BoatShops[i]
 		if isNearCoords(source, shop.Outside, 20.0) or isNearCoords(source, shop.Inside, 35.0) then
-			return true
-		end
-	end
-
-	return false
-end
-
-local function isNearGarage(source, key, distance)
-	for i = 1, #(Config.Zones.Garages or {}) do
-		local garage = Config.Zones.Garages[i]
-		if isNearCoords(source, garage[key], distance) then
-			return true
-		end
-	end
-
-	return false
-end
-
-local function isNearBoatWithPlate(source, plate, distance)
-	local ped = GetPlayerPed(source)
-	if ped <= 0 then return false end
-
-	local playerCoords = GetEntityCoords(ped)
-	local currentVehicle = GetVehiclePedIsIn(ped, false)
-	if currentVehicle ~= 0 and normalizePlate(GetVehicleNumberPlateText(currentVehicle)) == plate then
-		return true
-	end
-
-	for _, vehicle in ipairs(GetAllVehicles()) do
-		if DoesEntityExist(vehicle) and normalizePlate(GetVehicleNumberPlateText(vehicle)) == plate and #(GetEntityCoords(vehicle) - playerCoords) <= (distance or 15.0) then
 			return true
 		end
 	end
@@ -141,62 +95,6 @@ xLib.callback.registerCompat('esx_boat:buyBoat', function(source, cb, vehiclePro
 
         cb(true)
     end)
-end)
-
-RegisterServerEvent('esx_boat:takeOutVehicle')
-AddEventHandler('esx_boat:takeOutVehicle', function(plate)
-	local xPlayer = ESX.Player(source)
-	plate = normalizePlate(plate)
-
-	if not xPlayer or not plate or not isNearGarage(source, 'GaragePos', 20.0) then return end
-
-	MySQL.update('UPDATE owned_vehicles SET `stored` = @stored WHERE owner = @owner AND plate = @plate AND type = @type AND `stored` = true', {
-		['@stored'] = false,
-		['@owner']  = xPlayer.getIdentifier(),
-		['@plate']  = plate,
-		['@type']   = 'boat'
-	}, function(rowsChanged)
-		if rowsChanged == 0 then
-			print(('[^2INFO^7] Player ^5%s^7 Attempted To Exploit Garage'):format(xPlayer.src))
-		end
-	end)
-end)
-
-xLib.callback.registerCompat('esx_boat:storeVehicle', function (source, cb, plate)
-	local xPlayer = ESX.Player(source)
-	plate = normalizePlate(plate)
-
-	if not xPlayer or not plate or not isNearGarage(source, 'StorePos', 25.0) or not isNearBoatWithPlate(source, plate, 20.0) then
-		return cb(0)
-	end
-
-	MySQL.update('UPDATE owned_vehicles SET `stored` = @stored WHERE owner = @owner AND plate = @plate AND type = @type AND `stored` = false', {
-		['@stored'] = true,
-		['@owner']  = xPlayer.getIdentifier(),
-		['@plate']  = plate,
-		['@type']   = 'boat'
-	}, function(rowsChanged)
-		cb(rowsChanged)
-	end)
-end)
-
-xLib.callback.registerCompat('esx_boat:getGarage', function(source, cb)
-	local xPlayer = ESX.Player(source)
-	if not xPlayer or not isNearGarage(source, 'GaragePos', 20.0) then return cb({}) end
-
-	MySQL.query('SELECT vehicle FROM owned_vehicles WHERE owner = @owner AND type = @type AND `stored` = @stored', {
-		['@owner']  = xPlayer.getIdentifier(),
-		['@type']   = 'boat',
-		['@stored'] = true
-	}, function(result)
-		local vehicles = {}
-
-		for i=1, #result, 1 do
-			table.insert(vehicles, result[i].vehicle)
-		end
-
-		cb(vehicles)
-	end)
 end)
 
 xLib.callback.registerCompat('esx_boat:buyBoatLicense', function(source, cb, account)
