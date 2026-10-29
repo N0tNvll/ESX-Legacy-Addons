@@ -32,11 +32,25 @@ local function deathDbg(message, data)
 end
 
 if GetResourceState('esx_phone') ~= 'missing' then
-    TriggerEvent('esx_phone:registerNumber', 'ambulance', TranslateCap('alert_ambulance'), true, true)
+    TriggerEvent(
+        'esx_phone:registerNumber',
+        'ambulance',
+        TranslateCap('alert_ambulance'),
+        true,
+        true
+    )
 end
 
 if GetResourceState('esx_society') ~= 'missing' then
-    TriggerEvent('esx_society:registerSociety', 'ambulance', 'Ambulance', 'society_ambulance', 'society_ambulance', 'society_ambulance', { type = 'public' })
+    TriggerEvent(
+        'esx_society:registerSociety',
+        'ambulance',
+        'Ambulance',
+        'society_ambulance',
+        'society_ambulance',
+        'society_ambulance',
+        { type = 'public' }
+    )
 end
 
 local function isNearPlayer(source, target, distance)
@@ -46,7 +60,10 @@ local function isNearPlayer(source, target, distance)
 end
 
 local function isAmbulanceOnDuty(xPlayer)
-    return xPlayer and xPlayer.job and xPlayer.job.name == 'ambulance' and xPlayer.job.onDuty ~= false
+    return xPlayer
+        and xPlayer.job
+        and xPlayer.job.name == 'ambulance'
+        and xPlayer.job.onDuty ~= false
 end
 
 local function isNearHospitalMarker(source, markerName, distance)
@@ -69,51 +86,6 @@ local function isNearHospitalMarker(source, markerName, distance)
     end
 
     return false
-end
-
-local function isNearAmbulanceVehicleShop(source, vehicleType)
-    local ped = GetPlayerPed(source)
-
-    if not ped or ped == 0 then
-        return false
-    end
-
-    local coords = GetEntityCoords(ped)
-    local shopKey = vehicleType == 'helicopter' and 'Helicopters' or 'Vehicles'
-
-    for _, hospital in pairs(Config.Hospitals) do
-        for i = 1, #(hospital[shopKey] or {}) do
-            local shopCoords = hospital[shopKey][i].InsideShop or hospital[shopKey][i].Spawner
-
-            if shopCoords and #(coords - vector3(shopCoords.x, shopCoords.y, shopCoords.z)) <= 35.0 then
-                return true
-            end
-        end
-    end
-
-    return false
-end
-
-local function generateJobVehiclePlate()
-    return xLib.vehiclePlate.generateUnique({
-        prefix = 'AMB',
-        letters = 2,
-        numbers = 3,
-    }, function(plate)
-        return MySQL.scalar.await('SELECT plate FROM owned_vehicles WHERE plate = ?', { plate }) ~= nil
-    end)
-end
-
-local function getAuthorizedVehicle(vehicleHash, jobGrade, vehicleType)
-    local vehicles = Config.AuthorizedVehicles[vehicleType] and Config.AuthorizedVehicles[vehicleType][jobGrade] or {}
-
-    for i = 1, #vehicles do
-        if joaat(vehicles[i].model) == vehicleHash then
-            return vehicles[i]
-        end
-    end
-
-    return nil
 end
 
 local function getValidItemAmount(amount)
@@ -140,7 +112,9 @@ end
 
 local function consumeItem(xPlayer, itemName)
     xPlayer.removeInventoryItem(itemName, 1)
-    xPlayer.showNotification(TranslateCap(itemName == 'bandage' and 'used_bandage' or 'used_medikit'))
+    xPlayer.showNotification(
+        TranslateCap(itemName == 'bandage' and 'used_bandage' or 'used_medikit')
+    )
 end
 
 -- EMS permissions and rewards stay here; the lifecycle belongs to esx_death.
@@ -150,7 +124,10 @@ RegisterNetEvent('esx_ambulancejob:revive', function(playerId)
     local target = tonumber(playerId)
     local xTarget = target and ESX.GetPlayerFromId(target)
 
-    deathDbg('revive:attempt', { src = src, target = target, hasMedic = xPlayer ~= nil, hasTarget = xTarget ~= nil })
+    deathDbg(
+        'revive:attempt',
+        { src = src, target = target, hasMedic = xPlayer ~= nil, hasTarget = xTarget ~= nil }
+    )
 
     if not isAmbulanceOnDuty(xPlayer) then
         deathDbg('revive:blocked-medic-not-on-duty', { src = src, job = xPlayer and xPlayer.job })
@@ -180,7 +157,10 @@ RegisterNetEvent('esx_ambulancejob:revive', function(playerId)
     local targetDead = exports.esx_death:IsDead(target)
 
     if not nearby or not targetDead then
-        deathDbg('revive:blocked-nearby-or-target-alive', { src = src, target = target, nearby = nearby, targetDead = targetDead })
+        deathDbg(
+            'revive:blocked-nearby-or-target-alive',
+            { src = src, target = target, nearby = nearby, targetDead = targetDead }
+        )
         return
     end
 
@@ -198,7 +178,9 @@ RegisterNetEvent('esx_ambulancejob:revive', function(playerId)
 
         if Config.ReviveReward > 0 then
             xPlayer.addMoney(Config.ReviveReward, 'Revive Reward')
-            xPlayer.showNotification(TranslateCap('revive_complete_award', xTarget.name, Config.ReviveReward))
+            xPlayer.showNotification(
+                TranslateCap('revive_complete_award', xTarget.name, Config.ReviveReward)
+            )
         else
             xPlayer.showNotification(TranslateCap('revive_complete', xTarget.name))
         end
@@ -212,7 +194,10 @@ local function notifyMedics(event, ...)
 end
 
 AddEventHandler('esx_death:stateChanged', function(playerId, dead)
-    notifyMedics(dead and 'esx_ambulancejob:PlayerDead' or 'esx_ambulancejob:PlayerNotDead', playerId)
+    notifyMedics(
+        dead and 'esx_ambulancejob:PlayerDead' or 'esx_ambulancejob:PlayerNotDead',
+        playerId
+    )
 end)
 
 AddEventHandler('esx_death:distress', function(playerId, coords)
@@ -246,7 +231,12 @@ AddEventHandler('esx_ambulancejob:heal', function(target, type)
 
     type = tostring(type or '')
 
-    if not isAmbulanceOnDuty(xPlayer) or not xTarget or (type ~= 'small' and type ~= 'big') or not isNearPlayer(src, xTarget.source, 8.0) then
+    if
+        not isAmbulanceOnDuty(xPlayer)
+        or not xTarget
+        or (type ~= 'small' and type ~= 'big')
+        or not isNearPlayer(src, xTarget.source, 8.0)
+    then
         return
     end
 
@@ -257,7 +247,9 @@ AddEventHandler('esx_ambulancejob:heal', function(target, type)
     local itemName = type == 'small' and 'bandage' or 'medikit'
 
     if not hasItem(xPlayer, itemName) then
-        xPlayer.showNotification(TranslateCap(itemName == 'bandage' and 'not_enough_bandage' or 'not_enough_medikit'))
+        xPlayer.showNotification(
+            TranslateCap(itemName == 'bandage' and 'not_enough_bandage' or 'not_enough_medikit')
+        )
         return
     end
 
@@ -272,7 +264,11 @@ AddEventHandler('esx_ambulancejob:putInVehicle', function(target)
     local xPlayer = ESX.GetPlayerFromId(source)
     local xTarget = ESX.GetPlayerFromId(tonumber(target))
 
-    if not isAmbulanceOnDuty(xPlayer) or not xTarget or not isNearPlayer(src, xTarget.source, 8.0) then
+    if
+        not isAmbulanceOnDuty(xPlayer)
+        or not xTarget
+        or not isNearPlayer(src, xTarget.source, 8.0)
+    then
         return
     end
 
@@ -288,53 +284,6 @@ xLib.callback.registerCompat('esx_ambulancejob:getItemAmount', function(source, 
     local quantity = xPlayer.getInventoryItem(item).count
 
     cb(quantity)
-end)
-
-xLib.callback.registerCompat('esx_ambulancejob:buyJobVehicle', function(source, cb, vehicleProps, type, account)
-    local xPlayer = ESX.GetPlayerFromId(source)
-    local model = _G.type(vehicleProps) == 'table' and tonumber(vehicleProps.model)
-    local authorizedVehicle = xPlayer and model and getAuthorizedVehicle(model, xPlayer.job.grade_name, type)
-    local price = authorizedVehicle and tonumber(authorizedVehicle.price) or 0
-
-    -- vehicle model not found
-    if not isAmbulanceOnDuty(xPlayer) or price == 0 or not isNearAmbulanceVehicleShop(source, type) then
-        cb(false)
-        return
-    end
-
-    local plate = generateJobVehiclePlate()
-
-    if not plate then
-        return cb(false)
-    end
-
-    local storedProps = { model = model, plate = plate }
-
-    if _G.type(authorizedVehicle.props) == 'table' then
-        for key, value in pairs(authorizedVehicle.props) do
-            storedProps[key] = value
-        end
-    end
-
-    local charged, failure =
-        PaymentGateway.Charge(xPlayer, account, price, 'Job Vehicle Purchase')
-
-    if not charged then
-        return cb(false, failure)
-    end
-
-    MySQL.insert(
-        'INSERT INTO owned_vehicles (owner, vehicle, plate, type, job, `stored`) VALUES (?, ?, ?, ?, ?, ?)',
-        { xPlayer.identifier, json.encode(storedProps), plate, type, xPlayer.job.name, true },
-        function(insertId)
-            if not insertId then
-                PaymentGateway.Refund(xPlayer, account, price, 'Job Vehicle Refund')
-                return cb(false)
-            end
-
-            cb(true)
-        end
-    )
 end)
 
 function getPriceFromHash(vehicleHash, jobGrade, type)
@@ -359,10 +308,26 @@ AddEventHandler('esx_ambulancejob:giveItem', function(itemName, amount)
     amount = getValidItemAmount(amount)
 
     if not isAmbulanceOnDuty(xPlayer) then
-        print(('[^2WARNING^7] Player ^5%s^7 Tried Giving Themselves -> ^5' .. tostring(itemName) .. '^7!'):format(source))
+        print(
+            (
+                '[^2WARNING^7] Player ^5%s^7 Tried Giving Themselves -> ^5'
+                .. tostring(itemName)
+                .. '^7!'
+            ):format(source)
+        )
         return
-    elseif (itemName ~= 'medikit' and itemName ~= 'bandage') or not amount or not isNearHospitalMarker(source, 'Pharmacies', 8.0) then
-        print(('[^2WARNING^7] Player ^5%s^7 Tried Giving Themselves -> ^5' .. tostring(itemName) .. '^7!'):format(xPlayer.source))
+    elseif
+        (itemName ~= 'medikit' and itemName ~= 'bandage')
+        or not amount
+        or not isNearHospitalMarker(source, 'Pharmacies', 8.0)
+    then
+        print(
+            (
+                '[^2WARNING^7] Player ^5%s^7 Tried Giving Themselves -> ^5'
+                .. tostring(itemName)
+                .. '^7!'
+            ):format(xPlayer.source)
+        )
         return
     end
 

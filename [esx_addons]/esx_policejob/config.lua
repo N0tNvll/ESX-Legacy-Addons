@@ -3,9 +3,11 @@
 
 Config = {}
 
-Config.DrawDistance = 10.0 -- How close do you need to be for the markers to be drawn (in GTA units).
+-- How close do you need to be for the markers to be drawn (in GTA units).
+Config.DrawDistance = 10.0
 Config.ActionVehicleDistance = 2.0 -- How close a vehicle can be for police vehicle actions.
-Config.MarkerType = { Cloakrooms = 20, Armories = 21, BossActions = 22, Vehicles = 36, Helicopters = 34 }
+Config.MarkerType =
+    { Cloakrooms = 20, Armories = 21, BossActions = 22, Vehicles = 36, Helicopters = 34 }
 Config.MarkerSize = { x = 1.5, y = 1.5, z = 0.5 }
 Config.MarkerColor = { r = 50, g = 50, b = 204 }
 
@@ -15,10 +17,12 @@ Config.EnableESXIdentity = true -- Enable if you're using esx_identity.
 Config.EnableESXOptionalneeds = false -- Enable if you're using esx_optionalneeds
 Config.EnableLicenses = false -- Enable if you're using esx_license.
 
-Config.EnableHandcuffTimer = true -- Enable handcuff timer? will unrestrain player after the time ends.
+-- Enable handcuff timer? will unrestrain player after the time ends.
+Config.EnableHandcuffTimer = true
 Config.HandcuffTimer = 10 * 60000 -- 10 minutes.
 
-Config.EnableCustomPeds = false -- Enable custom peds in cloak room? See Config.CustomPeds below to customize peds.
+-- Enable custom peds in cloak room? See Config.CustomPeds below to customize peds.
+Config.EnableCustomPeds = false
 
 Config.EnableESXService = false -- Enable esx service?
 Config.MaxInService = -1 -- How many people can be in service at once? Set as -1 to have no limit
@@ -29,7 +33,6 @@ Config.Locale = GetConvar('esx:locale', 'en')
 
 -- Unified persistent garages; existing shop/vehicle positions below are reused.
 Config.GarageIntegration = { minGrade = 0, shared = true, vehiclesPerModel = 4 }
-
 
 Config.OxInventory = ESX.GetConfig().OxInventory
 
@@ -101,7 +104,11 @@ Config.AuthorizedWeapons = {
 
     officer = {
         { weapon = 'WEAPON_APPISTOL', components = { 0, 0, 1000, 4000, nil }, price = 10000 },
-        { weapon = 'WEAPON_ADVANCEDRIFLE', components = { 0, 6000, 1000, 4000, 8000, nil }, price = 50000 },
+        {
+            weapon = 'WEAPON_ADVANCEDRIFLE',
+            components = { 0, 6000, 1000, 4000, 8000, nil },
+            price = 50000,
+        },
         { weapon = 'WEAPON_NIGHTSTICK', price = 0 },
         { weapon = 'WEAPON_STUNGUN', price = 500 },
         { weapon = 'WEAPON_FLASHLIGHT', price = 0 },
@@ -109,7 +116,11 @@ Config.AuthorizedWeapons = {
 
     sergeant = {
         { weapon = 'WEAPON_APPISTOL', components = { 0, 0, 1000, 4000, nil }, price = 10000 },
-        { weapon = 'WEAPON_ADVANCEDRIFLE', components = { 0, 6000, 1000, 4000, 8000, nil }, price = 50000 },
+        {
+            weapon = 'WEAPON_ADVANCEDRIFLE',
+            components = { 0, 6000, 1000, 4000, 8000, nil },
+            price = 50000,
+        },
         { weapon = 'WEAPON_PUMPSHOTGUN', components = { 2000, 6000, nil }, price = 70000 },
         { weapon = 'WEAPON_NIGHTSTICK', price = 0 },
         { weapon = 'WEAPON_STUNGUN', price = 500 },
@@ -118,7 +129,11 @@ Config.AuthorizedWeapons = {
 
     lieutenant = {
         { weapon = 'WEAPON_APPISTOL', components = { 0, 0, 1000, 4000, nil }, price = 10000 },
-        { weapon = 'WEAPON_ADVANCEDRIFLE', components = { 0, 6000, 1000, 4000, 8000, nil }, price = 50000 },
+        {
+            weapon = 'WEAPON_ADVANCEDRIFLE',
+            components = { 0, 6000, 1000, 4000, 8000, nil },
+            price = 50000,
+        },
         { weapon = 'WEAPON_PUMPSHOTGUN', components = { 2000, 6000, nil }, price = 70000 },
         { weapon = 'WEAPON_NIGHTSTICK', price = 0 },
         { weapon = 'WEAPON_STUNGUN', price = 500 },
@@ -127,7 +142,11 @@ Config.AuthorizedWeapons = {
 
     boss = {
         { weapon = 'WEAPON_APPISTOL', components = { 0, 0, 1000, 4000, nil }, price = 10000 },
-        { weapon = 'WEAPON_ADVANCEDRIFLE', components = { 0, 6000, 1000, 4000, 8000, nil }, price = 50000 },
+        {
+            weapon = 'WEAPON_ADVANCEDRIFLE',
+            components = { 0, 6000, 1000, 4000, 8000, nil },
+            price = 50000,
+        },
         { weapon = 'WEAPON_PUMPSHOTGUN', components = { 2000, 6000, nil }, price = 70000 },
         { weapon = 'WEAPON_NIGHTSTICK', price = 0 },
         { weapon = 'WEAPON_STUNGUN', price = 500 },
@@ -175,8 +194,16 @@ Config.AuthorizedVehicles = {
 
 Config.CustomPeds = {
     shared = {
-        { label = TranslateCap('s_m_y_sheriff_01'), maleModel = 's_m_y_sheriff_01', femaleModel = 's_f_y_sheriff_01' },
-        { label = TranslateCap('s_m_y_cop_01'), maleModel = 's_m_y_cop_01', femaleModel = 's_f_y_cop_01' },
+        {
+            label = TranslateCap('s_m_y_sheriff_01'),
+            maleModel = 's_m_y_sheriff_01',
+            femaleModel = 's_f_y_sheriff_01',
+        },
+        {
+            label = TranslateCap('s_m_y_cop_01'),
+            maleModel = 's_m_y_cop_01',
+            femaleModel = 's_f_y_cop_01',
+        },
     },
 
     recruit = {},
@@ -188,7 +215,11 @@ Config.CustomPeds = {
     lieutenant = {},
 
     boss = {
-        { label = TranslateCap('s_m_y_swat_01'), maleModel = 's_m_y_swat_01', femaleModel = 's_m_y_swat_01' },
+        {
+            label = TranslateCap('s_m_y_swat_01'),
+            maleModel = 's_m_y_swat_01',
+            femaleModel = 's_m_y_swat_01',
+        },
     },
 }
 

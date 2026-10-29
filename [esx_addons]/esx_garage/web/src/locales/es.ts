@@ -7,13 +7,13 @@ import type { LocaleTranslations } from '@/types/locale.types';
 
 export const es: LocaleTranslations = {
     garage: {
-    fleetContext: 'Propiedad de los vehículos',
-    personalVehicles: 'Vehículos personales',
+        fleetContext: 'Propiedad de los vehículos',
+        personalVehicles: 'Vehículos personales',
         title: 'Garaje',
         subtitle: 'Gestión de vehículos',
         search: 'Buscar por matrícula o nombre...',
         noVehicles: 'No se encontraron vehículos',
-        loading: 'Cargando vehículos...'
+        loading: 'Cargando vehículos...',
     },
     vehicle: {
         stored: 'Guardado',
@@ -30,7 +30,7 @@ export const es: LocaleTranslations = {
         engine: 'Motor',
         body: 'Carrocería',
         plate: 'Matrícula',
-        customName: 'Nombre personalizado'
+        customName: 'Nombre personalizado',
     },
     filters: {
         all: 'Todos',
@@ -44,13 +44,13 @@ export const es: LocaleTranslations = {
         showStored: 'Guardados',
         showOut: 'Fuera',
         showImpounded: 'En depósito',
-        showFavorites: 'Favoritos'
+        showFavorites: 'Favoritos',
     },
     stats: {
         total: 'Total',
         stored: 'Guardados',
         out: 'Fuera',
-        impounded: 'En depósito'
+        impounded: 'En depósito',
     },
     actions: {
         close: 'Cerrar',
@@ -58,7 +58,7 @@ export const es: LocaleTranslations = {
         cancel: 'Cancelar',
         save: 'Guardar',
         delete: 'Eliminar',
-        reset: 'Restablecer'
+        reset: 'Restablecer',
     },
     notifications: {
         vehicleRetrieved: 'Vehículo retirado correctamente',
@@ -69,6 +69,6 @@ export const es: LocaleTranslations = {
         favoriteRemoved: 'Eliminado de favoritos',
         error: 'Ha ocurrido un error',
         noSpawnPoints: 'No hay puntos de aparición disponibles',
-        notEnoughMoney: 'No tienes suficiente dinero'
-    }
+        notEnoughMoney: 'No tienes suficiente dinero',
+    },
 };

@@ -24,6 +24,7 @@ server_scripts {
     '@esx_lib/imports/catalog/bootstrap.lua',
     'server/*.lua',
     '@esx_garage/integrations/server.lua',
+    '@esx_vehicleshop/integrations/jobs.lua',
 }
 
 client_scripts {

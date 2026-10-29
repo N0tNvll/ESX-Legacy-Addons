@@ -2,12 +2,12 @@
 -- Copyright (C) 2022-2026 ESX Framework
 
 return {
-    ["parking_blip_name"] = 'Garage',
-    ["Impound_blip_name"] = 'Impound',
-    ["access_parking"] = 'press [E] to access the car park.',
-    ["access_Impound"] = 'press [E] to access the impound.',
-    ["park_veh"] = 'press [E] to park the vehicle.',
-    ["not_owning_veh"] = 'You do not own this vehicle!',
+    ['parking_blip_name'] = 'Garage',
+    ['Impound_blip_name'] = 'Impound',
+    ['access_parking'] = 'press [E] to access the car park.',
+    ['access_Impound'] = 'press [E] to access the impound.',
+    ['park_veh'] = 'press [E] to park the vehicle.',
+    ['not_owning_veh'] = 'You do not own this vehicle!',
     ['veh_released'] = 'Successfully Retrieved Vehicle.',
     ['veh_Impound_released'] = 'Successfully Retrieved Vehicle From Impound.',
     ['veh_stored'] = 'Successfully Stored Vehicle',
@@ -36,5 +36,5 @@ return {
     ['store_error_too_far'] = 'You are too far from the garage.',
     ['store_error_wrong_category'] = 'This garage does not accept this type of vehicle.',
     ['received_vehicle'] = 'you received a vehicle (plate: %s).',
-    ['open_garage'] = 'Open garage'
+    ['open_garage'] = 'Open garage',
 }

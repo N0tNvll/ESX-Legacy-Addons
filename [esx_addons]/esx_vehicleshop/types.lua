@@ -1,0 +1,49 @@
+-- SPDX-License-Identifier: GPL-3.0-only
+---@alias DealershipVehicleType
+---| 'car'
+---| 'motorcycle'
+---| 'bicycle'
+---| 'truck'
+---| 'emergency'
+---| 'boat'
+---| 'helicopter'
+---| 'plane'
+---@alias DealershipPayment 'money'|'bank'|'society'
+---@class DealershipOffer
+---@field model string
+---@field name? string
+---@field price integer Seed price; the existing per-shop SQL price is retained on restart.
+---@field type? DealershipVehicleType
+---@field category? string
+---@field props? table Server-trusted vehicle properties.
+---@class Dealership
+---@field label string
+---@field enabled? boolean
+---@field mode? 'public'|'managed'|'job'
+---@field coords vector3
+---@field preview? vector4
+---@field vehicleTypes DealershipVehicleType[]
+---@field paymentMethods? DealershipPayment[]
+---@field stockMode? 'unlimited'|'limited'
+---@field offers? DealershipOffer[]
+---@field categories? string[]
+---@field access? {jobs: table<string, integer>, authorize: function?}
+---@field ownershipJob? string Shared fleet association, separate from the original owner.
+---@field management? {job: string, minGrade: integer?, bossGrades: table<string, boolean>?}
+---@field managementPoint? vector3
+---@field societyAccount? string
+---@field societyInventory? string
+---@field societyMinGrade? integer
+---@field delivery? {mode: 'garage'|'spawn', garage: string?, coords: vector4?}
+---@field resale? {enabled: boolean, percentage: number?}
+---@field resalePoint? vector3
+---@field rentals? {enabled: boolean, multiplier: number?, minimum: integer?}
+---@field returnPoint? vector3
+---@field license? string|false
+---@field licensePrice? integer
+---@field resolveOffer? fun(source: integer, model: string): {price: integer, props: table?}?
+---@field color? string
+---@field logo? string
+---@field blip? table
+---@field marker? table
+---@field existingInteraction? boolean External job resource already supplies the interaction.

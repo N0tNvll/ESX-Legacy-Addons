@@ -339,3 +339,7 @@ INSERT INTO `vehicles` (name, model, price, category) VALUES
 	('Sentinel3', 'sentinel3', 650000, 'sports'),
 	('Hustler', 'hustler', 625000, 'muscle')
 ;
+
+INSERT IGNORE INTO `licenses` (`type`, `label`) VALUES
+    ('boat', 'Boat License')
+;

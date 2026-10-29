@@ -4,90 +4,91 @@
  */
 
 export interface Vehicle {
-  id: string;
-  plate: string;
-  model: string;
-  name: string;
-  type: VehicleType;
-  stored: boolean;
-  garage?: string;
-  impounded: boolean;
-  impoundFee?: number;
-  mileage: number;
-  mileageUnit?: MileageUnit;
-  fuel?: number;
-  engine?: number;
-  body?: number;
-  image?: string;
-  isFavorite?: boolean;
-  customName?: string;
-  lastUsed?: number;
-  props?: VehicleProps;
-  job?: string;
+    id: string;
+    plate: string;
+    model: string;
+    name: string;
+    type: VehicleType;
+    stored: boolean;
+    garage?: string;
+    impounded: boolean;
+    impoundFee?: number;
+    mileage: number;
+    mileageUnit?: MileageUnit;
+    fuel?: number;
+    engine?: number;
+    body?: number;
+    image?: string;
+    isFavorite?: boolean;
+    customName?: string;
+    lastUsed?: number;
+    props?: VehicleProps;
+    job?: string;
+    rental?: boolean;
 }
 
 export type MileageUnit = 'mi' | 'km';
 
 export const VehicleType = {
-  CAR: 'car',
-  MOTORCYCLE: 'motorcycle',
-  BOAT: 'boat',
-  AIRCRAFT: 'aircraft',
-  BICYCLE: 'bicycle',
-  TRUCK: 'truck',
-  EMERGENCY: 'emergency'
+    CAR: 'car',
+    MOTORCYCLE: 'motorcycle',
+    BOAT: 'boat',
+    AIRCRAFT: 'aircraft',
+    BICYCLE: 'bicycle',
+    TRUCK: 'truck',
+    EMERGENCY: 'emergency',
 } as const;
 
-export type VehicleType = typeof VehicleType[keyof typeof VehicleType];
+export type VehicleType = (typeof VehicleType)[keyof typeof VehicleType];
 
 export interface VehicleProps {
-  color1?: number[];
-  color2?: number[];
-  pearlescentColor?: number;
-  wheelColor?: number;
-  wheels?: number;
-  windowTint?: number;
-  neonEnabled?: boolean[];
-  neonColor?: number[];
-  extras?: Record<string, boolean>;
-  modSpoilers?: number;
-  modFrontBumper?: number;
-  modRearBumper?: number;
-  modSideSkirt?: number;
-  modExhaust?: number;
-  modEngine?: number;
-  modBrakes?: number;
-  modTransmission?: number;
-  modSuspension?: number;
-  modArmor?: number;
-  modTurbo?: boolean;
+    color1?: number[];
+    color2?: number[];
+    pearlescentColor?: number;
+    wheelColor?: number;
+    wheels?: number;
+    windowTint?: number;
+    neonEnabled?: boolean[];
+    neonColor?: number[];
+    extras?: Record<string, boolean>;
+    modSpoilers?: number;
+    modFrontBumper?: number;
+    modRearBumper?: number;
+    modSideSkirt?: number;
+    modExhaust?: number;
+    modEngine?: number;
+    modBrakes?: number;
+    modTransmission?: number;
+    modSuspension?: number;
+    modArmor?: number;
+    modTurbo?: boolean;
 }
 
 export interface VehicleFilter {
-  search: string;
-  type?: VehicleType | 'all';
-  stored?: boolean | 'all';
-  impounded?: boolean | 'all';
-  favorite?: boolean | 'all';
+    search: string;
+    type?: VehicleType | 'all';
+    stored?: boolean | 'all';
+    impounded?: boolean | 'all';
+    favorite?: boolean | 'all';
 }
 
 export interface VehicleStats {
-  total: number;
-  stored: number;
-  out: number;
-  impounded: number;
+    total: number;
+    stored: number;
+    out: number;
+    impounded: number;
 }
 
 export interface VehiclePagination {
-  page: number;
-  pageSize: number;
-  hasNext: boolean;
-  hasPrevious: boolean;
+    page: number;
+    pageSize: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
 }
 
 export interface VehiclePageResponse {
-  vehicles: Vehicle[];
-  mileageUnit?: MileageUnit;
-  pagination: VehiclePagination;
-  stats?: VehicleStats;
+    vehicles: Vehicle[];
+    mileageUnit?: MileageUnit;
+    pagination: VehiclePagination;
+    stats?: VehicleStats;
 }

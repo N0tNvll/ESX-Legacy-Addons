@@ -46,7 +46,11 @@ local function ensureMigrationTable()
     ]]):format(MIGRATION_TABLE))
 
     local versionType = MySQL.scalar.await(
-        "SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = 'version'",
+        (
+            'SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE '
+            .. 'TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = '
+            .. "'version'"
+        ),
         { MIGRATION_TABLE }
     )
 
@@ -64,9 +68,13 @@ local function markMigrationApplied(name)
     local now = os.time()
 
     MySQL.query.await(
-        ('INSERT INTO `%s` (`name`, `version`, `applied_at`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `version` = ?, `applied_at` = ?'):format(
-            MIGRATION_TABLE
-        ),
+        (
+            (
+                'INSERT INTO `%s` (`name`, `version`, `applied_at`) VALUES (?, ?, '
+                .. '?) ON DUPLICATE KEY UPDATE `version` = ?, `applied_at` = '
+                .. '?'
+            )
+        ):format(MIGRATION_TABLE),
         { name, MIGRATION_VERSION, now, MIGRATION_VERSION, now }
     )
 end
@@ -75,7 +83,11 @@ end
 ---@return boolean
 local function hasIndex(index)
     local count = MySQL.scalar.await(
-        'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?',
+        (
+            'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE '
+            .. 'TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = '
+            .. '?'
+        ),
         { TABLE, index }
     )
 
@@ -88,7 +100,12 @@ end
 ---@return boolean
 local function hasLeadingIndex(column)
     local count = MySQL.scalar.await(
-        'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? AND SEQ_IN_INDEX = 1 AND SUB_PART IS NULL',
+        (
+            'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE '
+            .. 'TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? '
+            .. 'AND SEQ_IN_INDEX = 1 AND SUB_PART IS '
+            .. 'NULL'
+        ),
         { TABLE, column }
     )
 
@@ -166,27 +183,58 @@ local function recoverOrphanedVehicles()
     end
 
     local recovered, cursor = 0, ''
-    
+
     while true do
         local rows = MySQL.query.await(
-            'SELECT DISTINCT `plate` FROM `owned_vehicles` WHERE `stored` = 0 AND `pound` IS NULL AND `plate` > ? ORDER BY `plate` LIMIT 100',
+            (
+                'SELECT DISTINCT `plate` FROM `owned_vehicles` WHERE `stored` '
+                .. '= 0 AND `pound` IS NULL AND `plate` > ? ORDER BY `plate` '
+                .. 'LIMIT '
+                .. '100'
+            ),
             { cursor }
         )
         assert(type(rows) == 'table', 'Unable to read out vehicles for startup recovery')
-        if #rows == 0 then break end
+
+        if #rows == 0 then
+            break
+        end
+
         if GarageCategories then
             local plates, placeholders, byPlate = {}, {}, {}
-            for _, row in ipairs(rows) do plates[#plates + 1] = row.plate; placeholders[#placeholders + 1] = '?' end
-            local metadata = MySQL.query.await(('SELECT `plate`, `type`, `vehicle` FROM `owned_vehicles` WHERE `plate` IN (%s)'):format(table.concat(placeholders, ',')), plates)
+
+            for _, row in ipairs(rows) do
+                plates[#plates + 1] = row.plate
+                placeholders[#placeholders + 1] = '?'
+            end
+
+            local metadata = MySQL.query.await(
+                (
+                    (
+                        'SELECT `plate`, `type`, `vehicle` FROM `owned_vehicles` '
+                        .. 'WHERE `plate` IN '
+                        .. '(%s)'
+                    )
+                ):format(table.concat(placeholders, ',')),
+                plates
+            )
             assert(type(metadata) == 'table', 'Unable to read recovery vehicle categories')
-            for _, row in ipairs(metadata) do byPlate[row.plate] = row end
+
+            for _, row in ipairs(metadata) do
+                byPlate[row.plate] = row
+            end
+
             for _, row in ipairs(rows) do
                 local meta = byPlate[row.plate]
-                if meta then row.type, row.vehicle = meta.type, meta.vehicle end
+
+                if meta then
+                    row.type, row.vehicle = meta.type, meta.vehicle
+                end
             end
         end
 
         local livePlates = {}
+
         for _, entity in ipairs(GetAllVehicles()) do
             if DoesEntityExist(entity) then
                 local plate = GetVehicleNumberPlateText(entity)
@@ -199,30 +247,55 @@ local function recoverOrphanedVehicles()
 
         for _, row in ipairs(rows) do
             local key = (row.plate:gsub('%s+$', '')):upper()
-            local vehicle = ESX.GetExtendedVehicleFromPlate(row.plate) or ESX.GetExtendedVehicleFromPlate(key)
+            local vehicle = ESX.GetExtendedVehicleFromPlate(row.plate)
+                or ESX.GetExtendedVehicleFromPlate(key)
             local entity = vehicle and vehicle:getEntity()
 
             if not livePlates[key] and not (entity and entity ~= 0 and DoesEntityExist(entity)) then
                 local lotId = lot.id
-                if GarageCategories then lotId = GarageCategories.impound(row) end
+
+                if GarageCategories then
+                    lotId = GarageCategories.impound(row)
+                end
+
                 local affected = 0
-                if lotId then affected = MySQL.update.await(
-                    'UPDATE `owned_vehicles` SET `stored` = 1, `pound` = ?, `parking` = NULL WHERE `plate` = ? AND `stored` = 0 AND `pound` IS NULL',
-                    { lotId, row.plate }
-                ) end
+
+                if lotId then
+                    affected = MySQL.update.await(
+                        (
+                            'UPDATE `owned_vehicles` SET `stored` = 1, `pound` '
+                            .. '= ?, `parking` = NULL WHERE `plate` = ? AND '
+                            .. '`stored` = 0 AND `pound` IS '
+                            .. 'NULL'
+                        ),
+                        { lotId, row.plate }
+                    )
+                end
+
                 assert(type(affected) == 'number', 'Unable to recover out vehicle')
                 recovered = recovered + affected
             end
         end
 
         cursor = rows[#rows].plate
-        if #rows < 100 then break end
+
+        if #rows < 100 then
+            break
+        end
 
         Wait(0)
     end
 
     if recovered > 0 then
-        print(('[esx_garage] startup recovery: moved %d orphaned vehicle(s) to compatible impounds'):format(recovered))
+        print(
+            (
+                (
+                    '[esx_garage] startup recovery: moved %d orphaned vehicle(s) '
+                    .. 'to compatible '
+                    .. 'impounds'
+                )
+            ):format(recovered)
+        )
     end
 
     return recovered
@@ -230,18 +303,44 @@ end
 
 local function repairImpoundCategories()
     local cursor = ''
+
     while true do
-        local rows = MySQL.query.await('SELECT `plate`, `type`, `vehicle`, `pound` FROM `owned_vehicles` WHERE `stored` = 1 AND `pound` IS NOT NULL AND `plate` > ? ORDER BY `plate` LIMIT 100', { cursor })
+        local rows = MySQL.query.await(
+            (
+                'SELECT `plate`, `type`, `vehicle`, `pound` FROM '
+                .. '`owned_vehicles` WHERE `stored` = 1 AND `pound` IS NOT NULL '
+                .. 'AND `plate` > ? ORDER BY `plate` LIMIT '
+                .. '100'
+            ),
+            { cursor }
+        )
         assert(type(rows) == 'table', 'Unable to inspect impound categories')
-        if #rows == 0 then return end
+
+        if #rows == 0 then
+            return
+        end
+
         for _, row in ipairs(rows) do
             local lot = GarageCategories.impound(row, row.pound)
+
             if lot and lot ~= row.pound then
-                MySQL.update.await('UPDATE `owned_vehicles` SET `pound` = ?, `parking` = NULL WHERE `plate` = ? AND `stored` = 1 AND `pound` = ?', { lot, row.plate, row.pound })
+                MySQL.update.await(
+                    (
+                        'UPDATE `owned_vehicles` SET `pound` = ?, `parking` = '
+                        .. 'NULL WHERE `plate` = ? AND `stored` = 1 AND `pound` = '
+                        .. '?'
+                    ),
+                    { lot, row.plate, row.pound }
+                )
             end
         end
+
         cursor = rows[#rows].plate
-        if #rows < 100 then return end
+
+        if #rows < 100 then
+            return
+        end
+
         Wait(0)
     end
 end
@@ -256,6 +355,7 @@ MySQL.ready(function()
 
     local ok, err = pcall(function()
         local version = appliedMigrationVersion(MIGRATION_NAME)
+
         if migrationApplied(version) then
             if version ~= MIGRATION_VERSION then
                 ensureMigrationTable()
@@ -286,18 +386,27 @@ MySQL.ready(function()
 
             if legacy > 0 then
                 local defaultLot = Config.Impounds and Config.Impounds[1] and Config.Impounds[1].id
+
                 if defaultLot then
                     MySQL.update.await(
-                        ('UPDATE `%s` SET `stored` = 1, `parking` = NULL, `pound` = ? WHERE `stored` = 2'):format(
-                            TABLE
-                        ),
+                        (
+                            (
+                                'UPDATE `%s` SET `stored` = 1, `parking` = NULL, '
+                                .. '`pound` = ? WHERE `stored` = '
+                                .. '2'
+                            )
+                        ):format(TABLE),
                         { defaultLot }
                     )
                 else
                     MySQL.update.await(
-                        ('UPDATE `%s` SET `stored` = 1, `parking` = NULL WHERE `stored` = 2'):format(
-                            TABLE
-                        )
+                        (
+                            (
+                                'UPDATE `%s` SET `stored` = 1, `parking` = NULL '
+                                .. 'WHERE `stored` = '
+                                .. '2'
+                            )
+                        ):format(TABLE)
                     )
                 end
             end
@@ -392,12 +501,22 @@ MySQL.ready(function()
 
         if not migrationApplied(appliedMigrationVersion(JOB_FLEETS_MIGRATION_NAME)) then
             ensureMigrationTable()
-            if ensureColumn('job', 'VARCHAR(20) NULL DEFAULT NULL') then added = added + 1 end
-            if ensureIndex('idx_owned_vehicles_job_plate', '(`job`, `plate`)') then indexed = indexed + 1 end
+
+            if ensureColumn('job', 'VARCHAR(20) NULL DEFAULT NULL') then
+                added = added + 1
+            end
+
+            if ensureIndex('idx_owned_vehicles_job_plate', '(`job`, `plate`)') then
+                indexed = indexed + 1
+            end
+
             markMigrationApplied(JOB_FLEETS_MIGRATION_NAME)
         end
 
-        if GarageCategories then repairImpoundCategories() end
+        if GarageCategories then
+            repairImpoundCategories()
+        end
+
         recoverOrphanedVehicles()
     end)
 
@@ -411,16 +530,20 @@ MySQL.ready(function()
     end
 
     GarageReady = true
-    if type(TriggerEvent) == 'function' then TriggerEvent('esx_garage:ready') end
+
+    if type(TriggerEvent) == 'function' then
+        TriggerEvent('esx_garage:ready')
+    end
 
     if added > 0 or indexed > 0 or legacy > 0 or adjusted > 0 then
         print(
-            ('[esx_garage] db migration applied: %d column(s) added, %d column(s) adjusted, %d index(es) added, %d legacy impound row(s) converted'):format(
-                added,
-                adjusted,
-                indexed,
-                legacy
-            )
+            (
+                (
+                    '[esx_garage] db migration applied: %d column(s) added, %d '
+                    .. 'column(s) adjusted, %d index(es) added, %d legacy impound '
+                    .. 'row(s) converted'
+                )
+            ):format(added, adjusted, indexed, legacy)
         )
     end
 end)

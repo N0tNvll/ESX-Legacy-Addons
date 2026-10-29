@@ -1,9 +1,21 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
-local HasAlreadyEnteredMarker, OnJob, IsNearCustomer, CustomerIsEnteringVehicle, CustomerEnteredVehicle,
-    CurrentActionData = false, false, false, false, false, {}
-local CurrentCustomer, CurrentCustomerBlip, DestinationBlip, targetCoords, LastZone, CurrentAction, CurrentActionMsg, lastSelectedNPC
+local HasAlreadyEnteredMarker,
+    OnJob,
+    IsNearCustomer,
+    CustomerIsEnteringVehicle,
+    CustomerEnteredVehicle,
+    CurrentActionData =
+    false, false, false, false, false, {}
+local CurrentCustomer,
+    CurrentCustomerBlip,
+    DestinationBlip,
+    targetCoords,
+    LastZone,
+    CurrentAction,
+    CurrentActionMsg,
+    lastSelectedNPC
 local textUIMessage
 
 local function hideActionTextUI()
@@ -17,7 +29,7 @@ function OpenTaxiMenu(menuType, name, title, elements, submit, cancel, change, c
     return ESX.UI.Menu.Open(menuType, GetCurrentResourceName(), name, {
         title = title,
         align = 'top-left',
-        elements = elements
+        elements = elements,
     }, submit, cancel, change, close)
 end
 
@@ -38,6 +50,7 @@ end)
 RegisterNetEvent('esx:setJob')
 AddEventHandler('esx:setJob', function(job)
     ESX.PlayerData.job = job
+
     if not job or job.name ~= 'taxi' then
         CurrentAction = nil
         hideActionTextUI()
@@ -72,18 +85,19 @@ end
 
 function GetRandomWalkingNPC()
     local search = {}
-    local peds = GetGamePool("CPed")
+    local peds = GetGamePool('CPed')
 
     for i = 1, #peds, 1 do
         if IsPedHuman(peds[i]) and IsPedWalking(peds[i]) and not IsPedAPlayer(peds[i]) then
             if peds[i] ~= lastSelectedNPC then
-                search[#search+1] = peds[i]
+                search[#search + 1] = peds[i]
             end
         end
     end
 
     if #search > 0 then
         local selectedNPC = search[math.random(#search)]
+
         lastSelectedNPC = selectedNPC
         return selectedNPC
     else
@@ -121,10 +135,20 @@ function StopTaxiJob()
 
     if IsPedInAnyVehicle(playerPed, false) and CurrentCustomer ~= nil then
         local vehicle = GetVehiclePedIsIn(playerPed, false)
+
         TaskLeaveVehicle(CurrentCustomer, vehicle, 0)
 
         if CustomerEnteredVehicle then
-            TaskGoStraightToCoord(CurrentCustomer, targetCoords.x, targetCoords.y, targetCoords.z, 1.0, -1, 0.0, 0.0)
+            TaskGoStraightToCoord(
+                CurrentCustomer,
+                targetCoords.x,
+                targetCoords.y,
+                targetCoords.z,
+                1.0,
+                -1,
+                0.0,
+                0.0
+            )
         end
     end
 
@@ -135,47 +159,61 @@ end
 
 function OpenCloakroom()
     local elements = {
-        {label = TranslateCap('wear_citizen'), value = "wear_citizen"},
-        {label = TranslateCap('wear_work'), value = "wear_work"}
+        { label = TranslateCap('wear_citizen'), value = 'wear_citizen' },
+        { label = TranslateCap('wear_work'), value = 'wear_work' },
     }
 
-    OpenTaxiMenu('default', 'cloakroom', TranslateCap('cloakroom_menu'), elements, function(data, menu)
-        if data.current.value == "wear_citizen" then
-            xLib.callback('esx_skin:getPlayerSkin', false, function(skin)
-                TriggerEvent('skinchanger:loadSkin', skin)
-            end)
-        elseif data.current.value == "wear_work" then
-            xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
-                if skin.sex == 0 then
-                    TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_male)
-                else
-                    TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_female)
-                end
-            end)
+    OpenTaxiMenu(
+        'default',
+        'cloakroom',
+        TranslateCap('cloakroom_menu'),
+        elements,
+        function(data, menu)
+            if data.current.value == 'wear_citizen' then
+                xLib.callback('esx_skin:getPlayerSkin', false, function(skin)
+                    TriggerEvent('skinchanger:loadSkin', skin)
+                end)
+            elseif data.current.value == 'wear_work' then
+                xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
+                    if skin.sex == 0 then
+                        TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_male)
+                    else
+                        TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_female)
+                    end
+                end)
+            end
+        end,
+        function(data, menu)
+            menu.close()
+            CurrentAction = 'cloakroom'
+            CurrentActionMsg = TranslateCap('cloakroom_prompt')
+            CurrentActionData = {}
         end
-    end, function(data, menu)
-        menu.close()
-        CurrentAction = 'cloakroom'
-        CurrentActionMsg = TranslateCap('cloakroom_prompt')
-        CurrentActionData = {}
-    end)
+    )
 end
 
 function OpenTaxiActionsMenu()
     local elements = {
-        {label = TranslateCap('deposit_stock'), value = 'put_stock'}, 
-        {label = TranslateCap('take_stock'), value = 'get_stock'}
+        { label = TranslateCap('deposit_stock'), value = 'put_stock' },
+        { label = TranslateCap('take_stock'), value = 'get_stock' },
     }
 
-    if Config.EnablePlayerManagement and ESX.PlayerData.job ~= nil and ESX.PlayerData.job.grade_name == 'boss' then
-        elements[#elements+1] = {
+    if
+        Config.EnablePlayerManagement
+        and ESX.PlayerData.job ~= nil
+        and ESX.PlayerData.job.grade_name == 'boss'
+    then
+        elements[#elements + 1] = {
             label = TranslateCap('boss_actions'),
-            value = "boss_actions"
+            value = 'boss_actions',
         }
     end
 
     OpenTaxiMenu('default', 'taxi_actions', TranslateCap('taxi'), elements, function(data, menu)
-        if Config.OxInventory and (data.current.value == 'put_stock' or data.current.value == 'get_stock') then
+        if
+            Config.OxInventory
+            and (data.current.value == 'put_stock' or data.current.value == 'get_stock')
+        then
             exports.ox_inventory:openInventory('stash', 'society_taxi')
             menu.close()
             return
@@ -198,64 +236,89 @@ end
 
 function OpenMobileTaxiActionsMenu()
     local elements = {
-        {label = TranslateCap('billing'), value = "billing"},
-        {label = TranslateCap('start_job'), value = "start_job"}
+        { label = TranslateCap('billing'), value = 'billing' },
+        { label = TranslateCap('start_job'), value = 'start_job' },
     }
 
-    OpenTaxiMenu('default', 'mobile_taxi_actions', TranslateCap('taxi'), elements, function(data, menu)
-        if data.current.value == "billing" then
-			OpenTaxiMenu('dialog', 'taxi_billing', TranslateCap('bill_amount'), nil, function(data2, menu2)
-                local amount = tonumber(data2.value)
-                if amount == nil or amount <= 0 then
-                    ESX.ShowNotification(TranslateCap('amount_invalid'))
-                else
-                    menu2.close()
-                    local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
-                    if closestPlayer == -1 or closestDistance > 3.0 then
-                        ESX.ShowNotification(TranslateCap('no_players_near'))
-                    else
-                        TriggerServerEvent('esx_billing:sendBill', GetPlayerServerId(closestPlayer), 'society_taxi',
-                            'Taxi', amount)
-                        ESX.ShowNotification(TranslateCap('billing_sent'))
-                    end
-                end
-            end, function(data2, menu2)
-                menu2.close()
-            end)
-        elseif data.current.value == "start_job" then
-            if OnJob then
-                menu.close()
-                StopTaxiJob()
-            else
-                if ESX.PlayerData.job ~= nil and ESX.PlayerData.job.name == 'taxi' then
-                    local playerPed = PlayerPedId()
-                    local vehicle = GetVehiclePedIsIn(playerPed, false)
+    OpenTaxiMenu(
+        'default',
+        'mobile_taxi_actions',
+        TranslateCap('taxi'),
+        elements,
+        function(data, menu)
+            if data.current.value == 'billing' then
+                OpenTaxiMenu(
+                    'dialog',
+                    'taxi_billing',
+                    TranslateCap('bill_amount'),
+                    nil,
+                    function(data2, menu2)
+                        local amount = tonumber(data2.value)
 
-                    if IsPedInAnyVehicle(playerPed, false) and GetPedInVehicleSeat(vehicle, -1) == playerPed then
-                        if tonumber(ESX.PlayerData.job.grade) >= 3 then
-                            menu.close()
-                            StartTaxiJob()
+                        if amount == nil or amount <= 0 then
+                            ESX.ShowNotification(TranslateCap('amount_invalid'))
                         else
-                            if IsInAuthorizedVehicle() then
+                            menu2.close()
+
+                            local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
+
+                            if closestPlayer == -1 or closestDistance > 3.0 then
+                                ESX.ShowNotification(TranslateCap('no_players_near'))
+                            else
+                                TriggerServerEvent(
+                                    'esx_billing:sendBill',
+                                    GetPlayerServerId(closestPlayer),
+                                    'society_taxi',
+                                    'Taxi',
+                                    amount
+                                )
+                                ESX.ShowNotification(TranslateCap('billing_sent'))
+                            end
+                        end
+                    end,
+                    function(data2, menu2)
+                        menu2.close()
+                    end
+                )
+            elseif data.current.value == 'start_job' then
+                if OnJob then
+                    menu.close()
+                    StopTaxiJob()
+                else
+                    if ESX.PlayerData.job ~= nil and ESX.PlayerData.job.name == 'taxi' then
+                        local playerPed = PlayerPedId()
+                        local vehicle = GetVehiclePedIsIn(playerPed, false)
+
+                        if
+                            IsPedInAnyVehicle(playerPed, false)
+                            and GetPedInVehicleSeat(vehicle, -1) == playerPed
+                        then
+                            if tonumber(ESX.PlayerData.job.grade) >= 3 then
                                 menu.close()
                                 StartTaxiJob()
+                            else
+                                if IsInAuthorizedVehicle() then
+                                    menu.close()
+                                    StartTaxiJob()
+                                else
+                                    ESX.ShowNotification(TranslateCap('must_in_taxi'))
+                                end
+                            end
+                        else
+                            if tonumber(ESX.PlayerData.job.grade) >= 3 then
+                                ESX.ShowNotification(TranslateCap('must_in_vehicle'))
                             else
                                 ESX.ShowNotification(TranslateCap('must_in_taxi'))
                             end
                         end
-                    else
-                        if tonumber(ESX.PlayerData.job.grade) >= 3 then
-                            ESX.ShowNotification(TranslateCap('must_in_vehicle'))
-                        else
-                            ESX.ShowNotification(TranslateCap('must_in_taxi'))
-                        end
                     end
                 end
             end
+        end,
+        function(data, menu)
+            menu.close()
         end
-    end, function(data, menu)
-        menu.close()
-    end)
+    )
 end
 
 function IsInAuthorizedVehicle()
@@ -263,7 +326,10 @@ function IsInAuthorizedVehicle()
     local vehModel = GetEntityModel(GetVehiclePedIsIn(playerPed, false))
 
     for i = 1, #Config.AuthorizedVehicles, 1 do
-        if Config.AuthorizedVehicles[i].model and vehModel == joaat(Config.AuthorizedVehicles[i].model) then
+        if
+            Config.AuthorizedVehicles[i].model
+            and vehModel == joaat(Config.AuthorizedVehicles[i].model)
+        then
             return true
         end
     end
@@ -276,39 +342,53 @@ function OpenGetStocksMenu()
         local elements = {}
 
         for i = 1, #items, 1 do
-            elements[#elements+1] = {
+            elements[#elements + 1] = {
                 label = 'x' .. items[i].count .. ' ' .. items[i].label,
-                value = items[i].name
+                value = items[i].name,
             }
         end
 
-        OpenTaxiMenu('default', 'stocks_menu', TranslateCap('taxi_stock'), elements, function(data, menu)
-            local itemName = data.current.value
+        OpenTaxiMenu(
+            'default',
+            'stocks_menu',
+            TranslateCap('taxi_stock'),
+            elements,
+            function(data, menu)
+                local itemName = data.current.value
 
-            OpenTaxiMenu('dialog', 'stocks_menu_get_item_count', TranslateCap('quantity'), nil, function(data2, menu2)
-                local count = tonumber(data2.value)
+                OpenTaxiMenu(
+                    'dialog',
+                    'stocks_menu_get_item_count',
+                    TranslateCap('quantity'),
+                    nil,
+                    function(data2, menu2)
+                        local count = tonumber(data2.value)
 
-                if count == nil then
-                    ESX.ShowNotification(TranslateCap('quantity_invalid'))
-                else
-                    menu2.close()
-                    menu.close()
-                    TriggerServerEvent('esx_taxijob:getStockItem', itemName, count)
+                        if count == nil then
+                            ESX.ShowNotification(TranslateCap('quantity_invalid'))
+                        else
+                            menu2.close()
+                            menu.close()
+                            TriggerServerEvent('esx_taxijob:getStockItem', itemName, count)
 
-                    Wait(300)
-                    OpenGetStocksMenu()
-                end
-            end, function(data2, menu2)
-                menu2.close()
-            end)
-        end, function(data, menu)
-            menu.close()
-        end)
+                            Wait(300)
+                            OpenGetStocksMenu()
+                        end
+                    end,
+                    function(data2, menu2)
+                        menu2.close()
+                    end
+                )
+            end,
+            function(data, menu)
+                menu.close()
+            end
+        )
     end, function(menu)
         CurrentAction = 'taxi_actions_menu'
         CurrentActionMsg = TranslateCap('press_to_open')
         CurrentActionData = {}
-    end)    
+    end)
 end
 
 function OpenPutStocksMenu()
@@ -317,41 +397,56 @@ function OpenPutStocksMenu()
 
         for i = 1, #inventory.items, 1 do
             local item = inventory.items[i]
+
             if item.count > 0 then
-                elements[#elements+1] = {
+                elements[#elements + 1] = {
                     label = item.label .. ' x' .. item.count,
-                    type  = 'item_standard',
-                    value = item.name
+                    type = 'item_standard',
+                    value = item.name,
                 }
             end
         end
 
-        OpenTaxiMenu('default', 'stocks_menu', TranslateCap('inventory'), elements, function(data, menu)
-            local itemName = data.current.value
+        OpenTaxiMenu(
+            'default',
+            'stocks_menu',
+            TranslateCap('inventory'),
+            elements,
+            function(data, menu)
+                local itemName = data.current.value
 
-            OpenTaxiMenu('dialog', 'stocks_menu_put_item_count', TranslateCap('quantity'), nil, function(data2, menu2)
-                local count = tonumber(data2.value)
+                OpenTaxiMenu(
+                    'dialog',
+                    'stocks_menu_put_item_count',
+                    TranslateCap('quantity'),
+                    nil,
+                    function(data2, menu2)
+                        local count = tonumber(data2.value)
 
-                if count == nil then
-                    ESX.ShowNotification(TranslateCap('quantity_invalid'))
-                else                    
-                    menu2.close()
-                    menu.close()
-                    TriggerServerEvent('esx_taxijob:putStockItems', itemName, count)
-                    Wait(300)
-                    OpenPutStocksMenu()
-                end
-            end, function(data2, menu2)
-                menu2.close()
-            end)
-        end, function(data, menu)
-            menu.close()
-        end)
+                        if count == nil then
+                            ESX.ShowNotification(TranslateCap('quantity_invalid'))
+                        else
+                            menu2.close()
+                            menu.close()
+                            TriggerServerEvent('esx_taxijob:putStockItems', itemName, count)
+                            Wait(300)
+                            OpenPutStocksMenu()
+                        end
+                    end,
+                    function(data2, menu2)
+                        menu2.close()
+                    end
+                )
+            end,
+            function(data, menu)
+                menu.close()
+            end
+        )
     end, function(menu)
         CurrentAction = 'taxi_actions_menu'
         CurrentActionMsg = TranslateCap('press_to_open')
         CurrentActionData = {}
-    end)  
+    end)
 end
 
 AddEventHandler('esx_taxijob:hasEnteredMarker', function(zone)
@@ -377,10 +472,49 @@ AddEventHandler('esx_phone:loaded', function(phoneNumber, contacts)
     local specialContact = {
         name = TranslateCap('phone_taxi'),
         number = 'taxi',
-        base64Icon = 'data:image/png;base64,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'
+        base64Icon = (
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0'
+            .. 'AAAGGElEQVR4XsWWW2gd1xWGv7Vn5pyRj47ut8iOYlmyWxw1KSZN4riOW6eFuCYlda'
+            .. 'BtIL1Ag4NNmt5ICORCaNKXlF6oCy0hpSoJKW4bp7Sk6YNb01RuLq4d0pQ0kWQrshVJ'
+            .. '1uX46HJ0zpy5rCKfQYgjCUs4kA+GtTd786+ftW8jqsqHibB6TLZn2zeq09ZTWAIWCx'
+            .. 'ACoTI1E+6v+eSpXwHRqkVZPcmqlBzCApLQ8dk3IWVKMQlYcHG81OODNmD6D7d9VQrT'
+            .. 'SbwsH73lFKePtvOxXSfn48U+Xpb58fl5gPmgl6DiR19PZN4+G7iODY4liIAACqiCHy'
+            .. 'p+AFvb7ML3uot1QP5yDUim292RtIqfU6Lr8wFVDVV8AsPKRDAxzYkKm2kj5sSFuUT3'
+            .. '+v2FXkDXakD6f+7c1NGS7Ml0Pkah6jq8mhvwUy7Cyijg5Aoks6/hTp+k7vRjDJ73dm'
+            .. 'w8WHxlJRM2y5Nsb3GPDuzsZURbGMsUmRkoUPByCMrKCG7SobJiO01X7OKq6utoe3XX'
+            .. '34BaoLDaCljj3faTcu3j3z3T+iADwzNYEmKIWcGAIAtqqkKAxZa2Sja/tY+59/7y48'
+            .. 'aveQ8A4Woq4Fa3bj7Q1/EgwWRAZ52NMTYCWAZEwIhBUEQgUiVQ8IpKvqj4kVJCyGRC'
+            .. 'Rrb+hvap+gPAo0DuUhWQfx2q29u+t/vPmarbCLwII7qQTEQRLbUtBJ2PAkZARBADqk'
+            .. 'LBV/I+BGrhpoSN577FWz3P3XbTvRMvAlpuwC4crv5jwtK9RAFSu46+G8cRwESxQ+K2'
+            .. 'gESAgCiIASHuA8YCBdSUohdCKGCF0H6iGc3MgrEphvKi+6Wp24HABioSjuxFARGoby'
+            .. 'J5OMXEiGHW6iLR0EmifhPJDddj3CoqtuwEZSkCc73/RAvTeEOvU5w8gz/Zj2TfoLFF'
+            .. 'ibZvQrI5EOFiPqgAZmzApTINKKgPiW20ffkXtPXfA9Ysmf5/kHn/T0z8e5rpCS5JVQ'
+            .. 'NUN1ayfn2a+qvT2JWboOOXMPg0ms6C2IAAWTc2ACPeupdbm5yb8XNQczOM90DOB0uo'
+            .. 'a01Ttz5FZ6IL3Ctg9DUIg7Lto2DZ0HIDFEbAz4AaiBRyxZJe9U7kQg84KYbH/JeJES'
+            .. 'ANXPXwXdWffvzu1p+x5VE4/ST4EyAOoEAI6WsAhdx/AYulhJDqAgRm/hPPEVAfnAbo'
+            .. 'eAB6v88jTw/f98SzU8eAwbgC5IGRg3vsW3E7YewYzJwF4wAhikJURGqvBO8ouAFIxB'
+            .. 'I0gqgPEp9B86+ASSAIEEHhbEnX7eTgnrFbn3iW5+K82EAA+M2V+d2EeRj9K/izIBYg'
+            .. 'JZGwCO4Gzm/uRQOwDEsI41PSfPZ+xJsBKwFo6dOwpJvezMU84Md5sSmRCM51uacGbU'
+            .. 'KvHWEjAKIelXaGJqePyopjzFTdx6Ef/gDbjo3FKEoQKN+8/yEqRt8jf67IaNDBnF9F'
+            .. 'ZFwERRGspMM20+XC64nym9AMhSE1G7fjbb0bCQsISi6vFCdPMPzuUwR9AcmOKQ7cew'
+            .. '+WZcq3IGEYMZeb4p13sjjmU4TX7Cfdtp0oDAFBbZfk/37N0MALAKbcAKaY4yPeuwy3'
+            .. 't2J8MAKDIxDVd1Lz8Ts599vb8Wameen532GspRWIQmXPHV8k0BquvPP3TOSgsRmiCF'
+            .. 'RAHWh9420Gi7nl34JaBen7O7UWRMD740AQ7yEf8nW78TIeN+7+PCIsOYaqMJHxqKtp'
+            .. 'J++D+DA5ARsawEmASqzv1Cz7FjRpbt951tUAOcAHdNEUC7C5NAJo7Dws03CAFMxlkd'
+            .. 'SRZmCMxaq8ejKuVwSqIJfzA61LmyIgBoxZfgmYmQazKLGumHitRso0ZVkD0aE/FI7U'
+            .. 'rYv2WUYXjo0ihNhEatA1GBEUIxEWAcKCHhHCVMG8AETlda0ENn3hrm+/6Zh47RBCtX'
+            .. 'n+mZ/sAXzWjnPHV77zkiXBgl6gFkee+em1wBlgdnEF8sCF5moLI7KwlSIMwABwgbVT'
+            .. '21htMNjleheAfPkShEBh/PzQccexdxBT9IPjQAYYZ+3o2OjQ8cQiPb+kVwBCliENXA'
+            .. '3sAm6Zj3E/zaq4fD07HmwEmuKYXsUFcDl6Hz7/B1RGfEbPim/bAAAAAElFTkSuQmCC'
+        ),
     }
 
-    TriggerEvent('esx_phone:addSpecialContact', specialContact.name, specialContact.number, specialContact.base64Icon)
+    TriggerEvent(
+        'esx_phone:addSpecialContact',
+        specialContact.name,
+        specialContact.number,
+        specialContact.base64Icon
+    )
 end)
 
 -- Create Blips
@@ -392,7 +526,7 @@ CreateThread(function()
         scale = 1.0,
         color = 5,
         shortRange = true,
-        label = TranslateCap('blip_taxi')
+        label = TranslateCap('blip_taxi'),
     })
 end)
 
@@ -400,6 +534,7 @@ end)
 CreateThread(function()
     while true do
         local sleep = 1500
+
         if ESX.PlayerData.job and ESX.PlayerData.job.name == 'taxi' then
 
             local coords = GetEntityCoords(PlayerPedId())
@@ -407,12 +542,37 @@ CreateThread(function()
 
             for k, v in pairs(Config.Zones) do
                 local zonePos = vector3(v.Pos.x, v.Pos.y, v.Pos.z)
-                local distance = (k == 'VehicleSpawner' or k == 'VehicleDeleter') and math.huge or #(coords - zonePos)
+                local distance = (k == 'VehicleSpawner' or k == 'VehicleDeleter') and math.huge
+                    or #(coords - zonePos)
 
                 if v.Type ~= -1 and distance < Config.DrawDistance then
                     sleep = 0
-                    DrawMarker(v.Type, v.Pos.x, v.Pos.y, v.Pos.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, v.Size.x, v.Size.y,
-                        v.Size.z, v.Color.r, v.Color.g, v.Color.b, 100, false, false, 2, v.Rotate, nil, nil, false)
+                    DrawMarker(
+                        v.Type,
+                        v.Pos.x,
+                        v.Pos.y,
+                        v.Pos.z,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        v.Size.x,
+                        v.Size.y,
+                        v.Size.z,
+                        v.Color.r,
+                        v.Color.g,
+                        v.Color.b,
+                        100,
+                        false,
+                        false,
+                        2,
+                        v.Rotate,
+                        nil,
+                        nil,
+                        false
+                    )
                 end
 
                 if distance < v.Size.x then
@@ -420,7 +580,10 @@ CreateThread(function()
                 end
             end
 
-            if (isInMarker and not HasAlreadyEnteredMarker) or (isInMarker and LastZone ~= currentZone) then
+            if
+                (isInMarker and not HasAlreadyEnteredMarker)
+                or (isInMarker and LastZone ~= currentZone)
+            then
                 HasAlreadyEnteredMarker, LastZone = true, currentZone
                 TriggerEvent('esx_taxijob:hasEnteredMarker', currentZone)
             end
@@ -430,6 +593,7 @@ CreateThread(function()
                 TriggerEvent('esx_taxijob:hasExitedMarker', LastZone)
             end
         end
+
         Wait(sleep)
     end
 end)
@@ -441,32 +605,35 @@ CreateThread(function()
 
         if OnJob then
             Sleep = 0
+
             local playerPed = PlayerPedId()
+
             if CurrentCustomer == nil then
                 DrawSub(TranslateCap('drive_search_pass'), 5000)
-            
+
                 if IsPedInAnyVehicle(playerPed, false) and OnJob then
                     Wait(5000)
-                        CurrentCustomer = GetRandomWalkingNPC()
+                    CurrentCustomer = GetRandomWalkingNPC()
 
-                        if CurrentCustomer ~= nil then
-                            CurrentCustomerBlip = xLib.blips.create({
-                                entity = CurrentCustomer,
-                                friendly = true,
-                                color = 2,
-                                category = 3,
-                                route = true
-                            })
+                    if CurrentCustomer ~= nil then
+                        CurrentCustomerBlip = xLib.blips.create({
+                            entity = CurrentCustomer,
+                            friendly = true,
+                            color = 2,
+                            category = 3,
+                            route = true,
+                        })
 
-                            SetEntityAsMissionEntity(CurrentCustomer, true, false)
-                            ClearPedTasksImmediately(CurrentCustomer)
-                            SetBlockingOfNonTemporaryEvents(CurrentCustomer, true)
+                        SetEntityAsMissionEntity(CurrentCustomer, true, false)
+                        ClearPedTasksImmediately(CurrentCustomer)
+                        SetBlockingOfNonTemporaryEvents(CurrentCustomer, true)
 
-                            local standTime = GetRandomIntInRange(60000, 180000)
-                            TaskStandStill(CurrentCustomer, standTime)
+                        local standTime = GetRandomIntInRange(60000, 180000)
 
-                            ESX.ShowNotification(TranslateCap('customer_found'))
-                        end
+                        TaskStandStill(CurrentCustomer, standTime)
+
+                        ESX.ShowNotification(TranslateCap('customer_found'))
+                    end
                 end
             else
                 if IsPedFatallyInjured(CurrentCustomer) then
@@ -482,7 +649,13 @@ CreateThread(function()
 
                     SetEntityAsMissionEntity(CurrentCustomer, false, true)
 
-                    CurrentCustomer, CurrentCustomerBlip, DestinationBlip, IsNearCustomer, CustomerIsEnteringVehicle, CustomerEnteredVehicle, targetCoords =
+                    CurrentCustomer,
+                        CurrentCustomerBlip,
+                        DestinationBlip,
+                        IsNearCustomer,
+                        CustomerIsEnteringVehicle,
+                        CustomerEnteredVehicle,
+                        targetCoords =
                         nil, nil, nil, false, false, false, nil
                 end
 
@@ -501,8 +674,16 @@ CreateThread(function()
 
                                 ESX.ShowNotification(TranslateCap('arrive_dest'))
 
-                                TaskGoStraightToCoord(CurrentCustomer, targetCoords.x, targetCoords.y, targetCoords.z,
-                                    1.0, -1, 0.0, 0.0)
+                                TaskGoStraightToCoord(
+                                    CurrentCustomer,
+                                    targetCoords.x,
+                                    targetCoords.y,
+                                    targetCoords.z,
+                                    1.0,
+                                    -1,
+                                    0.0,
+                                    0.0
+                                )
                                 SetEntityAsMissionEntity(CurrentCustomer, false, true)
                                 TriggerServerEvent('esx_taxijob:success')
                                 RemoveBlip(DestinationBlip)
@@ -515,35 +696,79 @@ CreateThread(function()
 
                                 scope(CurrentCustomer)
 
-                                CurrentCustomer, CurrentCustomerBlip, DestinationBlip, IsNearCustomer, CustomerIsEnteringVehicle, CustomerEnteredVehicle, targetCoords =
+                                CurrentCustomer,
+                                    CurrentCustomerBlip,
+                                    DestinationBlip,
+                                    IsNearCustomer,
+                                    CustomerIsEnteringVehicle,
+                                    CustomerEnteredVehicle,
+                                    targetCoords =
                                     nil, nil, nil, false, false, false, nil
                             end
 
                             if targetCoords then
-                                DrawMarker(36, targetCoords.x, targetCoords.y, targetCoords.z + 1.1, 0.0, 0.0, 0.0, 0.0,
-                                    0.0, 0.0, 1.0, 1.0, 1.0, 234, 223, 72, 155, false, false, 2, true, nil, nil, false)
+                                DrawMarker(
+                                    36,
+                                    targetCoords.x,
+                                    targetCoords.y,
+                                    targetCoords.z + 1.1,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    0.0,
+                                    1.0,
+                                    1.0,
+                                    1.0,
+                                    234,
+                                    223,
+                                    72,
+                                    155,
+                                    false,
+                                    false,
+                                    2,
+                                    true,
+                                    nil,
+                                    nil,
+                                    false
+                                )
                             end
                         else
                             RemoveBlip(CurrentCustomerBlip)
                             CurrentCustomerBlip = nil
-                            targetCoords = Config.JobLocations[GetRandomIntInRange(1, #Config.JobLocations)]
+                            targetCoords =
+                                Config.JobLocations[GetRandomIntInRange(1, #Config.JobLocations)]
                             local distance = #(playerCoords - targetCoords)
+
                             while distance < Config.MinimumDistance do
                                 Wait(0)
 
-                                targetCoords = Config.JobLocations[GetRandomIntInRange(1, #Config.JobLocations)]
+                                targetCoords = Config.JobLocations[GetRandomIntInRange(
+                                    1,
+                                    #Config.JobLocations
+                                )]
                                 distance = #(playerCoords - targetCoords)
                             end
 
-                            local street = table.pack(GetStreetNameAtCoord(targetCoords.x, targetCoords.y,
-                                targetCoords.z))
+                            local street = table.pack(
+                                GetStreetNameAtCoord(targetCoords.x, targetCoords.y, targetCoords.z)
+                            )
+
                             local msg = nil
 
                             if street[2] ~= 0 and street[2] ~= nil then
-                                msg = string.format(TranslateCap('take_me_to_near', GetStreetNameFromHashKey(street[1]),
-                                    GetStreetNameFromHashKey(street[2])))
+                                msg = string.format(
+                                    TranslateCap(
+                                        'take_me_to_near',
+                                        GetStreetNameFromHashKey(street[1]),
+                                        GetStreetNameFromHashKey(street[2])
+                                    )
+                                )
                             else
-                                msg = string.format(TranslateCap('take_me_to', GetStreetNameFromHashKey(street[1])))
+                                msg = string.format(
+                                    TranslateCap('take_me_to', GetStreetNameFromHashKey(street[1]))
+                                )
                             end
 
                             ESX.ShowNotification(msg)
@@ -551,15 +776,43 @@ CreateThread(function()
                             DestinationBlip = xLib.blips.create({
                                 coords = targetCoords,
                                 label = 'Destination',
-                                route = true
+                                route = true,
                             })
 
-                            TriggerServerEvent('esx_taxijob:startMission', customerCoords, targetCoords)
+                            TriggerServerEvent(
+                                'esx_taxijob:startMission',
+                                customerCoords,
+                                targetCoords
+                            )
                             CustomerEnteredVehicle = true
                         end
                     else
-                        DrawMarker(36, customerCoords.x, customerCoords.y, customerCoords.z + 1.1, 0.0, 0.0, 0.0, 0.0,
-                            0.0, 0.0, 1.0, 1.0, 1.0, 234, 223, 72, 155, false, false, 2, true, nil, nil, false)
+                        DrawMarker(
+                            36,
+                            customerCoords.x,
+                            customerCoords.y,
+                            customerCoords.z + 1.1,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            1.0,
+                            1.0,
+                            1.0,
+                            234,
+                            223,
+                            72,
+                            155,
+                            false,
+                            false,
+                            2,
+                            true,
+                            nil,
+                            nil,
+                            false
+                        )
 
                         if not CustomerEnteredVehicle then
                             if customerDistance <= 40.0 then
@@ -575,7 +828,8 @@ CreateThread(function()
                                 if not CustomerIsEnteringVehicle then
                                     ClearPedTasksImmediately(CurrentCustomer)
 
-                                    local maxSeats, freeSeat = GetVehicleMaxNumberOfPassengers(vehicle)
+                                    local maxSeats, freeSeat =
+                                        GetVehicleMaxNumberOfPassengers(vehicle)
 
                                     for i = maxSeats - 1, 0, -1 do
                                         if IsVehicleSeatFree(vehicle, i) then
@@ -585,7 +839,14 @@ CreateThread(function()
                                     end
 
                                     if freeSeat then
-                                        TaskEnterVehicle(CurrentCustomer, vehicle, -1, freeSeat, 2.0, 0)
+                                        TaskEnterVehicle(
+                                            CurrentCustomer,
+                                            vehicle,
+                                            -1,
+                                            freeSeat,
+                                            2.0,
+                                            0
+                                        )
                                         CustomerIsEnteringVehicle = true
                                     end
                                 end
@@ -597,6 +858,7 @@ CreateThread(function()
                 end
             end
         end
+
         Wait(Sleep)
     end
 end)
@@ -604,6 +866,7 @@ end)
 CreateThread(function()
     while OnJob do
         Wait(10000)
+
         if ESX.PlayerData.job ~= nil and ESX.PlayerData.job.grade < 3 then
             if not IsInAuthorizedVehicle() then
                 ClearCurrentMission()
@@ -618,7 +881,14 @@ end)
 CreateThread(function()
     while true do
         local sleep = 1500
-        if CurrentAction and ESX.PlayerLoaded and not ESX.PlayerData.dead and ESX.PlayerData.job and ESX.PlayerData.job.name == 'taxi' then
+
+        if
+            CurrentAction
+            and ESX.PlayerLoaded
+            and not ESX.PlayerData.dead
+            and ESX.PlayerData.job
+            and ESX.PlayerData.job.name == 'taxi'
+        then
             sleep = 0
 
             if textUIMessage ~= CurrentActionMsg then
@@ -626,7 +896,11 @@ CreateThread(function()
                 textUIMessage = CurrentActionMsg
             end
 
-            if IsControlJustReleased(0, 38) and ESX.PlayerData.job and ESX.PlayerData.job.name == 'taxi' then
+            if
+                IsControlJustReleased(0, 38)
+                and ESX.PlayerData.job
+                and ESX.PlayerData.job.name == 'taxi'
+            then
                 if CurrentAction == 'taxi_actions_menu' then
                     OpenTaxiActionsMenu()
                 elseif CurrentAction == 'cloakroom' then
@@ -638,13 +912,18 @@ CreateThread(function()
         else
             hideActionTextUI()
         end
+
         Wait(sleep)
     end
 end)
 
 RegisterCommand('taximenu', function()
-    if not ESX.PlayerData.dead and Config.EnablePlayerManagement and ESX.PlayerData.job and ESX.PlayerData.job.name ==
-        'taxi' then
+    if
+        not ESX.PlayerData.dead
+        and Config.EnablePlayerManagement
+        and ESX.PlayerData.job
+        and ESX.PlayerData.job.name == 'taxi'
+    then
         OpenMobileTaxiActionsMenu()
     end
 end, false)
