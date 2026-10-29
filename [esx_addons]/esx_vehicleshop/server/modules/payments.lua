@@ -366,7 +366,12 @@ function D.settle(player, shop, order, payload, accountName)
 
     local function run()
         return exports.es_extended:WithPlayerPersistence(order.owner, function(current)
-            if current ~= player or not D.current(player) then
+            if
+                not D.current(player)
+                or not D.current(current)
+                or current.source ~= player.source
+                or current.getIdentifier() ~= order.owner
+            then
                 failure = 'session_closing'
                 failBefore(failure)
                 return false

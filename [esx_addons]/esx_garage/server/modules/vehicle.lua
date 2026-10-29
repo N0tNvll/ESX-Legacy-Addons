@@ -1457,7 +1457,7 @@ exports('deliverPurchasedVehicle', function(source, plate, entry, spawn)
         spawns = { spawn },
         access = {
             authorize = function(actor)
-                return actor == source and ESX.GetPlayerFromId(actor) == player
+                return actor == source and player.isCurrent() == true
             end,
         },
     }
