@@ -68,15 +68,16 @@ const ControlsContainer = styled.div`
 
 const CounterButton = styled.button<{ $variant?: 'primary' | 'danger'; $active?: boolean }>`
   background: ${(props) => {
-    if (props.$active) {
-      return props.$variant === 'danger'
-        ? props.theme.colors.secondary
-        : props.theme.colors.primary;
-    }
-    return props.$variant === 'danger'
-      ? props.theme.colors.button.dangerBg
-      : props.theme.colors.button.secondary;
-  }};
+        if (props.$active) {
+            return props.$variant === 'danger'
+                ? props.theme.colors.secondary
+                : props.theme.colors.primary;
+        }
+
+        return props.$variant === 'danger'
+            ? props.theme.colors.button.dangerBg
+            : props.theme.colors.button.secondary;
+    }};
   border-radius: 9999px;
   padding: 0;
   width: 1.875rem;
@@ -85,13 +86,14 @@ const CounterButton = styled.button<{ $variant?: 'primary' | 'danger'; $active?:
   align-items: center;
   justify-content: center;
   box-shadow: ${(props) => {
-    if (props.$active) {
-      return props.$variant === 'danger'
-        ? '0 6px 18px rgba(255, 128, 128, 0.25)'
-        : props.theme.colors.shadows.brand;
-    }
-    return props.theme.colors.shadows.sm;
-  }};
+        if (props.$active) {
+            return props.$variant === 'danger'
+                ? '0 6px 18px rgba(255, 128, 128, 0.25)'
+                : props.theme.colors.shadows.brand;
+        }
+
+        return props.theme.colors.shadows.sm;
+    }};
   cursor: pointer;
   transition: all ${(props) => props.theme.transitions.fast};
 
@@ -102,11 +104,11 @@ const CounterButton = styled.button<{ $variant?: 'primary' | 'danger'; $active?:
 
 const CounterIcon = styled.div<{ $variant?: 'primary' | 'danger'; $active?: boolean }>`
   background: ${(props) =>
-    props.$active
-      ? props.theme.colors.backgroundSecondary
-      : props.$variant === 'danger'
-        ? props.theme.colors.secondary
-        : props.theme.colors.primary};
+        props.$active
+            ? props.theme.colors.backgroundSecondary
+            : props.$variant === 'danger'
+            ? props.theme.colors.secondary
+            : props.theme.colors.primary};
   border-radius: 9999px;
   width: 1.5rem;
   height: 1.5rem;
@@ -118,11 +120,11 @@ const CounterIcon = styled.div<{ $variant?: 'primary' | 'danger'; $active?: bool
     width: 1rem;
     height: 1rem;
     color: ${(props) =>
-      props.$active
-        ? props.$variant === 'danger'
-          ? props.theme.colors.secondary
-          : props.theme.colors.primary
-        : props.theme.colors.background};
+        props.$active
+            ? props.$variant === 'danger'
+                ? props.theme.colors.secondary
+                : props.theme.colors.primary
+            : props.theme.colors.background};
   }
 `;
 
@@ -184,116 +186,141 @@ const CloseButton = styled.button`
 // Spacer removed - use margin-left: auto instead
 
 export const GarageHeader: React.FC = () => {
-  const { selectedGarage, fleetGarageId, selectFleet, isLoading, filter, setFilter, loadVehicles, setOpen } = useGarageStore();
-  const { sendCallback } = useNui();
-  const { t } = useTranslation();
-  const [searchValue, setSearchValue] = useState('');
-  const searchReady = useRef(false);
+    const {
+        selectedGarage,
+        fleetGarageId,
+        selectFleet,
+        isLoading,
+        filter,
+        setFilter,
+        loadVehicles,
+        setOpen,
+    } = useGarageStore();
+    const { sendCallback } = useNui();
+    const { t } = useTranslation();
+    const [searchValue, setSearchValue] = useState('');
+    const searchReady = useRef(false);
 
-  const handleSearch = (value: string) => {
-    setSearchValue(value);
-  };
+    const handleSearch = (value: string) => {
+        setSearchValue(value);
+    };
 
-  useEffect(() => {
-    if (!searchReady.current) {
-      searchReady.current = true;
-      return;
-    }
+    useEffect(() => {
+        if (!searchReady.current) {
+            searchReady.current = true;
+            return;
+        }
 
-    const timer = window.setTimeout(() => {
-      setFilter({ search: searchValue });
-      void loadVehicles(1);
-    }, 250);
+        const timer = window.setTimeout(() => {
+            setFilter({ search: searchValue });
+            void loadVehicles(1);
+        }, 250);
 
-    return () => window.clearTimeout(timer);
-  }, [loadVehicles, searchValue, setFilter]);
+        return () => window.clearTimeout(timer);
+    }, [loadVehicles, searchValue, setFilter]);
 
-  const handleClose = () => {
-    sendCallback('garage:closeUI');
-    setOpen(false);
-  };
+    const handleClose = () => {
+        sendCallback('garage:closeUI');
+        setOpen(false);
+    };
 
-  const handleStoredFilter = () => {
-    if (filter.stored === true) {
-      setFilter({ stored: 'all', impounded: 'all' });
-    } else {
-      setFilter({ stored: true, impounded: 'all' });
-    }
-    void loadVehicles(1);
-  };
+    const handleStoredFilter = () => {
+        if (filter.stored === true) {
+            setFilter({ stored: 'all', impounded: 'all' });
+        } else {
+            setFilter({ stored: true, impounded: 'all' });
+        }
 
-  const handleImpoundedFilter = () => {
-    if (filter.impounded === true) {
-      setFilter({ stored: 'all', impounded: 'all' });
-    } else {
-      setFilter({ impounded: true, stored: 'all' });
-    }
-    void loadVehicles(1);
-  };
+        void loadVehicles(1);
+    };
 
-  return (
-    <HeaderContainer>
-      <GarageName>
-        <GarageIcon>
-          {selectedGarage?.logo ? <img src={selectedGarage.logo} alt="" /> : <MdGarage />}
-        </GarageIcon>
-        <GarageTitle>{selectedGarage?.label || t('garage.title')}</GarageTitle>
-      </GarageName>
+    const handleImpoundedFilter = () => {
+        if (filter.impounded === true) {
+            setFilter({ stored: 'all', impounded: 'all' });
+        } else {
+            setFilter({ impounded: true, stored: 'all' });
+        }
 
-      <ControlsContainer>
-        {selectedGarage?.type === 'impound' && !!selectedGarage.fleets?.length && (
-          <FleetSelect aria-label={t('garage.fleetContext')} value={fleetGarageId} disabled={isLoading}
-            onChange={(event) => { void selectFleet(event.target.value); }}>
-            <option value="">{t('garage.personalVehicles')}</option>
-            {selectedGarage.fleets.map((fleet) => <option key={fleet.id} value={fleet.id}>{fleet.name}</option>)}
-          </FleetSelect>
-        )}
-        <CounterButton
-          aria-label={t('filters.showStored')}
-          title={t('filters.showStored')}
-          onClick={handleStoredFilter}
-          $active={filter.stored === true}
-        >
-          <CounterIcon $active={filter.stored === true}>
-            <IoCarSport />
-          </CounterIcon>
-        </CounterButton>
+        void loadVehicles(1);
+    };
 
-        <CounterButton
-          $variant="danger"
-          aria-label={t('filters.showImpounded')}
-          title={t('filters.showImpounded')}
-          onClick={handleImpoundedFilter}
-          $active={filter.impounded === true}
-        >
-          <CounterIcon $variant="danger" $active={filter.impounded === true}>
-            <GiHook />
-          </CounterIcon>
-        </CounterButton>
+    return (
+        <HeaderContainer>
+            <GarageName>
+                <GarageIcon>
+                    {selectedGarage?.logo ? (
+                        <img src={selectedGarage.logo} alt="" />
+                    ) : (
+                        <MdGarage />
+                    )}
+                </GarageIcon>
+                <GarageTitle>{selectedGarage?.label || t('garage.title')}</GarageTitle>
+            </GarageName>
 
-        <SearchBar>
-          <MdSearch />
-          <SearchInput
-            type="text"
-            placeholder={t('garage.search')}
-            value={searchValue}
-            onChange={(e) => handleSearch(e.target.value)}
-          />
-        </SearchBar>
+            <ControlsContainer>
+                {selectedGarage?.type === 'impound' && !!selectedGarage.fleets?.length && (
+                    <FleetSelect
+                        aria-label={t('garage.fleetContext')}
+                        value={fleetGarageId}
+                        disabled={isLoading}
+                        onChange={(event) => {
+                            void selectFleet(event.target.value);
+                        }}
+                    >
+                        <option value="">{t('garage.personalVehicles')}</option>
+                        {selectedGarage.fleets.map((fleet) => (
+                            <option key={fleet.id} value={fleet.id}>
+                                {fleet.name}
+                            </option>
+                        ))}
+                    </FleetSelect>
+                )}
+                <CounterButton
+                    aria-label={t('filters.showStored')}
+                    title={t('filters.showStored')}
+                    onClick={handleStoredFilter}
+                    $active={filter.stored === true}
+                >
+                    <CounterIcon $active={filter.stored === true}>
+                        <IoCarSport />
+                    </CounterIcon>
+                </CounterButton>
 
-        <CloseButton onClick={handleClose}>
-          <MdClose />
-        </CloseButton>
-      </ControlsContainer>
-    </HeaderContainer>
-  );
+                <CounterButton
+                    $variant="danger"
+                    aria-label={t('filters.showImpounded')}
+                    title={t('filters.showImpounded')}
+                    onClick={handleImpoundedFilter}
+                    $active={filter.impounded === true}
+                >
+                    <CounterIcon $variant="danger" $active={filter.impounded === true}>
+                        <GiHook />
+                    </CounterIcon>
+                </CounterButton>
+
+                <SearchBar>
+                    <MdSearch />
+                    <SearchInput
+                        type="text"
+                        placeholder={t('garage.search')}
+                        value={searchValue}
+                        onChange={(e) => handleSearch(e.target.value)}
+                    />
+                </SearchBar>
+
+                <CloseButton onClick={handleClose}>
+                    <MdClose />
+                </CloseButton>
+            </ControlsContainer>
+        </HeaderContainer>
+    );
 };
 
 const FleetSelect = styled.select`
   max-width: 13rem;
   padding: 0.5rem;
-  color: ${props => props.theme.colors.text.primary};
-  background: ${props => props.theme.colors.backgroundSecondary};
-  border: 1px solid ${props => props.theme.colors.border};
-  border-radius: ${props => props.theme.sizes.borderRadius.sm};
+  color: ${(props) => props.theme.colors.text.primary};
+  background: ${(props) => props.theme.colors.backgroundSecondary};
+  border: 1px solid ${(props) => props.theme.colors.border};
+  border-radius: ${(props) => props.theme.sizes.borderRadius.sm};
 `;

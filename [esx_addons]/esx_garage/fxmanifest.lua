@@ -38,6 +38,7 @@ server_scripts {
     'server/modules/migration.lua',
     'server/modules/vehicle.lua',
     'server/modules/fleets.lua',
+    'server/modules/rentals.lua',
 }
 
 client_scripts {

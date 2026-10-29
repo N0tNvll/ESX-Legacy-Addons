@@ -10,56 +10,59 @@ local MAX_SEARCH_LENGTH <const> = 64
 local MAX_PLATE_LENGTH <const> = 12
 local DEFAULT_PAGE_SIZE <const> = 30
 local MAX_ALLOWED_PAGE_SIZE <const> = 100
-local HUD_RESOURCE_NAME <const> = "esx_hud"
+local HUD_RESOURCE_NAME <const> = 'esx_hud'
 local VEHICLE_SELECT_COLUMNS <const> = table.concat({
-    "`plate`",
-    "`vehicle`",
-    "`type`",
-    "`stored`",
-    "`parking`",
-    "`pound`",
-    "`custom_name`",
-    "`is_favorite`",
-    "`last_used`",
-    "`mileage`",
-    "`job`",
-}, ", ")
+    '`plate`',
+    '`vehicle`',
+    '`type`',
+    '`stored`',
+    '`parking`',
+    '`pound`',
+    '`custom_name`',
+    '`is_favorite`',
+    '`last_used`',
+    '`mileage`',
+    '`job`',
+}, ', ')
 
 ---@param p string
 ---@return string
 local function normPlate(p)
-    return (p:gsub("%s+$", "")):upper()
+    return (p:gsub('%s+$', '')):upper()
 end
 
 ---@param value any
 ---@return boolean
 local function isFiniteNumber(value)
-    return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
+    return type(value) == 'number' and value == value and value ~= math.huge and value ~= -math.huge
 end
 
 ---@param value any
 ---@return number?
 local function vehicleModelHash(value)
-    if type(value) == "number" and isFiniteNumber(value) then
+    if type(value) == 'number' and isFiniteNumber(value) then
         return math.floor(value)
     end
 
-    if type(value) ~= "string" then
+    if type(value) ~= 'string' then
         return nil
     end
 
-    value = value:gsub("^%s+", ""):gsub("%s+$", "")
-    if value == "" then
+    value = value:gsub('^%s+', ''):gsub('%s+$', '')
+
+    if value == '' then
         return nil
     end
 
     local numeric = tonumber(value)
+
     if numeric and isFiniteNumber(numeric) then
         return math.floor(numeric)
     end
 
     local ok, hash = pcall(GetHashKey, value)
-    if ok and type(hash) == "number" and hash ~= 0 then
+
+    if ok and type(hash) == 'number' and hash ~= 0 then
         return hash
     end
 
@@ -82,7 +85,7 @@ end
 ---@param value any
 ---@return integer
 local function storedValue(value)
-    return (value == true or value == 1 or value == "1") and 1 or 0
+    return (value == true or value == 1 or value == '1') and 1 or 0
 end
 
 ---@param value any
@@ -94,16 +97,17 @@ end
 ---@param pound any
 ---@return string?
 local function activePound(pound)
-    return type(pound) == "string" and pound ~= "" and pound or nil
+    return type(pound) == 'string' and pound ~= '' and pound or nil
 end
 
 ---@param rows OwnedVehicleRow[]
 local function applyCachedHudMileage(rows)
-    if type(GetResourceState) ~= "function" or GetResourceState(HUD_RESOURCE_NAME) ~= "started" then
+    if type(GetResourceState) ~= 'function' or GetResourceState(HUD_RESOURCE_NAME) ~= 'started' then
         return
     end
 
     local plates = {}
+
     for i = 1, #rows do
         plates[#plates + 1] = rows[i].plate
     end
@@ -112,12 +116,13 @@ local function applyCachedHudMileage(rows)
         return exports[HUD_RESOURCE_NAME]:GetMileages(plates)
     end)
 
-    if not ok or type(mileages) ~= "table" then
+    if not ok or type(mileages) ~= 'table' then
         return
     end
 
     for i = 1, #rows do
         local mileage = tonumber(mileages[rows[i].plate])
+
         if mileage and mileage >= 0 then
             rows[i].mileage = mileage
         end
@@ -128,11 +133,13 @@ end
 ---@return integer
 local function vehiclePage(requested)
     local page = tonumber(requested)
+
     if not isFiniteNumber(page) then
         return 1
     end
 
     page = math.floor(page)
+
     if page < 1 then
         return 1
     end
@@ -143,11 +150,12 @@ end
 ---@param value any
 ---@return string
 local function vehicleSearch(value)
-    if type(value) ~= "string" then
-        return ""
+    if type(value) ~= 'string' then
+        return ''
     end
 
-    local search = value:gsub("^%s+", ""):gsub("%s+$", "")
+    local search = value:gsub('^%s+', ''):gsub('%s+$', '')
+
     if #search > MAX_SEARCH_LENGTH then
         search = search:sub(1, MAX_SEARCH_LENGTH)
     end
@@ -158,7 +166,7 @@ end
 ---@param plate any
 ---@return boolean
 local function validPlate(plate)
-    if type(plate) ~= "string" then
+    if type(plate) ~= 'string' then
         return false
     end
 
@@ -166,14 +174,14 @@ local function validPlate(plate)
 
     return #plate >= 1
         and #plate <= MAX_PLATE_LENGTH
-        and plate:match("[A-Z0-9]") ~= nil
-        and plate:match("^[A-Z0-9 %-]+$") ~= nil
+        and plate:match('[A-Z0-9]') ~= nil
+        and plate:match('^[A-Z0-9 %-]+$') ~= nil
 end
 
 ---@param values table
 ---@param value string
 local function addUniquePlateValue(values, value)
-    if value == "" then
+    if value == '' then
         return
     end
 
@@ -196,7 +204,7 @@ local function plateValues(plate)
     addUniquePlateValue(values, normalized)
 
     if #normalized > 0 and #normalized < 8 then
-        addUniquePlateValue(values, normalized .. string.rep(" ", 8 - #normalized))
+        addUniquePlateValue(values, normalized .. string.rep(' ', 8 - #normalized))
     end
 
     return values
@@ -208,19 +216,20 @@ local function plateCondition(plate)
     local values = plateValues(plate)
 
     if #values < 1 then
-        return "`plate` = ?", { "" }
+        return '`plate` = ?', { '' }
     end
 
     if #values == 1 then
-        return "`plate` = ?", values
+        return '`plate` = ?', values
     end
 
     local placeholders = {}
+
     for i = 1, #values do
-        placeholders[i] = "?"
+        placeholders[i] = '?'
     end
 
-    return ("`plate` IN (%s)"):format(table.concat(placeholders, ", ")), values
+    return ('`plate` IN (%s)'):format(table.concat(placeholders, ', ')), values
 end
 
 ---@param target table
@@ -234,14 +243,18 @@ end
 ---@param value string
 ---@return string
 local function escapeLike(value)
-    return (value:gsub("([\\%%_])", "\\%1"))
+    return (value:gsub('([\\%%_])', '\\%1'))
 end
 
 local function ownershipCondition(scope)
     if scope.kind == 'job' then
-        if scope.owner then return '`owner` = ? AND `job` = ?', { scope.owner, scope.job } end
+        if scope.owner then
+            return '`owner` = ? AND `job` = ?', { scope.owner, scope.job }
+        end
+
         return '`job` = ?', { scope.job }
     end
+
     return "`owner` = ? AND (`job` IS NULL OR `job` = '')", { scope.owner }
 end
 
@@ -257,17 +270,55 @@ local function actionScope(source, player, data)
     return personalScope(source, player)
 end
 
+local rentalTable, rentalTableChecked = false, -10000
+
+local function hasRentalTable()
+    if rentalTable or GetGameTimer() - rentalTableChecked < 10000 then
+        return rentalTable
+    end
+
+    local count = MySQL.scalar.await(
+        (
+            'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA '
+            .. '= DATABASE() AND TABLE_NAME = '
+            .. "'rented_vehicles'"
+        )
+    )
+    assert(tonumber(count), 'Unable to inspect rental ownership')
+    rentalTable, rentalTableChecked = tonumber(count) > 0, GetGameTimer()
+    return rentalTable
+end
+
+AddEventHandler('esx_vehicleshop:ready', function()
+    rentalTableChecked = -10000
+end)
+
+local function isRental(plate)
+    return hasRentalTable()
+        and MySQL.scalar.await(
+                'SELECT 1 FROM rented_vehicles WHERE plate = ? LIMIT 1',
+                { plate }
+            )
+            ~= nil
+end
+
 ---@param scope table
 ---@param plate string
 ---@return OwnedVehicleRow?
 local function ownedRow(scope, plate)
     local condition, plateParams = plateCondition(plate)
     local ownership, params = ownershipCondition(scope)
+
     appendParams(params, plateParams)
 
     local row = MySQL.single.await(
-        ("SELECT `owner`, %s FROM `owned_vehicles` WHERE %s AND %s LIMIT 1"):format(VEHICLE_SELECT_COLUMNS, ownership, condition),
-        params)
+        ('SELECT `owner`, %s FROM `owned_vehicles` WHERE %s AND %s LIMIT 1'):format(
+            VEHICLE_SELECT_COLUMNS,
+            ownership,
+            condition
+        ),
+        params
+    )
     scope.vehicle = row
     return row
 end
@@ -281,25 +332,34 @@ end
 local function cleanPropsValue(value, depth)
     local valueType = type(value)
 
-    if valueType == "number" or valueType == "boolean" or valueType == "vector3" or valueType == "vector4" then
+    if
+        valueType == 'number'
+        or valueType == 'boolean'
+        or valueType == 'vector3'
+        or valueType == 'vector4'
+    then
         return value
     end
 
-    if valueType == "string" then
+    if valueType == 'string' then
         return #value <= 128 and value or nil
     end
 
-    if valueType == "table" and depth < MAX_PROPS_DEPTH then
+    if valueType == 'table' and depth < MAX_PROPS_DEPTH then
         local out = {}
+
         for k, v in pairs(value) do
             local keyType = type(k)
-            if keyType == "number" or (keyType == "string" and #k <= 64) then
+
+            if keyType == 'number' or (keyType == 'string' and #k <= 64) then
                 local cleaned = cleanPropsValue(v, depth + 1)
+
                 if cleaned ~= nil then
                     out[k] = cleaned
                 end
             end
         end
+
         return out
     end
 
@@ -310,6 +370,7 @@ end
 ---@return string?
 local function encodeProps(props)
     local encoded = json.encode(props)
+
     if not encoded or #encoded > MAX_PROPS_BYTES then
         return nil
     end
@@ -320,12 +381,13 @@ end
 ---@param row OwnedVehicleRow
 ---@return number?
 local function storedVehicleModel(row)
-    if not row or type(row.vehicle) ~= "string" then
+    if not row or type(row.vehicle) ~= 'string' then
         return nil
     end
 
     local ok, storedProps = pcall(json.decode, row.vehicle)
-    if not ok or type(storedProps) ~= "table" then
+
+    if not ok or type(storedProps) ~= 'table' then
         return nil
     end
 
@@ -337,11 +399,13 @@ end
 ---@return boolean, number?
 local function validateStoredModel(row, entity)
     local entityModel = vehicleModelHash(GetEntityModel(entity))
+
     if not entityModel then
         return false, nil
     end
 
     local storedModel = storedVehicleModel(row)
+
     if not storedModel or not sameVehicleModel(entityModel, storedModel) then
         return false, nil
     end
@@ -353,14 +417,14 @@ end
 ---@return string?
 local function extendedVehicleOwner(xVehicle)
     local ok, owner = pcall(function()
-        if type(xVehicle.getOwner) == "function" then
+        if type(xVehicle.getOwner) == 'function' then
             return xVehicle:getOwner()
         end
 
         return xVehicle.owner
     end)
 
-    return ok and type(owner) == "string" and owner or nil
+    return ok and type(owner) == 'string' and owner or nil
 end
 
 ---@param xPlayer table
@@ -371,7 +435,7 @@ local function charge(xPlayer, amount, account)
         return true
     end
 
-    if PaymentGateway.Charge(xPlayer, account, amount, "Impound fee") then
+    if PaymentGateway.Charge(xPlayer, account, amount, 'Impound fee') then
         return true, account
     end
 
@@ -387,15 +451,20 @@ local function refundCharge(xPlayer, amount, account)
     end
 
     local ok, err = pcall(function()
-        if account == "money" and type(xPlayer.addMoney) == "function" then
-            xPlayer.addMoney(amount, "Impound fee refund")
-        elseif account == "bank" and type(xPlayer.addAccountMoney) == "function" then
-            xPlayer.addAccountMoney("bank", amount, "Impound fee refund")
+        if account == 'money' and type(xPlayer.addMoney) == 'function' then
+            xPlayer.addMoney(amount, 'Impound fee refund')
+        elseif account == 'bank' and type(xPlayer.addAccountMoney) == 'function' then
+            xPlayer.addAccountMoney('bank', amount, 'Impound fee refund')
         end
     end)
 
     if not ok then
-        print(("[esx_garage] failed to refund impound fee for %s: %s"):format(xPlayer.identifier or "unknown", tostring(err)))
+        print(
+            ('[esx_garage] failed to refund impound fee for %s: %s'):format(
+                xPlayer.identifier or 'unknown',
+                tostring(err)
+            )
+        )
     end
 end
 
@@ -411,18 +480,19 @@ local function canAfford(xPlayer, amount)
         return true
     end
 
-    local bank = xPlayer.getAccount("bank")
+    local bank = xPlayer.getAccount('bank')
+
     return bank ~= nil and bank.money >= amount
 end
 
 ---@param result any
 ---@return integer
 local function affectedRows(result)
-    if type(result) == "number" then
+    if type(result) == 'number' then
         return result
     end
 
-    if type(result) == "table" then
+    if type(result) == 'table' then
         return tonumber(result.affectedRows) or 0
     end
 
@@ -435,11 +505,11 @@ end
 ---@param value any
 local function appendNullableAssignment(assignments, params, column, value)
     if value == nil then
-        assignments[#assignments + 1] = ("`%s` = NULL"):format(column)
+        assignments[#assignments + 1] = ('`%s` = NULL'):format(column)
         return
     end
 
-    assignments[#assignments + 1] = ("`%s` = ?"):format(column)
+    assignments[#assignments + 1] = ('`%s` = ?'):format(column)
     params[#params + 1] = value
 end
 
@@ -449,16 +519,17 @@ end
 ---@param value any
 local function appendNullableCondition(conditions, params, column, value)
     if value == nil then
-        conditions[#conditions + 1] = ("`%s` IS NULL"):format(column)
+        conditions[#conditions + 1] = ('`%s` IS NULL'):format(column)
         return
     end
 
-    conditions[#conditions + 1] = ("`%s` = ?"):format(column)
+    conditions[#conditions + 1] = ('`%s` = ?'):format(column)
     params[#params + 1] = value
 end
 
 local function rowOwnershipCondition(row)
     local conditions, params = { '`owner` = ?', '`plate` = ?' }, { row.owner, row.plate }
+
     appendNullableCondition(conditions, params, 'job', row.job)
     return table.concat(conditions, ' AND '), params
 end
@@ -475,38 +546,50 @@ end
 ---@param stored integer
 ---@return string, table
 local function retrieveStateCondition(scope, row, stored)
-    local conditions = { "`owner` = ?", "`plate` = ?", "`stored` = ?" }
+    local conditions = { '`owner` = ?', '`plate` = ?', '`stored` = ?' }
     local params = { row.owner, row.plate, stored }
 
     appendNullableCondition(conditions, params, 'job', row.job)
-    appendNullableCondition(conditions, params, "parking", row.parking)
-    appendNullableCondition(conditions, params, "pound", row.pound)
+    appendNullableCondition(conditions, params, 'parking', row.parking)
+    appendNullableCondition(conditions, params, 'pound', row.pound)
 
-    return table.concat(conditions, " AND "), params
+    return table.concat(conditions, ' AND '), params
 end
 
 ---@param scope table
 ---@param row OwnedVehicleRow
 local function restoreRetrieveState(scope, row)
-    local assignments = { "`stored` = ?" }
+    local assignments = { '`stored` = ?' }
     local params = { storedValue(row.stored) }
 
-    appendNullableAssignment(assignments, params, "parking", row.parking)
-    appendNullableAssignment(assignments, params, "pound", row.pound)
-    appendNullableAssignment(assignments, params, "last_used", row.last_used)
+    appendNullableAssignment(assignments, params, 'parking', row.parking)
+    appendNullableAssignment(assignments, params, 'pound', row.pound)
+    appendNullableAssignment(assignments, params, 'last_used', row.last_used)
     appendNullableAssignment(assignments, params, 'vehicle', row.vehicle)
 
     params[#params + 1] = row.owner
     params[#params + 1] = row.plate
+
     local condition = { '`owner` = ?', '`plate` = ?' }
+
     appendNullableCondition(condition, params, 'job', row.job)
 
-    local ok, err = pcall(MySQL.update.await,
-        ("UPDATE `owned_vehicles` SET %s WHERE %s"):format(table.concat(assignments, ", "), table.concat(condition, ' AND ')),
-        params)
+    local ok, err = pcall(
+        MySQL.update.await,
+        ('UPDATE `owned_vehicles` SET %s WHERE %s'):format(
+            table.concat(assignments, ', '),
+            table.concat(condition, ' AND ')
+        ),
+        params
+    )
 
     if not ok then
-        print(("[esx_garage] failed to rollback retrieve state for %s: %s"):format(row.plate, tostring(err)))
+        print(
+            ('[esx_garage] failed to rollback retrieve state for %s: %s'):format(
+                row.plate,
+                tostring(err)
+            )
+        )
     end
 end
 
@@ -517,7 +600,11 @@ local function deleteRetrievedVehicle(xVehicle)
     end)
 
     if not ok then
-        print(("[esx_garage] failed to delete retrieved vehicle after failed retrieve: %s"):format(tostring(err)))
+        print(
+            ('[esx_garage] failed to delete retrieved vehicle after failed retrieve: %s'):format(
+                tostring(err)
+            )
+        )
     end
 end
 
@@ -526,16 +613,18 @@ end
 ---@return boolean, string?
 local function prepareRetrieveSpawn(scope, row)
     local condition, params = retrieveStateCondition(scope, row, storedValue(row.stored))
-    local ok, result = pcall(MySQL.update.await,
-        ("UPDATE `owned_vehicles` SET `stored` = 1 WHERE %s"):format(condition),
-        params)
+    local ok, result = pcall(
+        MySQL.update.await,
+        ('UPDATE `owned_vehicles` SET `stored` = 1 WHERE %s'):format(condition),
+        params
+    )
 
     if not ok then
-        return false, "error"
+        return false, 'error'
     end
 
     if affectedRows(result) < 1 then
-        return false, "busy"
+        return false, 'busy'
     end
 
     return true
@@ -548,14 +637,23 @@ end
 local function finalizeCurrentRetrieveState(scope, current, lastUsed)
     local condition, params = retrieveStateCondition(scope, current, storedValue(current.stored))
     local queryParams = { lastUsed }
+
     appendParams(queryParams, params)
 
-    local ok, result = pcall(MySQL.update.await,
-        ("UPDATE `owned_vehicles` SET `stored` = 0, `pound` = NULL, `parking` = NULL, `last_used` = ? WHERE %s"):format(condition),
-        queryParams)
+    local ok, result = pcall(
+        MySQL.update.await,
+        (
+            (
+                'UPDATE `owned_vehicles` SET `stored` = 0, `pound` = NULL, '
+                .. '`parking` = NULL, `last_used` = ? WHERE '
+                .. '%s'
+            )
+        ):format(condition),
+        queryParams
+    )
 
     if not ok then
-        return false, "error"
+        return false, 'error'
     end
 
     if affectedRows(result) > 0 then
@@ -563,11 +661,12 @@ local function finalizeCurrentRetrieveState(scope, current, lastUsed)
     end
 
     local refreshed = ownedRow(scope, current.plate)
+
     if refreshed and storedValue(refreshed.stored) == 0 and not activePound(refreshed.pound) then
         return true
     end
 
-    return false, "state_changed"
+    return false, 'state_changed'
 end
 
 ---@param scope table
@@ -577,24 +676,35 @@ local function commitRetrieveState(scope, row)
     local lastUsed = os.time()
     local condition, params = retrieveStateCondition(scope, row, 1)
     local queryParams = { lastUsed }
+
     appendParams(queryParams, params)
 
-    local ok, result = pcall(MySQL.update.await,
-        ("UPDATE `owned_vehicles` SET `stored` = 0, `pound` = NULL, `parking` = NULL, `last_used` = ? WHERE %s"):format(condition),
-        queryParams)
+    local ok, result = pcall(
+        MySQL.update.await,
+        (
+            (
+                'UPDATE `owned_vehicles` SET `stored` = 0, `pound` = NULL, '
+                .. '`parking` = NULL, `last_used` = ? WHERE '
+                .. '%s'
+            )
+        ):format(condition),
+        queryParams
+    )
 
     if not ok then
-        return false, "error"
+        return false, 'error'
     end
 
     if affectedRows(result) < 1 then
         local current = ownedRow(scope, row.plate)
+
         if current then
             local currentStored = storedValue(current.stored)
             local canFinalize = false
 
             if currentStored == 0 then
-                canFinalize = activePound(current.pound) == nil or sameOptionalLocation(current.pound, row.pound)
+                canFinalize = activePound(current.pound) == nil
+                    or sameOptionalLocation(current.pound, row.pound)
             elseif currentStored == 1 then
                 canFinalize = sameOptionalLocation(current.parking, row.parking)
                     and sameOptionalLocation(current.pound, row.pound)
@@ -605,7 +715,7 @@ local function commitRetrieveState(scope, row)
             end
         end
 
-        return false, "state_changed"
+        return false, 'state_changed'
     end
 
     return true
@@ -616,12 +726,14 @@ end
 ---@return boolean
 local function isConfiguredSpawn(location, spawn)
     local spawns = location.spawns
-    if type(spawns) ~= "table" then
+
+    if type(spawns) ~= 'table' then
         return false
     end
 
     for i = 1, #spawns do
         local s = spawns[i]
+
         if #(vec3(s.x, s.y, s.z) - vec3(spawn.x, spawn.y, spawn.z)) < 1.0 then
             return true
         end
@@ -635,6 +747,7 @@ end
 ---@return boolean
 local function isNearPoint(source, anchor)
     local ped = GetPlayerPed(source)
+
     if not ped or ped <= 0 then
         return false
     end
@@ -683,9 +796,12 @@ local function hasUnmanagedWorldVehicle(plateKey, expectedModel, managedEntity)
 
     for i = 1, #vehicles do
         local veh = vehicles[i]
-        if veh ~= managedEntity
+
+        if
+            veh ~= managedEntity
             and sameVehicleModel(GetEntityModel(veh), expectedModel)
-            and normPlate(GetVehicleNumberPlateText(veh) or "") == plateKey then
+            and normPlate(GetVehicleNumberPlateText(veh) or '') == plateKey
+        then
             return true
         end
     end
@@ -722,22 +838,28 @@ end
 ---@return integer
 local function vehiclePageSize(requested)
     local configured = tonumber(Config.Settings.vehiclesPerPage)
+
     if not isFiniteNumber(configured) then
         configured = DEFAULT_PAGE_SIZE
     end
+
     configured = math.floor(configured)
 
     local maxConfigured = tonumber(Config.Settings.maxVehiclesPerMenu)
+
     if not isFiniteNumber(maxConfigured) then
         maxConfigured = MAX_ALLOWED_PAGE_SIZE
     end
+
     maxConfigured = math.floor(maxConfigured)
 
     local maxPageSize = math.min(math.max(maxConfigured, 1), MAX_ALLOWED_PAGE_SIZE)
     local size = tonumber(requested)
+
     if not isFiniteNumber(size) then
         size = configured
     end
+
     size = math.floor(size)
 
     if size < 1 then
@@ -751,13 +873,32 @@ end
 local function parkingMatchesScope(scope, garage)
     local compatible = false
     local categories = GarageCategories.allowed(garage)
+
     for category in pairs(GarageCategories.allowed(scope.location)) do
-        if categories[category] then compatible = true; break end
+        if categories[category] then
+            compatible = true
+            break
+        end
     end
-    if not compatible then return false end
-    if scope.kind == 'personal' then return garage.type ~= 'job' end
-    return garage.type == 'job' and (garage.job == scope.job
-        or (not garage.job and garage.access and garage.access.jobs and garage.access.jobs[scope.job] ~= nil))
+
+    if not compatible then
+        return false
+    end
+
+    if scope.kind == 'personal' then
+        return garage.type ~= 'job'
+    end
+
+    return garage.type == 'job'
+        and (
+            garage.job == scope.job
+            or (
+                not garage.job
+                and garage.access
+                and garage.access.jobs
+                and garage.access.jobs[scope.job] ~= nil
+            )
+        )
 end
 
 ---@param garageId string?
@@ -765,36 +906,48 @@ end
 ---@return string, table
 local function garageScopeCondition(garageId, scope)
     if not Config.Settings.restrictToGarage or not garageId then
-        return "", {}
+        return '', {}
     end
 
     local params = { garageId }
     local garageIds = {}
 
     for id, garage in pairs(Garages) do
-        if parkingMatchesScope(scope, garage) then garageIds[#garageIds + 1] = id end
+        if parkingMatchesScope(scope, garage) then
+            garageIds[#garageIds + 1] = id
+        end
     end
 
-    local invalidParkingCondition = ""
+    local invalidParkingCondition = ''
+
     if #garageIds > 0 then
         local placeholders = {}
 
         for i = 1, #garageIds do
-            placeholders[i] = "?"
+            placeholders[i] = '?'
             params[#params + 1] = garageIds[i]
         end
 
-        invalidParkingCondition = (" OR `parking` NOT IN (%s)"):format(table.concat(placeholders, ", "))
+        invalidParkingCondition = (' OR `parking` NOT IN (%s)'):format(
+            table.concat(placeholders, ', ')
+        )
     end
 
-    return (" AND (`stored` <> 1 OR `pound` IS NOT NULL OR `parking` IS NULL OR `parking` = ?%s)")
-        :format(invalidParkingCondition), params
+    return (
+        (
+            ' AND (`stored` <> 1 OR `pound` IS NOT NULL OR `parking` IS NULL OR '
+            .. '`parking` = '
+            .. '?%s)'
+        )
+    ):format(invalidParkingCondition),
+        params
 end
 
 ---@param values table
 ---@return table
 local function copyParams(values)
     local out = {}
+
     appendParams(out, values)
     return out
 end
@@ -804,23 +957,25 @@ end
 ---@param search string
 ---@return string
 local function appendSearchCondition(scopeSql, params, search)
-    if search == "" then
+    if search == '' then
         return scopeSql
     end
 
-    local like = ("%s%%"):format(escapeLike(search))
+    local like = ('%s%%'):format(escapeLike(search))
+
     params[#params + 1] = like
     params[#params + 1] = like
 
     return scopeSql .. " AND (`plate` LIKE ? ESCAPE '\\\\' OR `custom_name` LIKE ? ESCAPE '\\\\')"
 end
 
-xLib.callback.registerCompat("esx_garage:getVehicles", function(source, cb, data)
-    if rejectRateLimited(source, cb, "esx_garage:getVehicles") then
+xLib.callback.registerCompat('esx_garage:getVehicles', function(source, cb, data)
+    if rejectRateLimited(source, cb, 'esx_garage:getVehicles') then
         return
     end
 
     local waited = 0
+
     while not GarageReady and waited < 10000 do
         Wait(50)
         waited = waited + 50
@@ -831,15 +986,20 @@ xLib.callback.registerCompat("esx_garage:getVehicles", function(source, cb, data
     end
 
     local xPlayer = ESX.GetPlayerFromId(source)
+
     if not xPlayer then
         return cb(false)
     end
 
-    local request = type(data) == "table" and data or { garageId = data }
+    local request = type(data) == 'table' and data or { garageId = data }
     local garageId = request.garageId
 
     local scope, scopeError = ResolveGarageScope(source, garageId, request.fleetGarageId)
-    if not scope then return cb({ success = false, error = scopeError }) end
+
+    if not scope then
+        return cb({ success = false, error = scopeError })
+    end
+
     local impound = scope.impound
 
     local page = vehiclePage(request.page)
@@ -848,8 +1008,10 @@ xLib.callback.registerCompat("esx_garage:getVehicles", function(source, cb, data
     local scopeSql, scopeParams = garageScopeCondition(garageId, scope)
     local ownerSql, baseParams = ownershipCondition(scope)
     local categorySql, categoryParams = GarageCategories.condition(scope.location, source)
+
     if scope.impound and scope.fleetGarageId then
-        local modelSql, modelParams = GarageCategories.condition(Garages[scope.fleetGarageId], source)
+        local modelSql, modelParams =
+            GarageCategories.condition(Garages[scope.fleetGarageId], source)
         categorySql = categorySql .. ' AND ' .. modelSql
         appendParams(categoryParams, modelParams)
     end
@@ -857,66 +1019,111 @@ xLib.callback.registerCompat("esx_garage:getVehicles", function(source, cb, data
     for i = 1, #scopeParams do
         baseParams[#baseParams + 1] = scopeParams[i]
     end
+
     scopeSql = scopeSql .. ' AND ' .. categorySql
     appendParams(baseParams, categoryParams)
 
     if impound then
-        scopeSql = scopeSql .. " AND `pound` = ?"
+        scopeSql = scopeSql .. ' AND `pound` = ?'
         baseParams[#baseParams + 1] = garageId
     end
 
-    local filter = type(request.filter) == "table" and request.filter or {}
+    local filter = type(request.filter) == 'table' and request.filter or {}
     local search = vehicleSearch(filter.search)
+
     scopeSql = appendSearchCondition(scopeSql, baseParams, search)
 
     local pageSql = scopeSql
     local params = copyParams(baseParams)
 
     if filter.stored == true then
-        pageSql = pageSql .. " AND `stored` = 1 AND `pound` IS NULL"
+        pageSql = pageSql .. ' AND `stored` = 1 AND `pound` IS NULL'
     elseif filter.stored == false then
-        pageSql = pageSql .. " AND `stored` <> 1 AND `pound` IS NULL"
+        pageSql = pageSql .. ' AND `stored` <> 1 AND `pound` IS NULL'
     end
 
     if filter.impounded == true then
-        pageSql = pageSql .. " AND `pound` IS NOT NULL"
+        pageSql = pageSql .. ' AND `pound` IS NOT NULL'
     elseif filter.impounded == false then
-        pageSql = pageSql .. " AND `pound` IS NULL"
+        pageSql = pageSql .. ' AND `pound` IS NULL'
     end
 
     if filter.favorite == true then
-        pageSql = pageSql .. " AND `is_favorite` = 1"
+        pageSql = pageSql .. ' AND `is_favorite` = 1'
     elseif filter.favorite == false then
-        pageSql = pageSql .. " AND `is_favorite` = 0"
+        pageSql = pageSql .. ' AND `is_favorite` = 0'
     end
 
-    local orderSql = "`plate` ASC"
+    local orderSql = '`plate` ASC'
+
     if impound or filter.impounded == true then
-        orderSql = "`pound` ASC, `plate` ASC"
+        orderSql = '`pound` ASC, `plate` ASC'
     end
 
     params[#params + 1] = pageSize + 1
     params[#params + 1] = offset
 
     local rows = MySQL.query.await(
-        ("SELECT %s FROM `owned_vehicles` WHERE %s%s ORDER BY %s LIMIT ? OFFSET ?")
-            :format(VEHICLE_SELECT_COLUMNS, ownerSql, pageSql, orderSql),
-        params) or {}
+        ('SELECT %s FROM `owned_vehicles` WHERE %s%s ORDER BY %s LIMIT ? OFFSET ?'):format(
+            VEHICLE_SELECT_COLUMNS,
+            ownerSql,
+            pageSql,
+            orderSql
+        ),
+        params
+    ) or {}
 
-    if not CanUseGarageScope(scope) then return cb({ success = false, error = 'not_allowed' }) end
+    if not CanUseGarageScope(scope) then
+        return cb({ success = false, error = 'not_allowed' })
+    end
+
     for _, row in ipairs(rows) do
         scope.vehicle = row
-        if not CanUseGarageScope(scope) then return cb({ success = false, error = 'not_allowed' }) end
+
+        if not CanUseGarageScope(scope) then
+            return cb({ success = false, error = 'not_allowed' })
+        end
     end
+
     scope.vehicle = nil
 
     local hasNext = #rows > pageSize
+
     if hasNext then
         rows[#rows] = nil
     end
 
+    if #rows > 0 and hasRentalTable() then
+        local placeholders, plates, rented = {}, {}, {}
+
+        for _, row in ipairs(rows) do
+            placeholders[#placeholders + 1] = '?'
+            plates[#plates + 1] = row.plate
+        end
+
+        for _, row in
+            ipairs(
+                MySQL.query.await(
+                    ('SELECT plate FROM rented_vehicles WHERE plate IN (%s)'):format(
+                        table.concat(placeholders, ',')
+                    ),
+                    plates
+                ) or {}
+            )
+        do
+            rented[row.plate] = true
+        end
+
+        for _, row in ipairs(rows) do
+            row.rental = rented[row.plate] == true
+        end
+    end
+
     applyCachedHudMileage(rows)
-    if not CanUseGarageScope(scope) then return cb({ success = false, error = 'not_allowed' }) end
+
+    if not CanUseGarageScope(scope) then
+        return cb({ success = false, error = 'not_allowed' })
+    end
 
     cb({
         vehicles = rows,
@@ -926,56 +1133,87 @@ xLib.callback.registerCompat("esx_garage:getVehicles", function(source, cb, data
     })
 end)
 
-xLib.callback.registerCompat("esx_garage:retrieveVehicle", function(source, cb, data)
-    if rejectRateLimited(source, cb, "esx_garage:retrieveVehicle") then
+local function retrieveVehicle(source, cb, data)
+    if rejectRateLimited(source, cb, 'esx_garage:retrieveVehicle') then
         return
     end
 
     if not GarageReady then
-        return cb({ success = false, error = "error" })
+        return cb({ success = false, error = 'error' })
     end
 
     local xPlayer = ESX.GetPlayerFromId(source)
+
     if not xPlayer then
-        return cb({ success = false, error = "player" })
+        return cb({ success = false, error = 'player' })
     end
 
-    if type(data) ~= 'table' then return cb({ success = false, error = 'invalid' }) end
+    if type(data) ~= 'table' then
+        return cb({ success = false, error = 'invalid' })
+    end
+
     local scope, scopeError = ResolveGarageScope(source, data.garageId, data.fleetGarageId)
-    if not scope then return cb({ success = false, error = scopeError }) end
+
+    if not scope then
+        return cb({ success = false, error = scopeError })
+    end
 
     local plate = data and data.plate
     local spawn = data and data.spawn
-    if not validPlate(plate) or type(spawn) ~= "table"
-        or type(spawn.x) ~= "number" or type(spawn.y) ~= "number" or type(spawn.z) ~= "number"
-        or (spawn.w ~= nil and type(spawn.w) ~= "number") or (spawn.h ~= nil and type(spawn.h) ~= "number") then
-        return cb({ success = false, error = "invalid" })
+
+    if
+        not validPlate(plate)
+        or type(spawn) ~= 'table'
+        or type(spawn.x) ~= 'number'
+        or type(spawn.y) ~= 'number'
+        or type(spawn.z) ~= 'number'
+        or (spawn.w ~= nil and type(spawn.w) ~= 'number')
+        or (spawn.h ~= nil and type(spawn.h) ~= 'number')
+    then
+        return cb({ success = false, error = 'invalid' })
     end
 
     local key = normPlate(plate)
     local operationToken = beginVehicleOperation(key)
+
     if not operationToken then
-        return cb({ success = false, error = "busy" })
+        return cb({ success = false, error = 'busy' })
     end
 
     local reservation
     local ok, result = pcall(function()
         local row = ownedRow(scope, plate)
+
         if not row then
-            return { success = false, error = "not_owned" }
+            return { success = false, error = 'not_owned' }
         end
 
-        if not CanUseGarageScope(scope) then return { success = false, error = 'not_allowed' } end
+        if not CanUseGarageScope(scope) then
+            return { success = false, error = 'not_allowed' }
+        end
+
         local location, garage, impound = scope.location, scope.garage, scope.impound
-        if not GarageCategories.accepts(location, row) then return { success = false, error = 'wrong_vehicle_category' } end
-        if not GarageCategories.acceptsModel(garage or Garages[scope.fleetGarageId] or location, row, source) then return { success = false, error = 'not_allowed' } end
+
+        if not GarageCategories.accepts(location, row) then
+            return { success = false, error = 'wrong_vehicle_category' }
+        end
+
+        if
+            not GarageCategories.acceptsModel(
+                garage or Garages[scope.fleetGarageId] or location,
+                row,
+                source
+            )
+        then
+            return { success = false, error = 'not_allowed' }
+        end
 
         if not isConfiguredSpawn(location, spawn) then
-            return { success = false, error = "bad_spawn" }
+            return { success = false, error = 'bad_spawn' }
         end
 
         if not isNearLocation(source, location) then
-            return { success = false, error = "too_far" }
+            return { success = false, error = 'too_far' }
         end
 
         local existing = ESX.GetExtendedVehicleFromPlate(row.plate)
@@ -983,68 +1221,89 @@ xLib.callback.registerCompat("esx_garage:retrieveVehicle", function(source, cb, 
 
         if existing then
             local entity = existing:getEntity()
+
             if entity and entity > 0 and DoesEntityExist(entity) then
                 managedEntity = entity
             end
         end
 
         local expectedModel = storedVehicleModel(row)
-        local hasWorldVehicle = managedEntity ~= nil or hasUnmanagedWorldVehicle(key, expectedModel, managedEntity)
+        local hasWorldVehicle = managedEntity ~= nil
+            or hasUnmanagedWorldVehicle(key, expectedModel, managedEntity)
 
         local fee = 0
         local rowPound = activePound(row.pound)
 
         if rowPound then
             if not impound then
-                return { success = false, error = "use_impound" }
+                return { success = false, error = 'use_impound' }
             end
+
             if rowPound ~= data.garageId then
-                return { success = false, error = "wrong_impound" }
+                return { success = false, error = 'wrong_impound' }
             end
+
             if hasWorldVehicle then
-                return { success = false, error = "not_stored" }
+                return { success = false, error = 'not_stored' }
             end
 
             local lot = Impounds[rowPound]
+
             fee = (lot and lot.cost) or Config.Settings.defaultImpoundFee
         elseif not isStored(row.stored) then
             if hasWorldVehicle then
-                return { success = false, error = "not_stored" }
+                return { success = false, error = 'not_stored' }
             end
+
             if not impound then
-                return { success = false, error = "use_impound" }
+                return { success = false, error = 'use_impound' }
             end
 
             local lot = Impounds[data.garageId]
+
             fee = (lot and lot.cost) or Config.Settings.defaultImpoundFee
         else
             if impound then
-                return { success = false, error = "not_impounded" }
+                return { success = false, error = 'not_impounded' }
             end
+
             if hasWorldVehicle then
-                return { success = false, error = "not_stored" }
+                return { success = false, error = 'not_stored' }
             end
-            if Config.Settings.restrictToGarage and row.parking and Garages[row.parking]
+
+            if
+                not garage.delivery
+                and Config.Settings.restrictToGarage
+                and row.parking
+                and Garages[row.parking]
                 and parkingMatchesScope(scope, Garages[row.parking])
                 and GarageCategories.accepts(Garages[row.parking], row)
-                and row.parking ~= data.garageId then
-                return { success = false, error = "wrong_garage" }
+                and row.parking ~= data.garageId
+            then
+                return { success = false, error = 'wrong_garage' }
             end
         end
 
         if fee > 0 and not canAfford(xPlayer, fee) then
-            return { success = false, error = "no_money" }
+            return { success = false, error = 'no_money' }
         end
 
         if isSpawnBlocked(spawn) then
-            return { success = false, error = "blocked" }
+            return { success = false, error = 'blocked' }
         end
 
         if garage and garage.reserve then
             local reserved, token = pcall(garage.reserve, source)
-            if not reserved or not token then return { success = false, error = 'busy' } end
+
+            if not reserved or not token then
+                return { success = false, error = 'busy' }
+            end
+
             reservation = token
-            if not CanUseGarageScope(scope) then return { success = false, error = 'not_allowed' } end
+
+            if not CanUseGarageScope(scope) then
+                return { success = false, error = 'not_allowed' }
+            end
         end
 
         local transitionApplied = false
@@ -1053,22 +1312,28 @@ xLib.callback.registerCompat("esx_garage:retrieveVehicle", function(source, cb, 
             existing:delete()
         elseif not isStored(row.stored) then
             local prepared, prepareError = prepareRetrieveSpawn(scope, row)
+
             if not prepared then
-                return { success = false, error = prepareError or "error" }
+                return { success = false, error = prepareError or 'error' }
             end
+
             transitionApplied = true
         end
 
         if not CanUseGarageScope(scope) then
-            if transitionApplied then restoreRetrieveState(scope, row) end
+            if transitionApplied then
+                restoreRetrieveState(scope, row)
+            end
+
             return { success = false, error = 'not_allowed' }
         end
 
         local coords = vec4(spawn.x, spawn.y, spawn.z, spawn.w or spawn.h or 0.0)
         local spawned, xVehicle = pcall(ESX.CreateExtendedVehicle, row.owner, row.plate, coords)
+
         if not spawned or not xVehicle then
             restoreRetrieveState(scope, row)
-            return { success = false, error = "spawn_failed" }
+            return { success = false, error = 'spawn_failed' }
         end
 
         if not CanUseGarageScope(scope) then
@@ -1077,28 +1342,40 @@ xLib.callback.registerCompat("esx_garage:retrieveVehicle", function(source, cb, 
             return { success = false, error = 'not_allowed' }
         end
 
-        if not GarageCategories.acceptsEntity(location, xVehicle:getEntity())
-            or (scope.fleetGarageId and not GarageCategories.acceptsEntity(Garages[scope.fleetGarageId], xVehicle:getEntity())) then
+        if
+            not GarageCategories.acceptsEntity(location, xVehicle:getEntity())
+            or (
+                scope.fleetGarageId
+                and not GarageCategories.acceptsEntity(
+                    Garages[scope.fleetGarageId],
+                    xVehicle:getEntity()
+                )
+            )
+        then
             deleteRetrievedVehicle(xVehicle)
             restoreRetrieveState(scope, row)
             return { success = false, error = 'wrong_vehicle_category' }
         end
 
         local chargedOk, charged, chargeAccount = pcall(charge, xPlayer, fee, data.paymentAccount)
+
         if not chargedOk or not charged then
             deleteRetrievedVehicle(xVehicle)
+
             if transitionApplied then
                 restoreRetrieveState(scope, row)
             end
-            return { success = false, error = chargedOk and "no_money" or "error" }
+
+            return { success = false, error = chargedOk and 'no_money' or 'error' }
         end
 
         local committed, commitError = commitRetrieveState(scope, row)
+
         if not committed or not CanUseGarageScope(scope) then
             deleteRetrievedVehicle(xVehicle)
             refundCharge(xPlayer, fee, chargeAccount)
             restoreRetrieveState(scope, row)
-            return { success = false, error = commitError or "not_allowed" }
+            return { success = false, error = commitError or 'not_allowed' }
         end
 
         return { success = true, data = { netId = xVehicle:getNetId() } }
@@ -1106,96 +1383,247 @@ xLib.callback.registerCompat("esx_garage:retrieveVehicle", function(source, cb, 
 
     if reservation and (not ok or not result or not result.success) then
         local released, err = pcall(scope.garage.release, source, reservation)
-        if not released then print(('[esx_garage] service reservation cleanup failed: %s'):format(tostring(err))) end
+
+        if not released then
+            print(('[esx_garage] service reservation cleanup failed: %s'):format(tostring(err)))
+        end
     end
+
     endVehicleOperation(key, operationToken)
 
     if not ok then
-        return cb({ success = false, error = "error" })
+        return cb({ success = false, error = 'error' })
     end
 
     cb(result)
+end
+
+xLib.callback.registerCompat('esx_garage:retrieveVehicle', retrieveVehicle)
+
+-- Dealership delivery reuses retrieval, its plate lock and its rollback path.
+-- These temporary contexts never become public garage/marker definitions.
+local deliverySequence = 0
+
+exports('deliverPurchasedVehicle', function(source, plate, entry, spawn)
+    if GetInvokingResource() ~= 'esx_vehicleshop' or not GarageReady or not validPlate(plate) then
+        return false
+    end
+
+    local player = ESX.GetPlayerFromId(source)
+
+    if not player or type(entry) ~= 'table' or type(spawn) ~= 'table' then
+        return false
+    end
+
+    for _, point in ipairs({ entry, spawn }) do
+        if
+            not isFiniteNumber(point.x)
+            or not isFiniteNumber(point.y)
+            or not isFiniteNumber(point.z)
+        then
+            return false
+        end
+    end
+
+    local condition, params = plateCondition(plate)
+    local row = MySQL.single.await(
+        ('SELECT owner, job, type, vehicle FROM owned_vehicles WHERE %s LIMIT 1'):format(condition),
+        params
+    )
+
+    if not row or row.owner ~= player.identifier then
+        return false
+    end
+
+    local category = GarageCategories.resolve(row)
+
+    if not category then
+        return false
+    end
+
+    deliverySequence = deliverySequence + 1
+
+    local id = ('__dealership_%s_%s'):format(source, deliverySequence)
+
+    Garages[id] = {
+        id = id,
+        label = 'Vehicle delivery',
+        transient = true,
+        delivery = true,
+        type = row.job and row.job ~= '' and 'job' or 'public',
+        job = row.job,
+        vehicleCategories = { category },
+        entryPoint = entry,
+        spawns = { spawn },
+        access = {
+            authorize = function(actor)
+                return actor == source and ESX.GetPlayerFromId(actor) == player
+            end,
+        },
+    }
+
+    local result
+    local ok, err = pcall(retrieveVehicle, source, function(value)
+        result = value
+    end, { garageId = id, plate = plate, spawn = spawn })
+    Garages[id] = nil
+
+    if not ok then
+        print('[esx_garage] Dealership delivery failed: ' .. tostring(err))
+        return false
+    end
+
+    return result
+end)
+
+exports('withVehicleOperation', function(plate, action)
+    if GetInvokingResource() ~= 'esx_vehicleshop' or not validPlate(plate) then
+        return nil, 'not_allowed'
+    end
+
+    local key = normPlate(plate)
+    local token = beginVehicleOperation(key)
+
+    if not token then
+        return nil, 'busy'
+    end
+
+    local ok, result = pcall(action)
+
+    endVehicleOperation(key, token)
+
+    if not ok then
+        error(result)
+    end
+
+    return result
 end)
 
 local function waitForVehicleRemoval(entity)
     local deadline = GetGameTimer() + 2000
-    while DoesEntityExist(entity) and GetGameTimer() < deadline do Wait(0) end
+
+    while DoesEntityExist(entity) and GetGameTimer() < deadline do
+        Wait(0)
+    end
+
     return not DoesEntityExist(entity)
 end
 
 local function persistStoredVehicle(scope, row, garageId, encoded)
-    if not CanUseGarageScope(scope) then return false, 'not_allowed' end
-    if not isNearPoint(scope.source, scope.garage.storePoint or scope.garage.entryPoint) then return false, 'too_far' end
+    if not CanUseGarageScope(scope) then
+        return false, 'not_allowed'
+    end
+
+    if not isNearPoint(scope.source, scope.garage.storePoint or scope.garage.entryPoint) then
+        return false, 'too_far'
+    end
+
     local condition, conditions = retrieveStateCondition(scope, row, 0)
     local params = { garageId, encoded, os.time() }
+
     appendParams(params, conditions)
+
     local affected = MySQL.update.await(
-        ('UPDATE `owned_vehicles` SET `stored` = 1, `parking` = ?, `pound` = NULL, `vehicle` = ?, `last_used` = ? WHERE %s'):format(condition), params)
-    if affectedRows(affected) ~= 1 then return false, 'state_changed' end
+        (
+            (
+                'UPDATE `owned_vehicles` SET `stored` = 1, `parking` = ?, `pound` '
+                .. '= NULL, `vehicle` = ?, `last_used` = ? WHERE '
+                .. '%s'
+            )
+        ):format(condition),
+        params
+    )
+
+    if affectedRows(affected) ~= 1 then
+        return false, 'state_changed'
+    end
+
     if not CanUseGarageScope(scope) then
         restoreRetrieveState(scope, row)
         return false, 'not_allowed'
     end
+
     return true
 end
 
-xLib.callback.registerCompat("esx_garage:storeVehicle", function(source, cb, data)
-    if rejectRateLimited(source, cb, "esx_garage:storeVehicle") then
+xLib.callback.registerCompat('esx_garage:storeVehicle', function(source, cb, data)
+    if rejectRateLimited(source, cb, 'esx_garage:storeVehicle') then
         return
     end
 
     if not GarageReady then
-        return cb({ success = false, error = "error" })
+        return cb({ success = false, error = 'error' })
     end
 
     local xPlayer = ESX.GetPlayerFromId(source)
+
     if not xPlayer then
-        return cb({ success = false, error = "player" })
+        return cb({ success = false, error = 'player' })
     end
 
-    if type(data) ~= 'table' then return cb({ success = false, error = 'invalid' }) end
+    if type(data) ~= 'table' then
+        return cb({ success = false, error = 'invalid' })
+    end
 
     local plate = data and data.plate
     local props = data and data.props
-    if not validPlate(plate) or type(props) ~= "table" then
-        return cb({ success = false, error = "invalid" })
+
+    if not validPlate(plate) or type(props) ~= 'table' then
+        return cb({ success = false, error = 'invalid' })
     end
 
     props = cleanPropsValue(props, 0)
-    if type(props) ~= "table" then
-        return cb({ success = false, error = "invalid" })
+
+    if type(props) ~= 'table' then
+        return cb({ success = false, error = 'invalid' })
     end
 
     local garageId = data.garageId
     local scope, scopeError = ResolveGarageScope(source, garageId)
-    if not scope or not scope.garage then return cb({ success = false, error = scopeError or 'no_location' }) end
+
+    if not scope or not scope.garage then
+        return cb({ success = false, error = scopeError or 'no_location' })
+    end
+
     local garage = scope.garage
 
     if not isNearPoint(source, garage.storePoint or garage.entryPoint) then
-        return cb({ success = false, error = "too_far" })
+        return cb({ success = false, error = 'too_far' })
     end
 
     local key = normPlate(plate)
     local operationToken = beginVehicleOperation(key)
+
     if not operationToken then
-        return cb({ success = false, error = "busy" })
+        return cb({ success = false, error = 'busy' })
     end
 
     local ok, result = pcall(function()
         local row = ownedRow(scope, plate)
+
         if not row then
-            return { success = false, error = "not_owned" }
+            return { success = false, error = 'not_owned' }
         end
 
-        if not CanUseGarageScope(scope) then return { success = false, error = 'not_allowed' } end
+        if not CanUseGarageScope(scope) then
+            return { success = false, error = 'not_allowed' }
+        end
 
-        if not GarageCategories.accepts(garage, row) then return { success = false, error = 'wrong_vehicle_category' } end
-        if not GarageCategories.acceptsModel(garage, row, source) then return { success = false, error = 'not_allowed' } end
+        if not GarageCategories.accepts(garage, row) then
+            return { success = false, error = 'wrong_vehicle_category' }
+        end
+
+        if not GarageCategories.acceptsModel(garage, row, source) then
+            return { success = false, error = 'not_allowed' }
+        end
 
         if isStored(row.stored) then
-            return { success = false, error = "already_stored" }
+            return { success = false, error = 'already_stored' }
         end
-        if activePound(row.pound) then return { success = false, error = 'use_impound' } end
+
+        if activePound(row.pound) then
+            return { success = false, error = 'use_impound' }
+        end
 
         props.plate = row.plate
 
@@ -1204,79 +1632,123 @@ xLib.callback.registerCompat("esx_garage:storeVehicle", function(source, cb, dat
         local pedVehicle = (ped and ped > 0) and GetVehiclePedIsIn(ped, false) or 0
 
         local xVehicle = ESX.GetExtendedVehicleFromPlate(row.plate)
+
         if xVehicle then
             local managedOwner = extendedVehicleOwner(xVehicle)
+
             if managedOwner and managedOwner ~= row.owner then
-                return { success = false, error = "plate_conflict" }
+                return { success = false, error = 'plate_conflict' }
             end
 
             local entity = xVehicle:getEntity()
+
             if not (entity and entity > 0 and DoesEntityExist(entity)) then
-                return { success = false, error = "no_vehicle" }
+                return { success = false, error = 'no_vehicle' }
             end
+
             if normPlate(GetVehicleNumberPlateText(entity) or '') ~= key then
                 return { success = false, error = 'plate_mismatch' }
             end
-            if not GarageCategories.acceptsEntity(garage, entity) then return { success = false, error = 'wrong_vehicle_category' } end
 
-            if pedVehicle ~= entity and (not pedCoords or #(pedCoords - GetEntityCoords(entity)) > 6.0) then
-                return { success = false, error = "no_vehicle" }
+            if not GarageCategories.acceptsEntity(garage, entity) then
+                return { success = false, error = 'wrong_vehicle_category' }
+            end
+
+            if
+                pedVehicle ~= entity
+                and (not pedCoords or #(pedCoords - GetEntityCoords(entity)) > 6.0)
+            then
+                return { success = false, error = 'no_vehicle' }
             end
 
             local modelOk, storedModel = validateStoredModel(row, entity)
+
             if not modelOk then
-                return { success = false, error = "model_mismatch" }
+                return { success = false, error = 'model_mismatch' }
             end
 
             props.model = storedModel
 
             local encoded = encodeProps(props)
+
             if not encoded then
-                return { success = false, error = "invalid" }
+                return { success = false, error = 'invalid' }
             end
 
             local saved, saveError = persistStoredVehicle(scope, row, garageId, encoded)
-            if not saved then return { success = false, error = saveError } end
-            local deleted, deleteError = pcall(function() xVehicle:delete(garageId) end)
+
+            if not saved then
+                return { success = false, error = saveError }
+            end
+
+            local deleted, deleteError = pcall(function()
+                xVehicle:delete(garageId)
+            end)
+
             if not waitForVehicleRemoval(entity) then
                 restoreRetrieveState(scope, row)
                 return { success = false, error = 'error' }
             end
-            if not deleted then print(('[esx_garage] stored %s but vehicle cleanup failed: %s'):format(row.plate, tostring(deleteError))) end
+
+            if not deleted then
+                print(
+                    ('[esx_garage] stored %s but vehicle cleanup failed: %s'):format(
+                        row.plate,
+                        tostring(deleteError)
+                    )
+                )
+            end
         else
             local entity = pedVehicle
 
             if not (entity and entity > 0 and DoesEntityExist(entity)) then
                 local netEntity = data.netId and NetworkGetEntityFromNetworkId(data.netId) or 0
-                if netEntity and netEntity > 0 and DoesEntityExist(netEntity)
-                    and pedCoords and #(pedCoords - GetEntityCoords(netEntity)) < 6.0 then
+
+                if
+                    netEntity
+                    and netEntity > 0
+                    and DoesEntityExist(netEntity)
+                    and pedCoords
+                    and #(pedCoords - GetEntityCoords(netEntity)) < 6.0
+                then
                     entity = netEntity
                 else
-                    return { success = false, error = "no_vehicle" }
+                    return { success = false, error = 'no_vehicle' }
                 end
             end
 
-            local entPlate = normPlate(GetVehicleNumberPlateText(entity) or "")
+            local entPlate = normPlate(GetVehicleNumberPlateText(entity) or '')
+
             if entPlate ~= key then
-                return { success = false, error = "plate_mismatch" }
+                return { success = false, error = 'plate_mismatch' }
             end
-            if not GarageCategories.acceptsEntity(garage, entity) then return { success = false, error = 'wrong_vehicle_category' } end
+
+            if not GarageCategories.acceptsEntity(garage, entity) then
+                return { success = false, error = 'wrong_vehicle_category' }
+            end
 
             local modelOk, storedModel = validateStoredModel(row, entity)
+
             if not modelOk then
-                return { success = false, error = "model_mismatch" }
+                return { success = false, error = 'model_mismatch' }
             end
 
             props.model = storedModel
 
             local encoded = encodeProps(props)
+
             if not encoded then
-                return { success = false, error = "invalid" }
+                return { success = false, error = 'invalid' }
             end
 
             local saved, saveError = persistStoredVehicle(scope, row, garageId, encoded)
-            if not saved then return { success = false, error = saveError } end
+
+            if not saved then
+                return { success = false, error = saveError }
+            end
+
             local deleted = pcall(DeleteEntity, entity)
+
             if not deleted or not waitForVehicleRemoval(entity) then
                 restoreRetrieveState(scope, row)
                 return { success = false, error = 'error' }
@@ -1285,15 +1757,21 @@ xLib.callback.registerCompat("esx_garage:storeVehicle", function(source, cb, dat
 
         if garage.onStored then
             local released, err = pcall(garage.onStored, source)
-            if not released then print(('[esx_garage] stored vehicle service cleanup failed: %s'):format(tostring(err))) end
+
+            if not released then
+                print(
+                    ('[esx_garage] stored vehicle service cleanup failed: %s'):format(tostring(err))
+                )
+            end
         end
+
         return { success = true, data = true }
     end)
 
     endVehicleOperation(key, operationToken)
 
     if not ok then
-        return cb({ success = false, error = "error" })
+        return cb({ success = false, error = 'error' })
     end
 
     cb(result)
@@ -1302,41 +1780,63 @@ end)
 local function updateMetadata(scope, row, column, value)
     local condition, params = rowOwnershipCondition(row)
     local values = { value }
+
     appendParams(values, params)
-    local affected = affectedRows(MySQL.update.await(
-        ('UPDATE `owned_vehicles` SET `%s` = ? WHERE %s'):format(column, condition), values))
-    if not CanUseGarageScope(scope) then return false end
-    if affected == 1 then return true end
+
+    local affected = affectedRows(
+        MySQL.update.await(
+            ('UPDATE `owned_vehicles` SET `%s` = ? WHERE %s'):format(column, condition),
+            values
+        )
+    )
+
+    if not CanUseGarageScope(scope) then
+        return false
+    end
+
+    if affected == 1 then
+        return true
+    end
     -- MySQL can report zero changed rows when a name/favorite is already equal.
     local current = ownedRow(scope, row.plate)
+
     return current ~= nil and current[column] == value and CanUseGarageScope(scope)
 end
 
-xLib.callback.registerCompat("esx_garage:toggleFavorite", function(source, cb, data)
-    if rejectRateLimited(source, cb, "esx_garage:toggleFavorite") then
+xLib.callback.registerCompat('esx_garage:toggleFavorite', function(source, cb, data)
+    if rejectRateLimited(source, cb, 'esx_garage:toggleFavorite') then
         return
     end
 
     if not GarageReady then
-        return cb({ success = false, error = "error" })
+        return cb({ success = false, error = 'error' })
     end
 
     local xPlayer = ESX.GetPlayerFromId(source)
+
     if not xPlayer then
         return cb({ success = false })
     end
 
-    if type(data) ~= 'table' then return cb({ success = false, error = 'invalid' }) end
+    if type(data) ~= 'table' then
+        return cb({ success = false, error = 'invalid' })
+    end
+
     local scope, scopeError = actionScope(source, xPlayer, data)
-    if not scope then return cb({ success = false, error = scopeError }) end
+
+    if not scope then
+        return cb({ success = false, error = scopeError })
+    end
 
     local plate = data and data.plate
-    if not validPlate(plate) or type(data.isFavorite) ~= "boolean" then
-        return cb({ success = false, error = "invalid" })
+
+    if not validPlate(plate) or type(data.isFavorite) ~= 'boolean' then
+        return cb({ success = false, error = 'invalid' })
     end
 
     local ok, updated = pcall(function()
         local row = ownedRow(scope, plate)
+
         if not row or not CanUseGarageScope(scope) then
             return false
         end
@@ -1345,42 +1845,51 @@ xLib.callback.registerCompat("esx_garage:toggleFavorite", function(source, cb, d
     end)
 
     if not ok then
-        return cb({ success = false, error = "error" })
+        return cb({ success = false, error = 'error' })
     end
 
     if not updated then
-        return cb({ success = false, error = "not_owned" })
+        return cb({ success = false, error = 'not_owned' })
     end
 
     cb({ success = true, data = data.isFavorite })
 end)
 
-xLib.callback.registerCompat("esx_garage:renameVehicle", function(source, cb, data)
-    if rejectRateLimited(source, cb, "esx_garage:renameVehicle") then
+xLib.callback.registerCompat('esx_garage:renameVehicle', function(source, cb, data)
+    if rejectRateLimited(source, cb, 'esx_garage:renameVehicle') then
         return
     end
 
     if not GarageReady then
-        return cb({ success = false, error = "error" })
+        return cb({ success = false, error = 'error' })
     end
 
     local xPlayer = ESX.GetPlayerFromId(source)
+
     if not xPlayer then
         return cb({ success = false })
     end
 
-    if type(data) ~= 'table' then return cb({ success = false, error = 'invalid' }) end
+    if type(data) ~= 'table' then
+        return cb({ success = false, error = 'invalid' })
+    end
+
     local scope, scopeError = actionScope(source, xPlayer, data)
-    if not scope then return cb({ success = false, error = scopeError }) end
+
+    if not scope then
+        return cb({ success = false, error = scopeError })
+    end
 
     local plate = data and data.plate
     local name = data and data.name
-    if not validPlate(plate) or type(name) ~= "string" or #name < 1 or #name > 50 then
-        return cb({ success = false, error = "invalid" })
+
+    if not validPlate(plate) or type(name) ~= 'string' or #name < 1 or #name > 50 then
+        return cb({ success = false, error = 'invalid' })
     end
 
     local ok, updated = pcall(function()
         local row = ownedRow(scope, plate)
+
         if not row or not CanUseGarageScope(scope) then
             return false
         end
@@ -1389,91 +1898,135 @@ xLib.callback.registerCompat("esx_garage:renameVehicle", function(source, cb, da
     end)
 
     if not ok then
-        return cb({ success = false, error = "error" })
+        return cb({ success = false, error = 'error' })
     end
 
     if not updated then
-        return cb({ success = false, error = "not_owned" })
+        return cb({ success = false, error = 'not_owned' })
     end
 
     cb({ success = true, data = name })
 end)
 
-xLib.callback.registerCompat("esx_garage:transferVehicle", function(source, cb, data)
-    if rejectRateLimited(source, cb, "esx_garage:transferVehicle") then
+xLib.callback.registerCompat('esx_garage:transferVehicle', function(source, cb, data)
+    if rejectRateLimited(source, cb, 'esx_garage:transferVehicle') then
         return
     end
 
     if not GarageReady then
-        return cb({ success = false, error = "error" })
+        return cb({ success = false, error = 'error' })
     end
 
     local xPlayer = ESX.GetPlayerFromId(source)
+
     if not xPlayer then
         return cb({ success = false })
     end
 
-    if type(data) ~= 'table' then return cb({ success = false, error = 'invalid' }) end
+    if type(data) ~= 'table' then
+        return cb({ success = false, error = 'invalid' })
+    end
+
     local scope, scopeError = actionScope(source, xPlayer, data)
-    if not scope or scope.kind ~= 'personal' then return cb({ success = false, error = scopeError or 'not_allowed' }) end
+
+    if not scope or scope.kind ~= 'personal' then
+        return cb({ success = false, error = scopeError or 'not_allowed' })
+    end
 
     local plate = data and data.plate
     local targetId = tonumber(data and data.targetId)
+
     if not validPlate(plate) or not targetId then
-        return cb({ success = false, error = "invalid" })
+        return cb({ success = false, error = 'invalid' })
     end
 
     local target = ESX.GetPlayerFromId(targetId)
+
     if not target then
-        return cb({ success = false, error = "target_offline" })
+        return cb({ success = false, error = 'target_offline' })
     end
 
     if target.identifier == xPlayer.identifier then
-        return cb({ success = false, error = "self" })
+        return cb({ success = false, error = 'self' })
     end
 
     local xPlayerPed = GetPlayerPed(source)
     local targetPed = GetPlayerPed(targetId)
 
-    if xPlayerPed <= 0 or targetPed <= 0 or not DoesEntityExist(xPlayerPed) or not DoesEntityExist(targetPed) then
-        return cb({ success = false, error = "player_ped" })
+    if
+        xPlayerPed <= 0
+        or targetPed <= 0
+        or not DoesEntityExist(xPlayerPed)
+        or not DoesEntityExist(targetPed)
+    then
+        return cb({ success = false, error = 'player_ped' })
     end
 
     local dist = #(GetEntityCoords(xPlayerPed) - GetEntityCoords(targetPed))
+
     if dist > 10.0 then
-        return cb({ success = false, error = "too_far" })
+        return cb({ success = false, error = 'too_far' })
     end
 
     local key = normPlate(plate)
     local operationToken = beginVehicleOperation(key)
+
     if not operationToken then
-        return cb({ success = false, error = "busy" })
+        return cb({ success = false, error = 'busy' })
     end
 
     local ok, result = pcall(function()
         local row = ownedRow(scope, plate)
+
         if not row then
-            return { success = false, error = "not_owned" }
+            return { success = false, error = 'not_owned' }
         end
 
-        if not CanUseGarageScope(scope) then return { success = false, error = 'not_allowed' } end
+        if not CanUseGarageScope(scope) then
+            return { success = false, error = 'not_allowed' }
+        end
 
         if not isStored(row.stored) then
-            return { success = false, error = "not_stored" }
+            return { success = false, error = 'not_stored' }
+        end
+
+        if isRental(row.plate) then
+            return { success = false, error = 'not_allowed' }
         end
 
         local condition, conditions = rowOwnershipCondition(row)
         local params = { target.identifier }
+
         appendParams(params, conditions)
-        local affected = MySQL.update.await(('UPDATE `owned_vehicles` SET `owner` = ? WHERE %s AND `stored` = 1'):format(condition), params)
+
+        local rentalGuard = hasRentalTable()
+                and (
+                    ' AND NOT EXISTS (SELECT 1 FROM rented_vehicles r WHERE '
+                    .. 'r.plate = owned_vehicles.plate)'
+                )
+            or ''
+        local affected = MySQL.update.await(
+            ('UPDATE `owned_vehicles` SET `owner` = ? WHERE %s AND `stored` = 1%s'):format(
+                condition,
+                rentalGuard
+            ),
+            params
+        )
 
         if (affected or 0) < 1 then
             return { success = false }
         end
 
-        target.showNotification(TranslateCap("received_vehicle", row.plate))
+        target.showNotification(TranslateCap('received_vehicle', row.plate))
 
-        TriggerEvent("esx_garage:vehicleTransferred", source, targetId, row.plate, xPlayer.identifier, target.identifier)
+        TriggerEvent(
+            'esx_garage:vehicleTransferred',
+            source,
+            targetId,
+            row.plate,
+            xPlayer.identifier,
+            target.identifier
+        )
 
         return { success = true }
     end)
@@ -1481,57 +2034,74 @@ xLib.callback.registerCompat("esx_garage:transferVehicle", function(source, cb, 
     endVehicleOperation(key, operationToken)
 
     if not ok then
-        return cb({ success = false, error = "error" })
+        return cb({ success = false, error = 'error' })
     end
 
     cb(result)
 end)
 
-xLib.callback.registerCompat("esx_garage:giveKeys", function(source, cb, data)
-    if rejectRateLimited(source, cb, "esx_garage:giveKeys") then
+xLib.callback.registerCompat('esx_garage:giveKeys', function(source, cb, data)
+    if rejectRateLimited(source, cb, 'esx_garage:giveKeys') then
         return
     end
 
     if not Config.Settings.vehicleKeys then
-        return cb({ success = false, error = "disabled" })
+        return cb({ success = false, error = 'disabled' })
     end
 
     if not GarageReady then
-        return cb({ success = false, error = "error" })
+        return cb({ success = false, error = 'error' })
     end
 
     local xPlayer = ESX.GetPlayerFromId(source)
+
     if not xPlayer then
         return cb({ success = false })
     end
 
-    if type(data) ~= 'table' then return cb({ success = false, error = 'invalid' }) end
+    if type(data) ~= 'table' then
+        return cb({ success = false, error = 'invalid' })
+    end
+
     local scope, scopeError = actionScope(source, xPlayer, data)
-    if not scope or scope.kind ~= 'personal' then return cb({ success = false, error = scopeError or 'not_allowed' }) end
+
+    if not scope or scope.kind ~= 'personal' then
+        return cb({ success = false, error = scopeError or 'not_allowed' })
+    end
 
     local plate = data and data.plate
+
     if not validPlate(plate) then
-        return cb({ success = false, error = "invalid" })
+        return cb({ success = false, error = 'invalid' })
     end
 
     local ok, row = pcall(ownedRow, scope, plate)
+
     if not ok then
-        return cb({ success = false, error = "error" })
+        return cb({ success = false, error = 'error' })
     end
 
     if not row or not CanUseGarageScope(scope) then
-        return cb({ success = false, error = "not_owned" })
+        return cb({ success = false, error = 'not_owned' })
     end
 
-    TriggerEvent("esx_garage:giveKeys", source, row.plate)
+    if isRental(row.plate) then
+        return cb({ success = false, error = 'not_allowed' })
+    end
+
+    TriggerEvent('esx_garage:giveKeys', source, row.plate)
 
     cb({ success = true })
 end)
 
 ---@return string?
 local function defaultImpoundLot(row, preferred)
-    if row then return GarageCategories.impound(row, preferred) end
+    if row then
+        return GarageCategories.impound(row, preferred)
+    end
+
     local fallback = Config.Impounds and Config.Impounds[1]
+
     return fallback and fallback.id or nil
 end
 
@@ -1544,12 +2114,24 @@ local function impoundVehicle(plate, lot, knownRow)
     end
 
     local condition, plateParams = plateCondition(plate)
-    local row = knownRow or MySQL.single.await(('SELECT `type`, `vehicle` FROM `owned_vehicles` WHERE %s LIMIT 1'):format(condition), plateParams)
-    if not row then return false end
+    local row = knownRow
+        or MySQL.single.await(
+            ('SELECT `type`, `vehicle` FROM `owned_vehicles` WHERE %s LIMIT 1'):format(condition),
+            plateParams
+        )
+
+    if not row then
+        return false
+    end
+
     local lotId = defaultImpoundLot(row, lot)
 
     if not lotId then
-        print(("[esx_garage] impoundVehicle: no compatible impound for %s, row preserved"):format(plate))
+        print(
+            ('[esx_garage] impoundVehicle: no compatible impound for %s, row preserved'):format(
+                plate
+            )
+        )
         return false
     end
 
@@ -1560,21 +2142,33 @@ local function impoundVehicle(plate, lot, knownRow)
     else
         local condition, plateParams = plateCondition(plate)
         local params = { lotId }
+
         appendParams(params, plateParams)
 
         MySQL.update.await(
-            ("UPDATE `owned_vehicles` SET `stored` = 1, `pound` = ?, `parking` = NULL WHERE %s"):format(condition),
-            params)
+            (
+                (
+                    'UPDATE `owned_vehicles` SET `stored` = 1, `pound` = ?, '
+                    .. '`parking` = NULL WHERE '
+                    .. '%s'
+                )
+            ):format(condition),
+            params
+        )
     end
 
     local condition, plateParams = plateCondition(plate)
     local params = {}
+
     appendParams(params, plateParams)
     params[#params + 1] = lotId
 
     local settled = MySQL.scalar.await(
-        ("SELECT COUNT(*) FROM `owned_vehicles` WHERE %s AND `stored` = 1 AND `pound` = ?"):format(condition),
-        params) or 0
+        ('SELECT COUNT(*) FROM `owned_vehicles` WHERE %s AND `stored` = 1 AND `pound` = ?'):format(
+            condition
+        ),
+        params
+    ) or 0
 
     if settled < 1 then
         return false
@@ -1590,61 +2184,106 @@ local deletedVehicleWorkerPending = false
 local function processDeletedVehicle(record)
     local plate, model = record.plate, record.model
     local key = normPlate(plate)
-    
+
     local condition, plateParams = plateCondition(plate)
-    local ok, row = pcall(MySQL.single.await,
-        ("SELECT `stored`, `pound`, `vehicle`, `type` FROM `owned_vehicles` WHERE %s AND `stored` = 0 AND `pound` IS NULL LIMIT 1")
-        :format(condition),
-        plateParams)
+    local ok, row = pcall(
+        MySQL.single.await,
+        (
+            (
+                'SELECT `stored`, `pound`, `vehicle`, `type` FROM `owned_vehicles` '
+                .. 'WHERE %s AND `stored` = 0 AND `pound` IS NULL LIMIT '
+                .. '1'
+            )
+        ):format(condition),
+        plateParams
+    )
 
     if not ok or not row then
         return
     end
+
     local lotId = defaultImpoundLot(row)
-    if not lotId then return end
+
+    if not lotId then
+        return
+    end
 
     local storedModel = storedVehicleModel(row)
-    if type(model) == "number" and model ~= 0 and storedModel and not sameVehicleModel(storedModel, model) then
+
+    if
+        type(model) == 'number'
+        and model ~= 0
+        and storedModel
+        and not sameVehicleModel(storedModel, model)
+    then
         return
     end
 
     local impounded, err = pcall(impoundVehicle, plate, lotId, row)
+
     if not impounded then
-        print(("[esx_garage] failed to impound deleted vehicle %s: %s"):format(key, tostring(err)))
+        print(('[esx_garage] failed to impound deleted vehicle %s: %s'):format(key, tostring(err)))
     end
 end
 
 local scheduleDeletedVehicleWorker
+
 scheduleDeletedVehicleWorker = function()
-    if deletedVehicleWorkerPending then return end
+    if deletedVehicleWorkerPending then
+        return
+    end
+
     deletedVehicleWorkerPending = true
     SetTimeout(1500, function()
         local processed = 0
         -- One worker prevents simultaneous disappearances from flooding oxmysql.
         for key, record in pairs(deletedVehicleImpounds) do
             local ok, err = pcall(processDeletedVehicle, record)
+
             deletedVehicleImpounds[key] = nil
+
             if not ok then
-                print(('[esx_garage] deleted vehicle recovery failed for %s: %s'):format(key, tostring(err)))
+                print(
+                    ('[esx_garage] deleted vehicle recovery failed for %s: %s'):format(
+                        key,
+                        tostring(err)
+                    )
+                )
             end
+
             processed = processed + 1
-            if processed >= 32 then break end
+
+            if processed >= 32 then
+                break
+            end
         end
+
         deletedVehicleWorkerPending = false
-        if next(deletedVehicleImpounds) then scheduleDeletedVehicleWorker() end
+
+        if next(deletedVehicleImpounds) then
+            scheduleDeletedVehicleWorker()
+        end
     end)
 end
 
 local function queueDeletedVehicleImpound(plate, model)
-    if not GarageReady or not validPlate(plate) then return end
+    if not GarageReady or not validPlate(plate) then
+        return
+    end
+
     local key = normPlate(plate)
-    if deletedVehicleImpounds[key] then return end
+
+    if deletedVehicleImpounds[key] then
+        return
+    end
+
     deletedVehicleImpounds[key] = { plate = plate, model = model }
     scheduleDeletedVehicleWorker()
 end
 
 AddEventHandler('esx:createdExtendedVehicle', function(vehicle)
     local entity = vehicle:getEntity()
+
     if entity and entity > 0 then
         trackedVehicleEntities[entity] = { plate = vehicle.plate, model = vehicle:getModelHash() }
     end
@@ -1652,40 +2291,51 @@ end)
 
 AddEventHandler('esx:changedExtendedVehiclePlate', function(plate, previousPlate)
     for _, record in pairs(trackedVehicleEntities) do
-        if record.plate == previousPlate then record.plate = plate end
+        if record.plate == previousPlate then
+            record.plate = plate
+        end
     end
 end)
 
-AddEventHandler("entityRemoved", function(entity)
+AddEventHandler('entityRemoved', function(entity)
     local tracked = trackedVehicleEntities[entity]
+
     trackedVehicleEntities[entity] = nil
+
     if tracked then
         queueDeletedVehicleImpound(tracked.plate, tracked.model)
         return
     end
 
     local typeOk, entityType = pcall(GetEntityType, entity)
+
     if not typeOk or entityType ~= 2 then
         return
     end
 
     -- Ambient traffic is not owned; only scripted vehicles need a SQL fallback.
     local populationOk, populationType = pcall(GetEntityPopulationType, entity)
-    if populationOk and populationType ~= 7 then return end
+
+    if populationOk and populationType ~= 7 then
+        return
+    end
 
     local plateOk, plate = pcall(GetVehicleNumberPlateText, entity)
+
     if not plateOk then
         return
     end
 
     local modelOk, model = pcall(GetEntityModel, entity)
+
     queueDeletedVehicleImpound(plate, modelOk and model or nil)
 end)
 
 local function impoundOutVehiclesOnStop()
     local lotId = defaultImpoundLot()
+
     if not lotId then
-        print("[esx_garage] impoundOutVehiclesOnStop: no impound configured, aborting")
+        print('[esx_garage] impoundOutVehiclesOnStop: no impound configured, aborting')
         return
     end
 
@@ -1694,12 +2344,16 @@ local function impoundOutVehiclesOnStop()
 
     for i = 1, #vehicles do
         local plate = GetVehicleNumberPlateText(vehicles[i])
-        if type(plate) == "string" then
+
+        if type(plate) == 'string' then
             local key = normPlate(plate)
-            if key ~= "" and not seen[key] then
+
+            if key ~= '' and not seen[key] then
                 seen[key] = true
 
-                local xVehicle = ESX.GetExtendedVehicleFromPlate(plate) or ESX.GetExtendedVehicleFromPlate(key)
+                local xVehicle = ESX.GetExtendedVehicleFromPlate(plate)
+                    or ESX.GetExtendedVehicleFromPlate(key)
+
                 if xVehicle then
                     local deleted, deleteErr = pcall(function()
                         assert(impoundVehicle(plate), 'No compatible impound')
@@ -1708,8 +2362,15 @@ local function impoundOutVehiclesOnStop()
                     if deleted then
                         liveImpounded = liveImpounded + 1
                     else
-                        print(("[esx_garage] impoundOutVehiclesOnStop: failed to impound live vehicle %s: %s")
-                            :format(key, tostring(deleteErr)))
+                        print(
+                            (
+                                (
+                                    '[esx_garage] impoundOutVehiclesOnStop: failed '
+                                    .. 'to impound live vehicle %s: '
+                                    .. '%s'
+                                )
+                            ):format(key, tostring(deleteErr))
+                        )
                     end
                 end
             end
@@ -1718,30 +2379,57 @@ local function impoundOutVehiclesOnStop()
 
     local ok, affected = pcall(function()
         local total = 0
+
         for _, lot in ipairs(Config.Impounds or {}) do
             local condition, params = GarageCategories.condition(lot)
+
             table.insert(params, 1, lot.id)
-            total = total + (MySQL.update.await(
-                ('UPDATE `owned_vehicles` SET `stored` = 1, `pound` = ?, `parking` = NULL WHERE `stored` = 0 AND %s'):format(condition), params) or 0)
+            total = total
+                + (
+                    MySQL.update.await(
+                        (
+                            (
+                                'UPDATE `owned_vehicles` SET `stored` = 1, `pound` '
+                                .. '= ?, `parking` = NULL WHERE `stored` = 0 AND '
+                                .. '%s'
+                            )
+                        ):format(condition),
+                        params
+                    ) or 0
+                )
         end
+
         return total
     end)
 
     if not ok then
-        print(("[esx_garage] impoundOutVehiclesOnStop: failed to impound out vehicles: %s"):format(tostring(affected)))
+        print(
+            ('[esx_garage] impoundOutVehiclesOnStop: failed to impound out vehicles: %s'):format(
+                tostring(affected)
+            )
+        )
         return
     end
 
     if liveImpounded > 0 or (affected or 0) > 0 then
-        print(("[esx_garage] impoundOutVehiclesOnStop: impounded %d live vehicle(s) and %d database row(s) at compatible lots")
-            :format(liveImpounded, affected or 0))
+        print(
+            (
+                (
+                    '[esx_garage] impoundOutVehiclesOnStop: impounded %d live '
+                    .. 'vehicle(s) and %d database row(s) at compatible '
+                    .. 'lots'
+                )
+            ):format(liveImpounded, affected or 0)
+        )
     end
 end
 
-AddEventHandler("onResourceStop", function(resource)
+AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() then
         impoundOutVehiclesOnStop()
     end
 end)
 
-exports("impoundVehicle", function(plate, lot) return impoundVehicle(plate, lot) end)
+exports('impoundVehicle', function(plate, lot)
+    return impoundVehicle(plate, lot)
+end)

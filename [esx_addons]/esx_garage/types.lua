@@ -1,8 +1,24 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
----@alias GarageType 'public' | 'private' | 'job' | 'gang' | 'house' | 'boat' | 'aircraft' | 'impound'
----@alias vehicle_type 'car' | 'motorcycle' | 'boat' | 'aircraft' | 'bicycle' | 'truck' | 'emergency'
+---@alias GarageType
+---| 'public'
+---| 'private'
+---| 'job'
+---| 'gang'
+---| 'house'
+---| 'boat'
+---| 'aircraft'
+---| 'impound'
+
+---@alias vehicle_type
+---| 'car'
+---| 'motorcycle'
+---| 'boat'
+---| 'aircraft'
+---| 'bicycle'
+---| 'truck'
+---| 'emergency'
 ---@alias GarageVehicleCategory 'ground' | 'boat' | 'helicopter' | 'plane' | 'train'
 
 ---@class GarageBlip
@@ -18,7 +34,8 @@
 
 ---@class GarageAccess
 ---@field jobs? table<string, integer> Job name mapped to the minimum grade allowed.
----@field authorize? fun(source: integer, garage: Garage): boolean Custom server-side check, e.g. VIP or gang.
+---@field authorize? fun(source: integer, garage: Garage): boolean
+---Custom server-side check, e.g. VIP or gang.
 
 ---@class Garage
 ---@field id string
@@ -33,7 +50,8 @@
 ---@field job? string Required for type='job', or use access.jobs. Matches owned_vehicles.job.
 ---@field minGrade? integer Minimum current job grade (default 0).
 ---@field shared? boolean Job fleet shared across employees (default true); false also requires owner.
----@field vehicleCategories? GarageVehicleCategory[] Defaults to ground; independent of public/job ownership.
+---@field vehicleCategories? GarageVehicleCategory[]
+---Defaults to ground; independent of public/job ownership.
 ---@field models? string[] | fun(source:integer):string[] Optional server-side model allowlist.
 ---@field exitPoint? vector4 Safe place for the driver after storing a boat.
 ---@field reserve? fun(source:integer):table|false Server-side service reservation before spawn.
@@ -79,6 +97,7 @@
 ---@field mileage number
 
 ---@class GarageVehicle
+---@field rental? boolean Rental lease; ownership transfer and personal keys are disabled.
 ---@field job? string Job association; job vehicles cannot transfer ownership or grant personal keys.
 ---@field id string
 ---@field plate string

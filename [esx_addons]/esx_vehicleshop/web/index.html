@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Dealership</title>
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <main id="shop" hidden>
+            <header>
+                <div>
+                    <img id="logo" alt="" hidden /><span id="brand">ESX MOTORS</span>
+                    <h1 id="title"></h1>
+                </div>
+                <button id="close" aria-label="Close">×</button>
+            </header>
+            <nav id="tabs"></nav>
+            <div id="notice" role="status" aria-live="polite" hidden></div>
+            <section id="content"></section>
+            <footer><span id="help"></span><button id="refresh"></button></footer>
+        </main>
+        <dialog id="checkout">
+            <form method="dialog">
+                <h2 id="confirmTitle"></h2>
+                <p id="summary"></p>
+                <label id="methodLabel" for="method"></label
+                ><select id="method"></select>
+                <p id="checkoutError" role="alert"></p>
+                <div class="actions">
+                    <button id="cancel" value="cancel"></button
+                    ><button id="confirm" type="button" class="primary"></button
+                    ><button id="checkStatus" type="button" hidden></button>
+                </div>
+            </form>
+        </dialog>
+        <iframe id="timed-rentals" src="rentals/index.html" title="Vehicle rentals"></iframe>
+        <script src="app.js"></script>
+        <script src="rentals/bridge.js"></script>
+    </body>
+</html>
