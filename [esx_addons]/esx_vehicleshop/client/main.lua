@@ -177,6 +177,15 @@ xLib.addKeybind({
 })
 
 CreateThread(function()
+    local interiorID = 7170
+
+    RequestIpl('shr_int')
+    PinInteriorInMemory(interiorID)
+    ActivateInteriorEntitySet(interiorID, 'csr_beforeMission')
+    RefreshInterior(interiorID)
+end)
+
+CreateThread(function()
     while not ESX.IsPlayerLoaded() do
         Wait(100)
     end

@@ -92,7 +92,7 @@ function CanAccessGarage(source, garage)
     local access = garage.access
     local xPlayer = ESX.GetPlayerFromId(source)
 
-    if not xPlayer then
+    if not xPlayer or not xPlayer.isCurrent or xPlayer.isCurrent() ~= true then
         return false
     end
 
@@ -137,11 +137,12 @@ function CanAccessGarage(source, garage)
 
         if access and access.authorize then
             local ok, result = pcall(access.authorize, source, garage)
-            local currentJob = xPlayer.job
+            local current = ESX.GetPlayerFromId(source)
+            local currentJob = current and current.job
 
             return ok
                 and result == true
-                and ESX.GetPlayerFromId(source) == xPlayer
+                and xPlayer.isCurrent() == true
                 and currentJob
                 and currentJob.name == name
                 and tonumber(currentJob.grade)
@@ -176,7 +177,7 @@ function CanAccessGarage(source, garage)
             return false
         end
 
-        return result == true and ESX.GetPlayerFromId(source) == xPlayer
+        return result == true and xPlayer.isCurrent() == true
     end
 
     return false
@@ -239,7 +240,7 @@ end
 
 ---Recheck the session and permissions after yielding database/spawn operations.
 function CanUseGarageScope(scope)
-    if ESX.GetPlayerFromId(scope.source) ~= scope.player then
+    if not scope.player or not scope.player.isCurrent or scope.player.isCurrent() ~= true then
         return false
     end
 

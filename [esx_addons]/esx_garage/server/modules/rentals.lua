@@ -37,7 +37,7 @@ local function remove(record)
 
         if DoesEntityExist(entity) then
             record.retiring = true
-            return false
+            return true, 'pending'
         end
     end
 
@@ -151,7 +151,7 @@ exports('publishRentalVehicle', function(identifier, plate, expires)
     local record = vehicles[plate]
     local entity = live(record)
 
-    if not allowed() or not entity or record.identifier ~= identifier then
+    if not allowed() or not entity or record.identifier ~= identifier or record.retiring then
         return false
     end
 

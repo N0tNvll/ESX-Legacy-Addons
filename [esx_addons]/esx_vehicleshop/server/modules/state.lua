@@ -47,7 +47,23 @@ function D.modelHash(value)
 end
 
 function D.current(player)
-    return player and ESX.GetPlayerFromId(player.source) == player and player.isCurrent() == true
+    if not player or not player.isCurrent or player.isCurrent() ~= true then
+        return false
+    end
+
+    local current = ESX.GetPlayerFromId(player.source)
+
+    if
+        not current
+        or not current.isCurrent
+        or current.isCurrent() ~= true
+        or current.getIdentifier() ~= player.getIdentifier()
+    then
+        return false
+    end
+
+    player.job = current.job
+    return true
 end
 
 function D.contains(values, value)
