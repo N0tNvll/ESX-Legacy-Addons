@@ -14,36 +14,36 @@ Config.DeathAnim = {
     fadeIn = 10.0,
     fadeOut = 10.0,
     flags = 1 | 2 | 8,
-    playbackRate = 1.0
+    playbackRate = 1.0,
 }
 
 Config.zoom = {
     min = 1,
     max = 6,
-    step = 0.5
+    step = 0.5,
 }
 
 Config.MedalClip = true
 
-Config.EarlyRespawnTimer          = 60000 * 1  -- time til respawn is available
-Config.BleedoutTimer              = 60000 * 10 -- time til the player bleeds out
+Config.EarlyRespawnTimer = 60000 * 1 -- time til respawn is available
+Config.BleedoutTimer = 60000 * 10 -- time til the player bleeds out
 
-Config.RemoveWeaponsAfterRPDeath  = true
-Config.RemoveCashAfterRPDeath     = true
-Config.RemoveItemsAfterRPDeath    = true
+Config.RemoveWeaponsAfterRPDeath = true
+Config.RemoveCashAfterRPDeath = true
+Config.RemoveItemsAfterRPDeath = true
 
 -- Let the player pay for respawning early, only if he can afford it.
-Config.EarlyRespawnFine           = false
-Config.EarlyRespawnFineAmount     = 5000
+Config.EarlyRespawnFine = false
+Config.EarlyRespawnFineAmount = 5000
 
-Config.OxInventory                = ESX.GetConfig('CustomInventory') == 'ox' or GetResourceState('ox_inventory') == 'started'
+Config.OxInventory = ESX.GetConfig('CustomInventory') == 'ox' or GetResourceState('ox_inventory') == 'started'
 
 Config.RespawnPoints = {
-    { coords = vector3(341.0, -1397.3, 32.5), heading = 48.5 },    -- Central Los Santos
-    { coords = vector3(1836.03, 3670.99, 34.28), heading = 296.06 } -- Sandy Shores
+    { coords = vector3(341.0, -1397.3, 32.5), heading = 48.5 }, -- Central Los Santos
+    { coords = vector3(1836.03, 3670.99, 34.28), heading = 296.06 }, -- Sandy Shores
 }
 
-Config.HoldDuration = 1500          -- milliseconds; independent of frame rate
+Config.HoldDuration = 1500 -- milliseconds; independent of frame rate
 Config.DistressCooldown = 60000
 
 -- Show the death reason on the death screen below the action buttons.
@@ -52,4 +52,4 @@ Config.DistressCooldown = 60000
 Config.ShowDeathReason = true
 Config.ShowKillerName = false
 Config.CameraEnabled = false
-Config.AutoMigrate = true           -- adds missing users.is_dead / users.death_time columns
+Config.AutoMigrate = true -- adds missing users.is_dead / users.death_time columns

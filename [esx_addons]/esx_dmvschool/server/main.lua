@@ -18,8 +18,7 @@ for answer in questions:gmatch('reponse%s*:%s*["\']([ABCD])["\']') do
 end
 
 local function isValidTestType(testType)
-    return type(testType) == 'string' and Config.Prices[testType] ~= nil
-        and (testType == 'dmv' or Config.VehicleModels[testType] ~= nil)
+    return type(testType) == 'string' and Config.Prices[testType] ~= nil and (testType == 'dmv' or Config.VehicleModels[testType] ~= nil)
 end
 
 local function isCurrentPlayer(source, player)
@@ -47,8 +46,7 @@ local function getTest(source, testType)
         return nil
     end
 
-    if not isCurrentPlayer(source, test.player)
-        or GetPlayerRoutingBucket(source) ~= test.bucket then
+    if not isCurrentPlayer(source, test.player) or GetPlayerRoutingBucket(source) ~= test.bucket then
         return nil
     end
 
@@ -98,8 +96,7 @@ xLib.callback.registerCompat('esx_dmvschool:canYouPay', function(source, cb, tes
     local identifier = player.getIdentifier()
     local previous = paidTests[source]
 
-    if purchases[identifier] or (previous and previous.player.isCurrent() == true
-        and (previous.granting or previous.expires >= GetGameTimer())) then
+    if purchases[identifier] or (previous and previous.player.isCurrent() == true and (previous.granting or previous.expires >= GetGameTimer())) then
         return cb(false, 'busy')
     end
 
@@ -109,6 +106,7 @@ xLib.callback.registerCompat('esx_dmvschool:canYouPay', function(source, cb, tes
 
     local pending = {}
     local finished = false
+
     purchases[identifier] = pending
 
     local function finish(success, failure, exam)
@@ -140,9 +138,7 @@ xLib.callback.registerCompat('esx_dmvschool:canYouPay', function(source, cb, tes
                 return finish(false)
             end
 
-            local charged, failure = PaymentGateway.Charge(
-                player, account, Config.Prices[testType], 'DMV Purchase'
-            )
+            local charged, failure = PaymentGateway.Charge(player, account, Config.Prices[testType], 'DMV Purchase')
 
             if not charged then
                 return finish(false, failure)
@@ -156,6 +152,7 @@ xLib.callback.registerCompat('esx_dmvschool:canYouPay', function(source, cb, tes
 
             for index = #order, 2, -1 do
                 local swap = math.random(index)
+
                 order[index], order[swap] = order[swap], order[index]
             end
 
@@ -164,6 +161,7 @@ xLib.callback.registerCompat('esx_dmvschool:canYouPay', function(source, cb, tes
             end
 
             local now = GetGameTimer()
+
             paidTests[source] = {
                 player = player,
                 type = testType,
@@ -175,8 +173,7 @@ xLib.callback.registerCompat('esx_dmvschool:canYouPay', function(source, cb, tes
                 questions = order,
             }
 
-            TriggerClientEvent('esx:showNotification', source,
-                TranslateCap('you_paid', Config.Prices[testType]))
+            TriggerClientEvent('esx:showNotification', source, TranslateCap('you_paid', Config.Prices[testType]))
             finish(true, nil, { questions = order, required = 5 })
         end)
     end
@@ -205,8 +202,7 @@ xLib.callback.registerCompat('esx_dmvschool:finishTheory', function(source, cb, 
         return cb(false)
     end
 
-    local valid = type(answers) == 'table'
-        and GetGameTimer() - test.started >= (Config.TheoryMinimumDuration or 30000)
+    local valid = type(answers) == 'table' and GetGameTimer() - test.started >= (Config.TheoryMinimumDuration or 30000)
     local correct = 0
     local count = 0
 
@@ -214,8 +210,7 @@ xLib.callback.registerCompat('esx_dmvschool:finishTheory', function(source, cb, 
         for key, answer in pairs(answers) do
             count = count + 1
 
-            if type(key) ~= 'number' or key % 1 ~= 0 or key < 1 or key > 10
-                or type(answer) ~= 'string' or not answer:match('^[ABCD]$') then
+            if type(key) ~= 'number' or key % 1 ~= 0 or key < 1 or key > 10 or type(answer) ~= 'string' or not answer:match('^[ABCD]$') then
                 valid = false
                 break
             end
@@ -237,8 +232,7 @@ end)
 xLib.callback.registerCompat('esx_dmvschool:checkpoint', function(source, cb, index)
     local test = paidTests[source]
 
-    if not checkpointLimiter:consume(source) or not test or test.type == 'dmv'
-        or not getTest(source, test.type) then
+    if not checkpointLimiter:consume(source) or not test or test.type == 'dmv' or not getTest(source, test.type) then
         return cb(false)
     end
 
@@ -250,21 +244,17 @@ xLib.callback.registerCompat('esx_dmvschool:checkpoint', function(source, cb, in
     local ped = GetPlayerPed(source)
     local vehicle = GetVehiclePedIsIn(ped, false)
 
-    if not checkpoint or vehicle == 0 or GetPedInVehicleSeat(vehicle, -1) ~= ped
-        or GetEntityModel(vehicle) ~= joaat(Config.VehicleModels[test.type])
-        or (test.vehicle and test.vehicle ~= vehicle) then
+    if not checkpoint or vehicle == 0 or GetPedInVehicleSeat(vehicle, -1) ~= ped or GetEntityModel(vehicle) ~= joaat(Config.VehicleModels[test.type]) or (test.vehicle and test.vehicle ~= vehicle) then
         return cb(false)
     end
 
-    local previous = test.checkpoint == 0 and Config.Zones.VehicleSpawnPoint
-        or Config.CheckPoints[test.checkpoint]
+    local previous = test.checkpoint == 0 and Config.Zones.VehicleSpawnPoint or Config.CheckPoints[test.checkpoint]
     local from, to = previous.Pos, checkpoint.Pos
     local distance = #(vector3(to.x, to.y, to.z) - vector3(from.x, from.y, from.z))
     local minimumTravel = math.max(500, distance / 100 * 1000)
     local now = GetGameTimer()
 
-    if now - test.lastCheckpointAt < minimumTravel
-        or not isNearPosition(source, checkpoint.Pos, 12.0) then
+    if now - test.lastCheckpointAt < minimumTravel or not isNearPosition(source, checkpoint.Pos, 12.0) then
         return cb(false)
     end
 
@@ -278,9 +268,7 @@ xLib.callback.registerCompat('esx_dmvschool:finishDrive', function(source, cb, t
     local test = isValidTestType(testType) and getTest(source, testType)
     local checkpoint = Config.CheckPoints[#Config.CheckPoints]
 
-    if not limiter:consume(source) or not test or testType == 'dmv'
-        or test.checkpoint ~= #Config.CheckPoints
-        or not isNearPosition(source, checkpoint.Pos, 35.0) then
+    if not limiter:consume(source) or not test or testType == 'dmv' or test.checkpoint ~= #Config.CheckPoints or not isNearPosition(source, checkpoint.Pos, 35.0) then
         return cb(false)
     end
 

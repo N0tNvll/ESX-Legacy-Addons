@@ -1,6 +1,23 @@
 <h1 align='center'>[ESX] Basic Needs</a></h1><p align='center'><b><a href='https://discord.esx-framework.org/'>Discord</a> - <a href='https://documentation.esx-framework.org/legacy/installation'>Documentation</a></b></h5>
 
-This script implements hunger and thirst status, they can be increased when eating bread or drinking water.
+This resource includes hunger, thirst, consumables and the alcohol system formerly provided by
+`esx_optionalneeds`. Bread restores hunger, water restores thirst and beer increases the saved
+`drunk` status. Alcohol retains its three movement levels, blurred vision and gradual recovery.
+
+## Migrating from esx_optionalneeds
+
+Stop and remove `esx_optionalneeds` and remove its `ensure` entry. Start only `esx_basicneeds` after
+`esx_status`. The old `esx_optionalneeds:onDrink` event remains available and uses the shared drink
+animation. Dependencies on the old resource name are supported by the manifest's `provide` entry.
+
+Deploy the updated `esx_status/config.lua` and `esx_lib/imports/catalog/data.json` together with this
+resource, then restart the server. Hunger, thirst and alcohol are applied and decayed on the server.
+Existing saved `drunk` values and inventory items keep their names and do not need conversion.
+
+The shared item configuration accepts `food`, `drink` and `alcohol`. Beer adds 250000 alcohol units;
+the status decreases by 1500 per second. The first movement level covers values up to 250000, the
+second covers values up to 500000, and higher values use the third level. Effects are cleared when
+the player sobers up, dies, logs out or the resource stops.
 
 ## Requirements
 - [esx_status](https://github.com/esx-framework/esx_status)
@@ -24,7 +41,9 @@ git clone https://github.com/esx-framework/esx_basicneeds [esx]/esx_basicneeds
 
 
 ## Installation
-- Import `esx_basicneeds.sql` in your database
+- With this repository's `esx_lib` catalog, missing bread, water and beer items are imported
+  automatically before usable items are registered. Existing item values are preserved. Manual
+  installations can import `esx_basicneeds.sql` or the matching localized SQL file instead.
 - Add this in your server.cfg :
 
 ```

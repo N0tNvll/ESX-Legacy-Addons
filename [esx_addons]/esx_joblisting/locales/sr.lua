@@ -69,5 +69,5 @@ Locales['sr'] = {
     ['ui_no_response'] = 'Server nije odgovorio. Pokušajte ponovo.',
     ['ui_location_marked'] = 'Lokacija posla je označena na mapi.',
     ['ui_location_unavailable'] = 'Lokacija nije dostupna.',
-    ['ui_location_failed'] = 'Nije moguće označiti lokaciju.'
+    ['ui_location_failed'] = 'Nije moguće označiti lokaciju.',
 }

@@ -21,14 +21,8 @@ MySQL.ready(function()
             'addon_account_data',
             'vehicle_rental_payments',
         }) do
-            local engine = MySQL.scalar.await(
-                (
-                    'SELECT ENGINE FROM information_schema.TABLES WHERE '
-                    .. 'TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '
-                    .. '?'
-                ),
-                { name }
-            )
+            local engine = MySQL.scalar.await(('SELECT ENGINE FROM information_schema.TABLES WHERE ' .. 'TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ' .. '?'), { name })
+
             assert(engine and engine:upper() == 'INNODB', name .. ' must use InnoDB')
         end
     end)
@@ -53,27 +47,13 @@ local function receipt(rental, day, token)
                         values = { rental.owner },
                     },
                     {
-                        query = (
-                            'INSERT IGNORE INTO vehicle_rental_payments '
-                            .. '(plate, billing_date, owner, amount, '
-                            .. 'operation_id, state)\n                    VALUES '
-                            .. '(?, ?, ?, 0, ?, '
-                            .. "'cancelled')"
-                        ),
+                        query = ('INSERT IGNORE INTO vehicle_rental_payments ' .. '(plate, billing_date, owner, amount, ' .. 'operation_id, state)\n                    VALUES ' .. '(?, ?, ?, 0, ?, ' .. "'cancelled')"),
                         values = { rental.plate, day, rental.owner, token .. ':cancel' },
                     },
                 }),
                 'Rental reconciliation not confirmed'
             )
-            return MySQL.single.await(
-                (
-                    'SELECT operation_id, amount, state FROM '
-                    .. 'vehicle_rental_payments WHERE plate = ? AND billing_date '
-                    .. '= '
-                    .. '?'
-                ),
-                { rental.plate, day }
-            ) or false
+            return MySQL.single.await(('SELECT operation_id, amount, state FROM ' .. 'vehicle_rental_payments WHERE plate = ? AND billing_date ' .. '= ' .. '?'), { rental.plate, day }) or false
         end)
 
         if ok then
@@ -89,25 +69,12 @@ local function charge(rental, day, society)
     return society.withPersistence(function(societyBalance)
         local delta = 0
         local success = exports.es_extended:WithPlayerPersistence(rental.owner, function(player)
-            if
-                MySQL.scalar.await(
-                    'SELECT 1 FROM vehicle_rental_payments WHERE plate = ? AND billing_date = ?',
-                    { rental.plate, day }
-                )
-            then
+            if MySQL.scalar.await('SELECT 1 FROM vehicle_rental_payments WHERE plate = ? AND billing_date = ?', { rental.plate, day }) then
                 return false
             end
 
-            local raw = MySQL.scalar.await(
-                'SELECT accounts FROM users WHERE identifier = ?',
-                { rental.owner }
-            )
-
-            local rawSociety = MySQL.scalar.await(
-                'SELECT money FROM addon_account_data WHERE account_name = ? AND owner IS NULL',
-                { rental.society_account }
-            )
-
+            local raw = MySQL.scalar.await('SELECT accounts FROM users WHERE identifier = ?', { rental.owner })
+            local rawSociety = MySQL.scalar.await('SELECT money FROM addon_account_data WHERE account_name = ? AND owner IS NULL', { rental.society_account })
             local ok, accounts = pcall(json.decode, raw or '')
             local price = D.money(rental.rent_price)
 
@@ -134,11 +101,7 @@ local function charge(rental, day, society)
 
             local state, token = amount > 0 and 'paid' or 'evicted', D.uuid()
 
-            if
-                player
-                and amount > 0
-                and player.removeAccountMoney('bank', amount, 'Vehicle Rental') ~= true
-            then
+            if player and amount > 0 and player.removeAccountMoney('bank', amount, 'Vehicle Rental') ~= true then
                 return false
             end
 
@@ -155,11 +118,7 @@ local function charge(rental, day, society)
                     values = { rental.owner },
                 },
                 {
-                    query = (
-                        'SELECT id FROM addon_account_data WHERE account_name '
-                        .. '= ? AND owner IS NULL FOR '
-                        .. 'UPDATE'
-                    ),
+                    query = ('SELECT id FROM addon_account_data WHERE account_name ' .. '= ? AND owner IS NULL FOR ' .. 'UPDATE'),
                     values = { rental.society_account },
                 },
                 {
@@ -198,13 +157,7 @@ local function charge(rental, day, society)
                     },
                 },
                 {
-                    query = (
-                        'UPDATE users SET accounts = ? WHERE identifier = ? '
-                        .. 'AND EXISTS\n                    (SELECT 1 FROM '
-                        .. 'vehicle_rental_payments WHERE operation_id = ? AND '
-                        .. 'state = '
-                        .. "'paid')"
-                    ),
+                    query = ('UPDATE users SET accounts = ? WHERE identifier = ? ' .. 'AND EXISTS\n                    (SELECT 1 FROM ' .. 'vehicle_rental_payments WHERE operation_id = ? AND ' .. 'state = ' .. "'paid')"),
                     values = { encoded, rental.owner, token },
                 },
                 {
@@ -231,12 +184,7 @@ local function charge(rental, day, society)
                     values = { token, rental.plate, rental.owner, token },
                 },
                 {
-                    query = (
-                        'DELETE FROM owned_vehicles WHERE owner = ? AND plate '
-                        .. '= ? AND EXISTS\n                    (SELECT 1 FROM '
-                        .. 'vehicle_rental_payments WHERE operation_id = ? AND '
-                        .. "state = 'evicted')"
-                    ),
+                    query = ('DELETE FROM owned_vehicles WHERE owner = ? AND plate ' .. '= ? AND EXISTS\n                    (SELECT 1 FROM ' .. 'vehicle_rental_payments WHERE operation_id = ? AND ' .. "state = 'evicted')"),
                     values = { rental.owner, rental.plate, token },
                 },
                 {
@@ -259,10 +207,7 @@ local function charge(rental, day, society)
 
             if not paid then
                 if player and amount > 0 then
-                    assert(
-                        player.addAccountMoney('bank', amount, 'Vehicle Rental Refund') == true,
-                        'Rental refund unconfirmed'
-                    )
+                    assert(player.addAccountMoney('bank', amount, 'Vehicle Rental Refund') == true, 'Rental refund unconfirmed')
                 end
 
                 return false
@@ -271,14 +216,7 @@ local function charge(rental, day, society)
             delta = paid.amount
 
             if player then
-                pcall(
-                    player.showNotification,
-                    TranslateCap(
-                        paid.state == 'paid' and 'paid_rental' or 'paid_rental_evicted',
-                        ESX.Math.GroupDigits(price),
-                        rental.plate
-                    )
-                )
+                pcall(player.showNotification, TranslateCap(paid.state == 'paid' and 'paid_rental' or 'paid_rental_evicted', ESX.Math.GroupDigits(price), rental.plate))
             end
 
             return true
@@ -313,36 +251,22 @@ function PayRent()
                 local society
 
                 if rental.society_account and GetResourceState('esx_addonaccount') == 'started' then
-                    TriggerEvent(
-                        'esx_addonaccount:getSharedAccount',
-                        rental.society_account,
-                        function(account)
-                            society = account
-                        end
-                    )
+                    TriggerEvent('esx_addonaccount:getSharedAccount', rental.society_account, function(account)
+                        society = account
+                    end)
                 end
 
                 if society and society.withPersistence then
                     -- Shares the garage's plate lock with retrieval, return, resale and eviction.
-                    local locked, err = exports['esx_garage']:withVehicleOperation(
-                        rental.plate,
-                        function()
-                            return charge(rental, day, society)
-                        end
-                    )
+                    local locked, err = exports['esx_garage']:withVehicleOperation(rental.plate, function()
+                        return charge(rental, day, society)
+                    end)
 
                     if not locked and err then
-                        print(
-                            '[esx_vehicleshop] Rental deferred '
-                                .. rental.plate
-                                .. ': '
-                                .. tostring(err)
-                        )
+                        print('[esx_vehicleshop] Rental deferred ' .. rental.plate .. ': ' .. tostring(err))
                     end
                 else
-                    print(
-                        '[esx_vehicleshop] Rental account unavailable; preserved: ' .. rental.plate
-                    )
+                    print('[esx_vehicleshop] Rental account unavailable; preserved: ' .. rental.plate)
                 end
 
                 cursor = rental.plate

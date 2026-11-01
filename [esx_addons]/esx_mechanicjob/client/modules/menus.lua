@@ -57,11 +57,7 @@ function Mechanic.openActionsMenu()
         { icon = 'fas fa-box', label = TranslateCap('withdraw_stock'), value = 'get_stock' },
     }
 
-    if
-        Config.EnablePlayerManagement
-        and ESX.PlayerData.job
-        and ESX.PlayerData.job.grade_name == 'boss'
-    then
+    if Config.EnablePlayerManagement and ESX.PlayerData.job and ESX.PlayerData.job.grade_name == 'boss' then
         elements[#elements + 1] = {
             icon = 'fas fa-boss',
             label = TranslateCap('boss_actions'),
@@ -87,10 +83,7 @@ function Mechanic.openActionsMenu()
             xLib.callback('esx_skin:getPlayerSkin', false, function(skin)
                 TriggerEvent('skinchanger:loadSkin', skin)
             end)
-        elseif
-            Config.OxInventory
-            and (data.current.value == 'put_stock' or data.current.value == 'get_stock')
-        then
+        elseif Config.OxInventory and (data.current.value == 'put_stock' or data.current.value == 'get_stock') then
             exports.ox_inventory:openInventory('stash', 'society_mechanic')
             menu.close()
         elseif data.current.value == 'put_stock' then
@@ -111,10 +104,7 @@ function Mechanic.openActionsMenu()
 end
 
 function Mechanic.openHarvestMenu()
-    if
-        not ESX.PlayerData.job
-        or (Config.EnablePlayerManagement and ESX.PlayerData.job.grade_name == 'recrue')
-    then
+    if not ESX.PlayerData.job or (Config.EnablePlayerManagement and ESX.PlayerData.job.grade_name == 'recrue') then
         ESX.ShowNotification(TranslateCap('not_experienced_enough'))
         return
     end
@@ -140,10 +130,7 @@ function Mechanic.openHarvestMenu()
 end
 
 function Mechanic.openCraftMenu()
-    if
-        not ESX.PlayerData.job
-        or (Config.EnablePlayerManagement and ESX.PlayerData.job.grade_name == 'recrue')
-    then
+    if not ESX.PlayerData.job or (Config.EnablePlayerManagement and ESX.PlayerData.job.grade_name == 'recrue') then
         ESX.ShowNotification(TranslateCap('not_experienced_enough'))
         return
     end
@@ -180,24 +167,19 @@ function Mechanic.openGetStocksMenu()
             }
         end
 
-        openMenu(
-            'mechanic_get_stock',
-            TranslateCap('mechanic_stock'),
-            elements,
-            function(data, menu)
-                if not data.current.value then
-                    return
-                end
-
-                menu.close()
-                openAmountMenu('mechanic_get_amount', data.current.label, 100, function(count)
-                    TriggerServerEvent('esx_mechanicjob:getStockItem', data.current.value, count)
-
-                    Wait(1000)
-                    Mechanic.openGetStocksMenu()
-                end)
+        openMenu('mechanic_get_stock', TranslateCap('mechanic_stock'), elements, function(data, menu)
+            if not data.current.value then
+                return
             end
-        )
+
+            menu.close()
+            openAmountMenu('mechanic_get_amount', data.current.label, 100, function(count)
+                TriggerServerEvent('esx_mechanicjob:getStockItem', data.current.value, count)
+
+                Wait(1000)
+                Mechanic.openGetStocksMenu()
+            end)
+        end)
     end)
 end
 
@@ -243,39 +225,26 @@ local function openBillingMenu(title)
         return
     end
 
-    ESX.UI.Menu.Open(
-        'dialog',
-        MenuNamespace,
-        'mechanic_billing_amount',
-        { title = title },
-        function(data, menu)
-            local amount = tonumber(data.value)
+    ESX.UI.Menu.Open('dialog', MenuNamespace, 'mechanic_billing_amount', { title = title }, function(data, menu)
+        local amount = tonumber(data.value)
 
-            if not amount or amount < 0 or amount > 250000 then
-                ESX.ShowNotification(TranslateCap('amount_invalid'), 'error')
-                return
-            end
-
-            local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
-
-            if closestPlayer == -1 or closestDistance > 3.0 then
-                ESX.ShowNotification(TranslateCap('no_players_nearby'), 'info')
-                return
-            end
-
-            menu.close()
-            TriggerServerEvent(
-                'esx_billing:sendBill',
-                GetPlayerServerId(closestPlayer),
-                'society_mechanic',
-                TranslateCap('mechanic'),
-                amount
-            )
-        end,
-        function(data, menu)
-            menu.close()
+        if not amount or amount < 0 or amount > 250000 then
+            ESX.ShowNotification(TranslateCap('amount_invalid'), 'error')
+            return
         end
-    )
+
+        local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
+
+        if closestPlayer == -1 or closestDistance > 3.0 then
+            ESX.ShowNotification(TranslateCap('no_players_nearby'), 'info')
+            return
+        end
+
+        menu.close()
+        TriggerServerEvent('esx_billing:sendBill', GetPlayerServerId(closestPlayer), 'society_mechanic', TranslateCap('mechanic'), amount)
+    end, function(data, menu)
+        menu.close()
+    end)
 end
 
 local function ensureOutsideVehicle(playerPed)
@@ -322,16 +291,10 @@ local function handleHijackVehicle()
         return
     end
 
-    runVehicleScenario(
-        vehicle,
-        'WORLD_HUMAN_WELDING',
-        10000,
-        'vehicle_unlocked',
-        function(targetVehicle)
-            SetVehicleDoorsLocked(targetVehicle, 1)
-            SetVehicleDoorsLockedForAllPlayers(targetVehicle, false)
-        end
-    )
+    runVehicleScenario(vehicle, 'WORLD_HUMAN_WELDING', 10000, 'vehicle_unlocked', function(targetVehicle)
+        SetVehicleDoorsLocked(targetVehicle, 1)
+        SetVehicleDoorsLockedForAllPlayers(targetVehicle, false)
+    end)
 end
 
 local function handleRepairVehicle()
@@ -348,18 +311,12 @@ local function handleRepairVehicle()
         return
     end
 
-    runVehicleScenario(
-        vehicle,
-        'PROP_HUMAN_BUM_BIN',
-        20000,
-        'vehicle_repaired',
-        function(targetVehicle)
-            SetVehicleFixed(targetVehicle)
-            SetVehicleDeformationFixed(targetVehicle)
-            SetVehicleUndriveable(targetVehicle, false)
-            SetVehicleEngineOn(targetVehicle, true, true, false)
-        end
-    )
+    runVehicleScenario(vehicle, 'PROP_HUMAN_BUM_BIN', 20000, 'vehicle_repaired', function(targetVehicle)
+        SetVehicleFixed(targetVehicle)
+        SetVehicleDeformationFixed(targetVehicle)
+        SetVehicleUndriveable(targetVehicle, false)
+        SetVehicleEngineOn(targetVehicle, true, true, false)
+    end)
 end
 
 local function handleCleanVehicle()
@@ -376,15 +333,9 @@ local function handleCleanVehicle()
         return
     end
 
-    runVehicleScenario(
-        vehicle,
-        'WORLD_HUMAN_MAID_CLEAN',
-        10000,
-        'vehicle_cleaned',
-        function(targetVehicle)
-            SetVehicleDirtLevel(targetVehicle, 0)
-        end
-    )
+    runVehicleScenario(vehicle, 'WORLD_HUMAN_MAID_CLEAN', 10000, 'vehicle_cleaned', function(targetVehicle)
+        SetVehicleDirtLevel(targetVehicle, 0)
+    end)
 end
 
 local function impoundVehicle(vehicle)
@@ -421,9 +372,7 @@ local function handleTowVehicle()
     local playerPed = PlayerPedId()
     local flatbedVehicle = Mechanic.getNearbyFlatbed(playerPed)
 
-    if
-        not Mechanic.vehicleExists(flatbedVehicle) or not IsVehicleModel(flatbedVehicle, `flatbed`)
-    then
+    if not Mechanic.vehicleExists(flatbedVehicle) or not IsVehicleModel(flatbedVehicle, `flatbed`) then
         ESX.ShowNotification(TranslateCap('imp_flatbed'))
         return
     end
@@ -455,8 +404,7 @@ local function handleTowVehicle()
         ESX.ShowNotification(TranslateCap('vehicle_success_attached'))
 
         if Mechanic.isNPCTargetVehicle(targetVehicle) then
-            State.npcTargetTowableNetId = State.npcTargetTowableNetId
-                or Mechanic.getVehicleNetId(targetVehicle)
+            State.npcTargetTowableNetId = State.npcTargetTowableNetId or Mechanic.getVehicleNetId(targetVehicle)
             Mechanic.activateNPCDeliveryRoute()
         end
 
@@ -479,8 +427,8 @@ local function handleTowVehicle()
             return
         end
 
-        State.npcTargetTowableNetId = State.npcTargetTowableNetId
-            or Mechanic.getVehicleNetId(State.currentlyTowedVehicle)
+        State.npcTargetTowableNetId = State.npcTargetTowableNetId or Mechanic.getVehicleNetId(State.currentlyTowedVehicle)
+
         local flatbedNetId = Mechanic.getVehicleNetId(flatbedVehicle)
 
         if not State.npcTargetTowableNetId or not flatbedNetId then
@@ -489,11 +437,7 @@ local function handleTowVehicle()
         end
 
         State.npcJobCompletionPending = true
-        TriggerServerEvent(
-            'esx_mechanicjob:onNPCJobMissionCompleted',
-            State.npcTargetTowableNetId,
-            flatbedNetId
-        )
+        TriggerServerEvent('esx_mechanicjob:onNPCJobMissionCompleted', State.npcTargetTowableNetId, flatbedNetId)
         return
     end
 

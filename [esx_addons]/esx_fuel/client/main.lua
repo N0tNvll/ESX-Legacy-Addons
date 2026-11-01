@@ -3,15 +3,12 @@
 
 Fuel = {}
 
-local FUEL_BAG <const> = "fuel"
+local FUEL_BAG <const> = 'fuel'
 local NO_FUEL_CLASSES <const> = { [13] = true }
-
 local lastSynced = {}
-
-local TANK_BONES <const> = { "petrolcap", "petroltank", "petroltank_l", "petroltank_r" }
+local TANK_BONES <const> = { 'petrolcap', 'petroltank', 'petroltank_l', 'petroltank_r' }
 local SCAN_INTERVAL <const> = 250
-local HINT_ORDER <const> = { "pump", "can", "charger", "stock", "drain" }
-
+local HINT_ORDER <const> = { 'pump', 'can', 'charger', 'stock', 'drain' }
 local hints = {}
 local shownHint
 local shownSource
@@ -26,6 +23,7 @@ function Fuel.hint(source, text)
     hints[source] = text
 
     local selected
+
     shownSource = nil
 
     for i = 1, #HINT_ORDER do
@@ -93,7 +91,7 @@ function Fuel.getVehicleAtTank(coords)
     scanCoords = coords
     scanVehicle = nil
 
-    for _, vehicle in ipairs(GetGamePool("CVehicle")) do
+    for _, vehicle in ipairs(GetGamePool('CVehicle')) do
         if #(coords - GetEntityCoords(vehicle)) <= 6.0 and Fuel.usesFuel(vehicle) and #(coords - Fuel.getTankCoords(vehicle)) <= Config.Refuel.TankDistance then
             scanVehicle = vehicle
             break
@@ -150,14 +148,14 @@ function Fuel.getKind(vehicle)
     end
 
     if GetIsVehicleElectric and GetIsVehicleElectric(model) then
-        return "electric"
+        return 'electric'
     end
 
     if Config.DieselClasses[GetVehicleClass(vehicle)] then
-        return "diesel"
+        return 'diesel'
     end
 
-    return "petrol"
+    return 'petrol'
 end
 
 ---@param vehicle integer
@@ -169,7 +167,7 @@ end
 ---@param vehicle integer
 ---@return number liters
 function Fuel.getCapacity(vehicle)
-    local capacity = GetVehicleHandlingFloat(vehicle, "CHandlingData", "fPetrolTankVolume")
+    local capacity = GetVehicleHandlingFloat(vehicle, 'CHandlingData', 'fPetrolTankVolume')
 
     if not capacity or capacity <= 0.0 then
         return 65.0
@@ -184,7 +182,7 @@ function Fuel.getLevel(vehicle)
     if NetworkGetEntityIsNetworked(vehicle) and NetworkGetEntityOwner(vehicle) ~= PlayerId() then
         local stored = Entity(vehicle).state[FUEL_BAG]
 
-        if type(stored) == "number" then
+        if type(stored) == 'number' then
             return stored
         end
     end
@@ -209,7 +207,7 @@ end
 function Fuel.loadLevel(vehicle)
     local stored = Entity(vehicle).state[FUEL_BAG]
 
-    if type(stored) == "number" then
+    if type(stored) == 'number' then
         Fuel.setLevel(vehicle, stored, false)
         lastSynced[vehicle] = stored
         return
@@ -265,7 +263,6 @@ CreateThread(function()
             end
 
             local level = GetVehicleFuelLevel(vehicle)
-
             local usage = getLeak(vehicle)
 
             if GetIsVehicleEngineRunning(vehicle) then
@@ -309,9 +306,23 @@ CreateThread(function()
 end)
 
 local UI_KEYS <const> = {
-    "ui_price_per_liter", "ui_quantity", "ui_vehicle_fuel", "ui_total", "ui_your_money", "ui_cash", "ui_bank",
-    "ui_fill_up", "ui_confirm", "ui_cancel", "ui_filling", "ui_vehicle_type", "ui_kind_petrol", "ui_kind_diesel",
-    "ui_kind_electric", "ui_station_stock", "ui_jerrycan"
+    'ui_price_per_liter',
+    'ui_quantity',
+    'ui_vehicle_fuel',
+    'ui_total',
+    'ui_your_money',
+    'ui_cash',
+    'ui_bank',
+    'ui_fill_up',
+    'ui_confirm',
+    'ui_cancel',
+    'ui_filling',
+    'ui_vehicle_type',
+    'ui_kind_petrol',
+    'ui_kind_diesel',
+    'ui_kind_electric',
+    'ui_station_stock',
+    'ui_jerrycan',
 }
 
 ---@return table<string, string>
@@ -330,23 +341,24 @@ if Config.ShowBlips then
         for i = 1, #Config.Stations do
             local station = Config.Stations[i]
             local blip = AddBlipForCoord(station.x, station.y, station.z)
+
             SetBlipSprite(blip, 361)
             SetBlipScale(blip, 0.7)
             SetBlipColour(blip, 1)
             SetBlipAsShortRange(blip, true)
-            BeginTextCommandSetBlipName("STRING")
-            AddTextComponentSubstringPlayerName(_("blip_name"))
+            BeginTextCommandSetBlipName('STRING')
+            AddTextComponentSubstringPlayerName(_('blip_name'))
             EndTextCommandSetBlipName(blip)
         end
     end)
 end
 
-exports("GetFuel", function(vehicle)
+exports('GetFuel', function(vehicle)
     return Fuel.getLevel(vehicle)
 end)
 
-exports("SetFuel", function(vehicle, level)
-    if type(level) == "number" and vehicle and DoesEntityExist(vehicle) then
+exports('SetFuel', function(vehicle, level)
+    if type(level) == 'number' and vehicle and DoesEntityExist(vehicle) then
         Fuel.setLevel(vehicle, level, true)
     end
 end)

@@ -15,6 +15,7 @@ local refreshCatalogs
 MySQL.ready(function()
     local ok, err = pcall(function()
         MigrateAddonAccountSchema()
+
         local definitions = MySQL.query.await('SELECT name, label, shared FROM addon_account')
         local sharedNames = {}
 
@@ -30,18 +31,15 @@ MySQL.ready(function()
         end
 
         local sharedData = {}
+
         if #sharedNames > 0 then
             local placeholders = {}
+
             for i = 1, #sharedNames do
                 placeholders[i] = '?'
             end
 
-            local rows = MySQL.query.await(
-                ('SELECT account_name, MAX(money) AS money FROM addon_account_data WHERE owner IS NULL AND account_name IN (%s) GROUP BY account_name'):format(
-                    table.concat(placeholders, ',')
-                ),
-                sharedNames
-            )
+            local rows = MySQL.query.await(('SELECT account_name, MAX(money) AS money FROM addon_account_data WHERE owner IS NULL AND account_name IN (%s) GROUP BY account_name'):format(table.concat(placeholders, ',')), sharedNames)
 
             for i = 1, #rows do
                 sharedData[rows[i].account_name] = rows[i].money
@@ -49,6 +47,7 @@ MySQL.ready(function()
         end
 
         local newAccounts = {}
+
         for i = 1, #sharedNames do
             local name = sharedNames[i]
             local money = sharedData[name]
@@ -63,36 +62,28 @@ MySQL.ready(function()
         GlobalState.SharedAccounts = nil
 
         if next(newAccounts) then
-            MySQL.prepare.await(
-                'INSERT IGNORE INTO addon_account_data (account_name, money) VALUES (?, ?)',
-                newAccounts
-            )
+            MySQL.prepare.await('INSERT IGNORE INTO addon_account_data (account_name, money) VALUES (?, ?)', newAccounts)
 
             for i = 1, #newAccounts do
                 local newAccount = newAccounts[i]
-                local money = MySQL.scalar.await(
-                    'SELECT money FROM addon_account_data WHERE account_name = ? AND owner IS NULL',
-                    { newAccount[1] }
-                )
+                local money = MySQL.scalar.await('SELECT money FROM addon_account_data WHERE account_name = ? AND owner IS NULL', { newAccount[1] })
 
                 if money ~= nil then
                     SharedAccounts[newAccount[1]] = CreateAddonAccount(newAccount[1], nil, money)
                 end
             end
         end
-
     end)
+
     if not ok then
-        print(
-            ('[esx_addonaccount] Schema migration/startup failed; accounts disabled: %s'):format(
-                tostring(err)
-            )
-        )
+        print(('[esx_addonaccount] Schema migration/startup failed; accounts disabled: %s'):format(tostring(err)))
         return
     end
+
     accountsReady = true
     loadConnectedAccounts()
     print('[esx_addonaccount] Database schema ready.')
+
     if catalogRefreshPending then
         catalogRefreshPending = false
         refreshCatalogs()
@@ -131,22 +122,22 @@ function AddSharedAccount(society, amount)
     end
 
     -- addon account:
-    local account =
-        MySQL.insert.await('INSERT INTO `addon_account` (name, label, shared) VALUES (?, ?, ?)', {
-            society.name,
-            society.label,
-            1,
-        })
+    local account = MySQL.insert.await('INSERT INTO `addon_account` (name, label, shared) VALUES (?, ?, ?)', {
+        society.name,
+        society.label,
+        1,
+    })
+
     if not account then
         return
     end
 
     -- if addon account inserted, insert addon account data:
-    local account_data =
-        MySQL.insert.await('INSERT INTO `addon_account_data` (account_name, money) VALUES (?, ?)', {
-            society.name,
-            (amount or 0),
-        })
+    local account_data = MySQL.insert.await('INSERT INTO `addon_account_data` (account_name, money) VALUES (?, ?)', {
+        society.name,
+        (amount or 0),
+    })
+
     if not account_data then
         return
     end
@@ -169,26 +160,24 @@ local function loadOwnerAccounts(identifier)
     if not accountsReady then
         return {}
     end
+
     local addonAccounts = {}
     local existingAccounts = {}
 
     if #AccountsIndex > 0 then
         local placeholders = {}
+
         for i = 1, #AccountsIndex do
             placeholders[i] = '?'
         end
 
         local params = { identifier }
+
         for i = 1, #AccountsIndex do
             params[#params + 1] = AccountsIndex[i]
         end
 
-        local rows = MySQL.query.await(
-            ('SELECT account_name, money FROM addon_account_data WHERE owner = ? AND account_name IN (%s)'):format(
-                table.concat(placeholders, ',')
-            ),
-            params
-        )
+        local rows = MySQL.query.await(('SELECT account_name, money FROM addon_account_data WHERE owner = ? AND account_name IN (%s)'):format(table.concat(placeholders, ',')), params)
 
         for i = 1, #rows do
             existingAccounts[rows[i].account_name] = rows[i].money
@@ -203,10 +192,7 @@ local function loadOwnerAccounts(identifier)
             local money = existingAccounts[name]
 
             if money == nil then
-                MySQL.insert.await(
-                    'INSERT IGNORE INTO addon_account_data (account_name, money, owner) VALUES (?, ?, ?)',
-                    { name, 0, identifier }
-                )
+                MySQL.insert.await('INSERT IGNORE INTO addon_account_data (account_name, money, owner) VALUES (?, ?, ?)', { name, 0, identifier })
 
                 money = 0
             end
@@ -255,22 +241,15 @@ refreshCatalogs = function()
                     table.insert(refreshedIndex, name)
                     Accounts[name] = Accounts[name] or {}
                 else
-                    local money = MySQL.scalar.await(
-                        'SELECT money FROM addon_account_data WHERE account_name = ? AND owner IS NULL LIMIT 1',
-                        { name }
-                    )
+                    local money = MySQL.scalar.await('SELECT money FROM addon_account_data WHERE account_name = ? AND owner IS NULL LIMIT 1', { name })
 
                     if money == nil then
-                        MySQL.insert.await(
-                            'INSERT IGNORE INTO addon_account_data (account_name, money, owner) VALUES (?, ?, ?)',
-                            { name, 0, nil }
-                        )
+                        MySQL.insert.await('INSERT IGNORE INTO addon_account_data (account_name, money, owner) VALUES (?, ?, ?)', { name, 0, nil })
 
                         money = 0
                     end
 
-                    SharedAccounts[name] = SharedAccounts[name]
-                        or CreateAddonAccount(name, nil, money)
+                    SharedAccounts[name] = SharedAccounts[name] or CreateAddonAccount(name, nil, money)
                 end
             end
 
@@ -303,12 +282,7 @@ AddEventHandler('esx:playerDropped', function(playerId)
 
         if account then
             account.save(function(success)
-                if
-                    success
-                    and not account.isDirty()
-                    and not ESX.GetPlayerFromIdentifier(identifier)
-                    and accounts[identifier] == account
-                then
+                if success and not account.isDirty() and not ESX.GetPlayerFromIdentifier(identifier) and accounts[identifier] == account then
                     accounts[identifier] = nil
                 end
             end)

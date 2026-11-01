@@ -5,50 +5,56 @@
 ---@param items table[] Validated items to add
 ---@return boolean canCarry
 function ValidateInventorySpace(source, items)
-	local itemCount = #items
+    local itemCount = #items
 
-	if GetShopInventoryBackend() == 'ox_inventory' then
-		local simulatedItems = {}
-		for i = 1, itemCount do
-			local item = items[i]
-			local carryAmount = item.quantity
-			if simulatedItems[item.name] then
-				carryAmount = carryAmount + simulatedItems[item.name]
-			end
-			if not exports.ox_inventory:CanCarryItem(source, item.name, carryAmount) then
-				return false
-			end
-			simulatedItems[item.name] = carryAmount
-		end
-		return true
-	else
-		local xPlayer = ESX.Player(source)
-		if not xPlayer then
-			return false
-		end
+    if GetShopInventoryBackend() == 'ox_inventory' then
+        local simulatedItems = {}
 
-		local registeredItems = ESX.GetItems()
-		local addedWeight = 0
+        for i = 1, itemCount do
+            local item = items[i]
+            local carryAmount = item.quantity
 
-		for i = 1, itemCount do
-			local item = items[i]
-			local itemData = registeredItems[item.name]
-			if not itemData then
-				return false
-			end
+            if simulatedItems[item.name] then
+                carryAmount = carryAmount + simulatedItems[item.name]
+            end
 
-			addedWeight = addedWeight + (tonumber(itemData.weight) or 0) * item.quantity
-		end
+            if not exports.ox_inventory:CanCarryItem(source, item.name, carryAmount) then
+                return false
+            end
 
-		return xPlayer.getWeight() + addedWeight <= xPlayer.getMaxWeight()
-	end
+            simulatedItems[item.name] = carryAmount
+        end
+        return true
+    else
+        local xPlayer = ESX.Player(source)
+
+        if not xPlayer then
+            return false
+        end
+
+        local registeredItems = ESX.GetItems()
+        local addedWeight = 0
+
+        for i = 1, itemCount do
+            local item = items[i]
+            local itemData = registeredItems[item.name]
+
+            if not itemData then
+                return false
+            end
+
+            addedWeight = addedWeight + (tonumber(itemData.weight) or 0) * item.quantity
+        end
+
+        return xPlayer.getWeight() + addedWeight <= xPlayer.getMaxWeight()
+    end
 end
 
 ---@param source number Player source
 ---@param items table[] Items to add
 ---@return boolean canCarry
 function ValidateInventorySpaceFinal(source, items)
-	return ValidateInventorySpace(source, items)
+    return ValidateInventorySpace(source, items)
 end
 
 ---@param source number Player source
@@ -61,6 +67,7 @@ function AddItemsToInventory(source, items, player)
 
     if not useOx then
         xPlayer = player or ESX.GetPlayerFromId(source)
+
         if not xPlayer then
             return false
         end
@@ -69,7 +76,6 @@ function AddItemsToInventory(source, items, player)
     for i = 1, itemCount do
         local item = items[i]
         local success
-
         local ok, result = pcall(function()
             if player and player.isCurrent() ~= true then
                 return false
@@ -97,9 +103,7 @@ function AddItemsToInventory(source, items, player)
                     end
 
                     if useOx then
-                        return exports.ox_inventory:RemoveItem(
-                            source, delivered.name, delivered.quantity
-                        )
+                        return exports.ox_inventory:RemoveItem(source, delivered.name, delivered.quantity)
                     end
 
                     return xPlayer.removeInventoryItem(delivered.name, delivered.quantity)

@@ -2,12 +2,12 @@
 -- Copyright (C) 2022-2026 ESX Framework
 
 return {
-    ["parking_blip_name"] = 'Garaža',
-    ["Impound_blip_name"] = 'Zaplena',
-    ["access_parking"] = 'Pritisnite [E] da pristupite garaži.',
-    ["access_Impound"] = 'Pritisnite [E] da pristupite zapleni.',
-    ["park_veh"] = 'Pritisnite [E] da parkirate vozilo.',
-    ["not_owning_veh"] = 'Ovo vozilo nije vaše!',
+    ['parking_blip_name'] = 'Garaža',
+    ['Impound_blip_name'] = 'Zaplena',
+    ['access_parking'] = 'Pritisnite [E] da pristupite garaži.',
+    ['access_Impound'] = 'Pritisnite [E] da pristupite zapleni.',
+    ['park_veh'] = 'Pritisnite [E] da parkirate vozilo.',
+    ['not_owning_veh'] = 'Ovo vozilo nije vaše!',
     ['veh_released'] = 'Uspešno ste vratili vozilo.',
     ['veh_Impound_released'] = 'Uspešno ste vratili vozilo sa zaplene.',
     ['veh_stored'] = 'Uspešno ste parkirali vozilo',
@@ -28,5 +28,5 @@ return {
     ['not_in_vehicle'] = 'niste u vozilu.',
     ['cannot_store'] = 'ovo vozilo ne može da se uskladišti.',
     ['cannot_access_garage'] = 'nemate pristup ovoj garaži.',
-    ['received_vehicle'] = 'dobili ste vozilo (tablice: %s).'
+    ['received_vehicle'] = 'dobili ste vozilo (tablice: %s).',
 }

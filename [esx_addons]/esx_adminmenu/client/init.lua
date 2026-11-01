@@ -6,6 +6,7 @@
 -- set and merges these over it, so any missing key falls back on its own.
 local function activeTranslations()
     local locale = Locales[Config.Locale]
+
     if type(locale) ~= 'table' then
         locale = Locales['en']
     end
@@ -41,7 +42,7 @@ local function requestInitData()
         data.translations = activeTranslations()
         xLib.nui.send({
             action = 'initResource',
-            data = data
+            data = data,
         })
 
         if not hasEntries(data.impounds) and initAttempts < maxInitAttempts then
@@ -59,6 +60,7 @@ requestInitData()
 
 AddStateBagChangeHandler('esx:populationDensity', 'global', function(_, _, density)
     local enabled = type(density) == 'table'
+
     xLib.nui.send({
         action = 'updatePopulationDensity',
         data = {

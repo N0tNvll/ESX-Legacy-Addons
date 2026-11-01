@@ -181,7 +181,6 @@ function SocietyEconomy.payPending()
                         })
 
                         local paid = lookup(entry.operation_id)
-
                         return paid and paid.state == 'paid', entry.amount
                     end)
                 else

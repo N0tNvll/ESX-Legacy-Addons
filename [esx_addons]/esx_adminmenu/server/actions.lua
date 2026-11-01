@@ -161,10 +161,7 @@ local function insertBan(identifier, reason, bannedBy, expiresAt, bannedAt, iden
         )
     end
 
-    return MySQL.insert.await(
-        'INSERT INTO bans (identifier, identifiers, reason, banned_by, expires_at, banned_at) VALUES (?, ?, ?, ?, NULL, FROM_UNIXTIME(?))',
-        { identifier, identifiersJson, reason, bannedBy, bannedAt }
-    )
+    return MySQL.insert.await('INSERT INTO bans (identifier, identifiers, reason, banned_by, expires_at, banned_at) VALUES (?, ?, ?, ?, NULL, FROM_UNIXTIME(?))', { identifier, identifiersJson, reason, bannedBy, bannedAt })
 end
 
 local function getBanIdentifierVariants(identifier)
@@ -272,7 +269,6 @@ end
 
 local function isAllowedAceGroup(group)
     local allowedGroups = Config.AllowedAceGroups or {}
-
     return allowedGroups[group] == true or allowedGroups['group.' .. group] == true
 end
 
@@ -515,13 +511,11 @@ function Actions.Ban(src, data)
     -- Capture every enabled identifier so the ban matches on reconnect even if
     -- the player changes their license.
     local banIdentifiers = Helpers.getBanIdentifiers(targetId)
-
     local duration = normalizeBanDuration(data.duration)
     local seconds = duration and (os.time() + duration * 60) or nil
     local bannedAt = os.time()
     local adminName = GetPlayerName(src)
     local reason = limitString(data.reason, getLimits().MaxReasonLength, 'Banned by admin')
-
     local ok, banId = pcall(insertBan, identifier, reason, adminName, seconds, bannedAt, banIdentifiers)
 
     if not ok or not banId then
@@ -941,6 +935,7 @@ regServer('density', function(_, payload)
     end
 
     local ok, err = Helpers.setPopulationDensity(payload.enabled, payload)
+
     if not ok then
         return { success = false, err = err }
     end
@@ -987,8 +982,7 @@ regServer('reviveAll', function()
 end)
 
 regServer('kickAll', function(src, payload)
-    local reason =
-        limitString(payload.reason, getLimits().MaxReasonLength, (Config.ServerManagement and Config.ServerManagement.DefaultKickReason) or 'Kicked by admin')
+    local reason = limitString(payload.reason, getLimits().MaxReasonLength, (Config.ServerManagement and Config.ServerManagement.DefaultKickReason) or 'Kicked by admin')
 
     for _, playerSource in ipairs(GetPlayers()) do
         local targetId = tonumber(playerSource)
@@ -1458,7 +1452,6 @@ function Actions.PlayerAction(src, data)
 
     local targetId = getTargetId(data)
     local target = targetId and ESX.GetPlayerFromId(targetId) or nil
-
     local permission = Helpers.getActionPermission('playerActions', action)
 
     if not permission then
@@ -1486,7 +1479,6 @@ function Actions.PlayerAction(src, data)
     -- player, after which the target can no longer be identified.
     local targetIdentifier = targetId and Helpers.getPlayerLicenseIdentifier(targetId) or nil
     local targetName = targetId and GetPlayerName(targetId) or nil
-
     local result = spec.handler({ src = src, targetId = targetId, target = target, payload = data.payload or {} })
 
     -- Acting on someone makes them "recent" straight away, so admins can find

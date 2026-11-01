@@ -3,7 +3,7 @@
 
 WorkshopCart = {
     items = {},
-    total = 0
+    total = 0,
 }
 
 local function getCartKey(item)
@@ -41,7 +41,7 @@ function WorkshopCart.GetList()
             modType = item.modType,
             modNum = item.modNum,
             wheelType = item.wheelType,
-            price = item.price
+            price = item.price,
         }
     end
 
@@ -62,7 +62,7 @@ function WorkshopCart.GetPayload()
             menuKey = item.menuKey,
             modType = item.modType,
             modNum = item.modNum,
-            wheelType = item.wheelType
+            wheelType = item.wheelType,
         }
     end
 

@@ -33,21 +33,21 @@ CreateThread(function()
 
             if count > 0 and isAtStation(GetEntityCoords(ped)) then
                 sleep = 0
-                text = _U("text_deliver", count)
+                text = _U('text_deliver', count)
 
-                if Fuel.isShown("stock") and IsControlJustReleased(0, INTERACT_KEY) then
+                if Fuel.isShown('stock') and IsControlJustReleased(0, INTERACT_KEY) then
                     delivering = true
-                    Fuel.hint("stock", nil)
+                    Fuel.hint('stock', nil)
 
                     CreateThread(function()
-                        local called, ok, result, liters, pay = pcall(xLib.callback.await, "esx_fuel:deliver", false)
+                        local called, ok, result, liters, pay = pcall(xLib.callback.await, 'esx_fuel:deliver', false)
 
                         if not called then
-                            ESX.ShowNotification(_U("error_invalid"))
+                            ESX.ShowNotification(_U('error_invalid'))
                         elseif ok then
-                            ESX.ShowNotification(_U("delivered", result, liters, pay))
+                            ESX.ShowNotification(_U('delivered', result, liters, pay))
                         else
-                            ESX.ShowNotification(_U(("error_%s"):format(result or "invalid")))
+                            ESX.ShowNotification(_U(('error_%s'):format(result or 'invalid')))
                         end
 
                         delivering = false
@@ -56,7 +56,7 @@ CreateThread(function()
             end
         end
 
-        Fuel.hint("stock", text)
+        Fuel.hint('stock', text)
         Wait(sleep)
     end
 end)

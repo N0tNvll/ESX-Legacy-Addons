@@ -1,4 +1,3 @@
-
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
@@ -16,14 +15,14 @@ end
 
 function OpenAccessoryMenu()
     local elements = {
-        {unselectable = true, icon = "fas fa-user", title = TranslateCap('set_unset')},
-        {icon = "fas fa-hat-cowboy", title = TranslateCap("helmet"), value = "Helmet"},
-        {icon = "fas fa-deaf", title = TranslateCap("ears"), value = "Ears"},
-        {icon = "fas fa-mask", title = TranslateCap("mask"), value = "Mask"},
-        {icon = "fas fa-glasses", title = TranslateCap("glasses"), value = "Glasses"}
+        { unselectable = true, icon = 'fas fa-user', title = TranslateCap('set_unset') },
+        { icon = 'fas fa-hat-cowboy', title = TranslateCap('helmet'), value = 'Helmet' },
+        { icon = 'fas fa-deaf', title = TranslateCap('ears'), value = 'Ears' },
+        { icon = 'fas fa-mask', title = TranslateCap('mask'), value = 'Mask' },
+        { icon = 'fas fa-glasses', title = TranslateCap('glasses'), value = 'Glasses' },
     }
 
-    ESX.OpenContext("right", elements, function(menu, element)
+    ESX.OpenContext('right', elements, function(menu, element)
         SetUnsetAccessory(element.value)
     end)
 end
@@ -37,7 +36,7 @@ function SetUnsetAccessory(accessory)
                 local mAccessory = -1
                 local mColor = 0
 
-                if _accessory == "mask" then
+                if _accessory == 'mask' then
                     mAccessory = 0
                 end
 
@@ -47,6 +46,7 @@ function SetUnsetAccessory(accessory)
                 end
 
                 local newAccessorySkin = {}
+
                 newAccessorySkin[_accessory .. '_1'] = mAccessory
                 newAccessorySkin[_accessory .. '_2'] = mColor
 
@@ -65,44 +65,45 @@ function OpenShopMenu(accessory)
     TriggerEvent('esx_skin:openRestrictedMenu', function(data, menu)
         menu.close()
 
-        PaymentGateway.Pay({
-            amount = Config.Price,
-            title = TranslateCap(string.lower(accessory)),
-        }, 'esx_accessories:buy', function(bought, paymentFailure)
-            if bought then
-                TriggerEvent('skinchanger:getSkin', function(skin)
-                    TriggerServerEvent('esx_accessories:save', skin, accessory)
-                end)
-            else
-                local player = PlayerPedId()
+        PaymentGateway.Pay(
+            {
+                amount = Config.Price,
+                title = TranslateCap(string.lower(accessory)),
+            },
+            'esx_accessories:buy',
+            function(bought, paymentFailure)
+                if bought then
+                    TriggerEvent('skinchanger:getSkin', function(skin)
+                        TriggerServerEvent('esx_accessories:save', skin, accessory)
+                    end)
+                else
+                    local player = PlayerPedId()
 
-                TriggerEvent('esx_skin:getLastSkin', function(skin)
-                    if skin then
-                        TriggerEvent('skinchanger:loadSkin', skin)
+                    TriggerEvent('esx_skin:getLastSkin', function(skin)
+                        if skin then
+                            TriggerEvent('skinchanger:loadSkin', skin)
+                        end
+                    end)
+
+                    if accessory == 'Ears' then
+                        ClearPedProp(player, 2)
+                    elseif accessory == 'Mask' then
+                        SetPedComponentVariation(player, 1, 0, 0, 2)
+                    elseif accessory == 'Helmet' then
+                        ClearPedProp(player, 0)
+                    elseif accessory == 'Glasses' then
+                        SetPedPropIndex(player, 1, -1, 0, 0)
                     end
-                end)
 
-                if accessory == "Ears" then
-                    ClearPedProp(player, 2)
-                elseif accessory == "Mask" then
-                    SetPedComponentVariation(player, 1, 0, 0, 2)
-                elseif accessory == "Helmet" then
-                    ClearPedProp(player, 0)
-                elseif accessory == "Glasses" then
-                    SetPedPropIndex(player, 1, -1, 0, 0)
+                    PaymentGateway.NotifyFailure(paymentFailure, TranslateCap('not_enough_money'))
                 end
 
-                PaymentGateway.NotifyFailure(
-                    paymentFailure,
-                    TranslateCap('not_enough_money')
-                )
-            end
-
-            CurrentAction = 'shop_menu'
-            CurrentActionMsg = TranslateCap('press_access')
-            CurrentActionData = {}
-        end, accessory)
-
+                CurrentAction = 'shop_menu'
+                CurrentActionMsg = TranslateCap('press_access')
+                CurrentActionData = {}
+            end,
+            accessory
+        )
     end, function(data, menu)
         menu.close()
 
@@ -147,7 +148,7 @@ CreateThread(function()
                     scale = 1.0,
                     color = v.Blip.color,
                     shortRange = true,
-                    label = TranslateCap('shop', TranslateCap(string.lower(k)))
+                    label = TranslateCap('shop', TranslateCap(string.lower(k))),
                 })
             end
         end
@@ -173,11 +174,11 @@ CreateThread(function()
                         r = Config.Color.r,
                         g = Config.Color.g,
                         b = Config.Color.b,
-                        a = 255
+                        a = 255,
                     },
                     bobUpAndDown = true,
                     faceCamera = false,
-                    rotate = true
+                    rotate = true,
                 },
                 onEnter = function()
                     HasAlreadyEnteredMarker = true
@@ -187,7 +188,7 @@ CreateThread(function()
                 onExit = function()
                     HasAlreadyEnteredMarker = false
                     TriggerEvent('esx_accessories:hasExitedMarker', k)
-                end
+                end,
             })
         end
     end

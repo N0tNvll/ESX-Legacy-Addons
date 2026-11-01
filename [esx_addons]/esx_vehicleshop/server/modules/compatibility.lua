@@ -12,9 +12,7 @@ local function legacy(name, handler, fallback)
             ['esx_vehicleshop:getSoldVehicles'] = true,
             ['esx_vehicleshop:getStockItems'] = true,
         }
-        fallback = emptyLists[name] and {}
-            or name == 'esx_vehicleshop:getPlayerInventory' and { items = {} }
-            or false
+        fallback = emptyLists[name] and {} or name == 'esx_vehicleshop:getPlayerInventory' and { items = {} } or false
     end
 
     xLib.callback.registerCompat(name, function(source, cb, ...)
@@ -28,7 +26,6 @@ local function legacy(name, handler, fallback)
 
         if not values[1] then
             local code = type(values[2]) == 'table' and values[2].shopError or 'operation_failed'
-
             return cb(fallback, code)
         end
 
@@ -43,13 +40,11 @@ end
 local function purchase(source, request, account)
     local quote = D.quote(source, request)
     local result = D.execute(source, quote.id, account)
-
     return result.complete, nil, result.plate
 end
 
 local function stock(source)
     local player, shop = D.playerShop(source, Config.LegacyDealershipId, nil, true)
-
     return player, shop
 end
 
@@ -66,32 +61,17 @@ local function findShop(source, predicate)
 end
 
 legacy('esx_vehicleshop:buyVehicle', function(source, model, ignoredPlate, account)
-    return purchase(
-        source,
-        { shopId = Config.LegacyDealershipId, model = model, reference = ignoredPlate },
-        account
-    )
+    return purchase(source, { shopId = Config.LegacyDealershipId, model = model, reference = ignoredPlate }, account)
 end)
 
 legacy('esx_vehicleshop:buyCarDealerVehicle', function(source, model)
-    return purchase(
-        source,
-        { shopId = Config.LegacyDealershipId, model = model, kind = 'stock' },
-        'society'
-    )
+    return purchase(source, { shopId = Config.LegacyDealershipId, model = model, kind = 'stock' }, 'society')
 end)
 
 legacy('esx_vehicleshop:getCommercialVehicles', function(source)
     local _, shop = stock(source)
+    local rows = MySQL.query.await(('SELECT id, vehicle, price FROM cardealer_vehicles WHERE shop_id = ' .. '? AND available = 1 ORDER BY ' .. 'vehicle'), { shop.id })
 
-    local rows = MySQL.query.await(
-        (
-            'SELECT id, vehicle, price FROM cardealer_vehicles WHERE shop_id = '
-            .. '? AND available = 1 ORDER BY '
-            .. 'vehicle'
-        ),
-        { shop.id }
-    )
     stock(source)
     return rows
 end)
@@ -100,16 +80,8 @@ legacy('esx_vehicleshop:getRentedVehicles', function(source)
     local _, shop = stock(source)
     local result = {}
 
-    for _, row in
-        ipairs(
-            MySQL.query.await(
-                'SELECT * FROM rented_vehicles WHERE shop_id = ? ORDER BY player_name',
-                { shop.id }
-            )
-        )
-    do
-        result[#result + 1] =
-            { name = row.vehicle, plate = row.plate, playerName = row.player_name }
+    for _, row in ipairs(MySQL.query.await('SELECT * FROM rented_vehicles WHERE shop_id = ? ORDER BY player_name', { shop.id })) do
+        result[#result + 1] = { name = row.vehicle, plate = row.plate, playerName = row.player_name }
     end
 
     stock(source)
@@ -122,15 +94,7 @@ legacy('esx_vehicleshop:getSoldVehicles', function(source, page)
     page = tonumber(page) or 1
     D.assert(page >= 1 and page <= 10000 and page % 1 == 0, 'invalid_page')
 
-    local rows = MySQL.query.await(
-        (
-            'SELECT client, model, plate, soldby, date FROM vehicle_sold WHERE '
-            .. 'shop_id = ? ORDER BY date DESC, plate DESC LIMIT 51 OFFSET '
-            .. '?'
-        ),
-        { shop.id, (page - 1) * 50 }
-    )
-
+    local rows = MySQL.query.await(('SELECT client, model, plate, soldby, date FROM vehicle_sold WHERE ' .. 'shop_id = ? ORDER BY date DESC, plate DESC LIMIT 51 OFFSET ' .. '?'), { shop.id, (page - 1) * 50 })
     local more = #rows > 50
 
     stock(source)
@@ -140,19 +104,11 @@ legacy('esx_vehicleshop:getSoldVehicles', function(source, page)
 end)
 
 legacy('esx_vehicleshop:giveBackVehicle', function(source, plate)
-    return purchase(
-        source,
-        { shopId = Config.LegacyDealershipId, kind = 'return', plate = plate },
-        'money'
-    )
+    return purchase(source, { shopId = Config.LegacyDealershipId, kind = 'return', plate = plate }, 'money')
 end)
 
 legacy('esx_vehicleshop:resellVehicle', function(source, plate)
-    return purchase(
-        source,
-        { shopId = Config.LegacyDealershipId, kind = 'resale', plate = plate },
-        'money'
-    )
+    return purchase(source, { shopId = Config.LegacyDealershipId, kind = 'resale', plate = plate }, 'money')
 end)
 
 legacy('esx_vehicleshop:isPlateTaken', function(_, plate)
@@ -181,7 +137,6 @@ end)
 
 legacy('esx_vehicleshop:getPlayerInventory', function(source)
     local player = D.playerShop(source, Config.LegacyDealershipId, 'inventory', true)
-
     return { items = player.getInventory(false) }
 end)
 
@@ -194,40 +149,23 @@ local function event(name, handler)
         local ok, err = pcall(handler, source, ...)
 
         if not ok then
-            print(
-                ('[esx_vehicleshop] Legacy %s rejected: %s'):format(
-                    name,
-                    type(err) == 'table' and err.shopError or tostring(err)
-                )
-            )
+            print(('[esx_vehicleshop] Legacy %s rejected: %s'):format(name, type(err) == 'table' and err.shopError or tostring(err)))
         end
     end)
 end
 
 event('esx_vehicleshop:setVehicleOwnedPlayerId', function(source, target, ignoredProps, model)
-    D.quote(
-        source,
-        { shopId = Config.LegacyDealershipId, kind = 'purchase', model = model, targetId = target }
-    )
+    D.quote(source, { shopId = Config.LegacyDealershipId, kind = 'purchase', model = model, targetId = target })
 end)
 
 event('esx_vehicleshop:rentVehicle', function(source, model, ignoredPlate, ignoredPrice, target)
-    D.quote(
-        source,
-        { shopId = Config.LegacyDealershipId, kind = 'rent', model = model, targetId = target }
-    )
+    D.quote(source, { shopId = Config.LegacyDealershipId, kind = 'rent', model = model, targetId = target })
 end)
 
 event('esx_vehicleshop:returnProvider', function(source, model)
     local _, shop = stock(source)
-    local id = MySQL.scalar.await(
-        (
-            'SELECT id FROM cardealer_vehicles WHERE shop_id = ? AND vehicle = '
-            .. '? AND available = 1 ORDER BY id LIMIT '
-            .. '1'
-        ),
-        { shop.id, model }
-    )
+    local id = MySQL.scalar.await(('SELECT id FROM cardealer_vehicles WHERE shop_id = ? AND vehicle = ' .. '? AND available = 1 ORDER BY id LIMIT ' .. '1'), { shop.id, model })
+
     purchase(source, { shopId = shop.id, kind = 'provider', stockId = id }, 'society')
 end)
 
@@ -253,13 +191,7 @@ event('esx_vehicleshop:getVehiclesAndCategories', function(source)
         index[row.model] = row
     end
 
-    TriggerClientEvent(
-        'esx_vehicleshop:updateVehiclesAndCategories',
-        source,
-        rows,
-        D.categories,
-        index
-    )
+    TriggerClientEvent('esx_vehicleshop:updateVehiclesAndCategories', source, rows, D.categories, index)
 end)
 
 legacy('esx_boat:buyBoat', function(source, props, account)
@@ -270,11 +202,7 @@ legacy('esx_boat:buyBoat', function(source, props, account)
 
     for model in pairs(D.members[shop.id] or {}) do
         if hash and joaat(model) % 4294967296 == hash % 4294967296 then
-            return purchase(
-                source,
-                { shopId = shop.id, model = model, reference = props.plate },
-                account
-            )
+            return purchase(source, { shopId = shop.id, model = model, reference = props.plate }, account)
         end
     end
 
@@ -299,11 +227,7 @@ for _, job in ipairs({ 'police', 'ambulance' }) do
 
         for model in pairs(D.members[shop.id] or {}) do
             if hash and joaat(model) % 4294967296 == hash % 4294967296 then
-                return purchase(
-                    source,
-                    { shopId = shop.id, model = model, reference = props.plate },
-                    account
-                )
+                return purchase(source, { shopId = shop.id, model = model, reference = props.plate }, account)
             end
         end
 

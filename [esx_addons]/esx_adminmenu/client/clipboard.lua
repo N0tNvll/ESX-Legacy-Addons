@@ -22,10 +22,7 @@ local function finish(success, silent, releaseFocus)
     end
 
     if not silent then
-        ESX.ShowNotification(
-            Translate(success and 'copied_to_clipboard' or 'clipboard_failed'),
-            success and 'success' or 'error'
-        )
+        ESX.ShowNotification(Translate(success and 'copied_to_clipboard' or 'clipboard_failed'), success and 'success' or 'error')
     end
 end
 

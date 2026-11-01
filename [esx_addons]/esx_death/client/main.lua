@@ -6,27 +6,21 @@ local dead = false
 local recovering = false
 local pending = false
 local distressPending = false
-
 local generation = 0
 local session = 0
 local syncedAt = 0
 local holdStarted = nil
 local retryAt = 0
 local distressRetryAt = 0
-
 local state = {}
 local deathInfo = nil
-
 local uiReady = false
 local restorePending = false
 local cursor = false
-
 local requestId = 0
 local distressId = 0
-
 local syncState
 local requestRespawn
-
 local NUI_STRINGS = {
     numberLocale = 'ui_number_locale',
     pageTitle = 'ui_page_title',
@@ -79,13 +73,7 @@ end
 local function errorMessage(result)
     local key = result and result.error
 
-    if key ~= 'too_early'
-        and key ~= 'insufficient_funds'
-        and key ~= 'cooldown'
-        and key ~= 'unavailable'
-        and key ~= 'busy'
-        and key ~= 'not_dead'
-    then
+    if key ~= 'too_early' and key ~= 'insufficient_funds' and key ~= 'cooldown' and key ~= 'unavailable' and key ~= 'busy' and key ~= 'not_dead' then
         key = 'server_error'
     end
 
@@ -113,11 +101,9 @@ end)
 
 local function remaining()
     local elapsed = math.max(0, (GetGameTimer() - syncedAt) / 1000)
-
     local early = math.max(0, (state.earlyRemaining or 0) - elapsed)
     local total = math.max(0, (state.remaining or 0) - elapsed)
     local distress = math.max(0, (state.distressRemaining or 0) - elapsed)
-
     return early, total, distress
 end
 
@@ -136,7 +122,6 @@ local function deathCauseLabel(cause)
 
     local function hash(name)
         local value = GetHashKey(name)
-
         return value < 0 and value + 4294967296 or value
     end
 
@@ -237,7 +222,7 @@ local function refreshUI()
         zone = zone,
         deathReason = deathReason(),
         playerId = GetPlayerServerId(PlayerId()),
-        holdDuration = Config.HoldDuration
+        holdDuration = Config.HoldDuration,
     })
 end
 
@@ -293,6 +278,7 @@ local function enterDeath()
 
     dead = true
     generation = generation + 1
+
     local cycle = generation
     local ped = PlayerPedId()
 
@@ -331,7 +317,7 @@ local function enterDeath()
                 x = coords.x,
                 y = coords.y,
                 z = coords.z,
-                heading = GetEntityHeading(ped)
+                heading = GetEntityHeading(ped),
             })
 
             NetworkResurrectLocalPlayer(coords.x, coords.y, coords.z, GetEntityHeading(ped), true, false)
@@ -342,11 +328,7 @@ local function enterDeath()
 
             local deadline = GetGameTimer() + 5000
 
-            while not HasAnimDictLoaded(anim.dict)
-                and dead
-                and generation == cycle
-                and GetGameTimer() < deadline
-            do
+            while not HasAnimDictLoaded(anim.dict) and dead and generation == cycle and GetGameTimer() < deadline do
                 Wait(0)
             end
 
@@ -354,7 +336,7 @@ local function enterDeath()
                 loaded = HasAnimDictLoaded(anim.dict),
                 dict = anim.dict,
                 dead = dead,
-                generation = generation
+                generation = generation,
             })
         elseif not IsEntityDead(ped) then
             dbg('deathThread:set-health-zero')
@@ -389,6 +371,7 @@ local function enterDeath()
 
             if IsDisabledControlPressed(0, 38) and early <= 0 and not pending then
                 holdStarted = holdStarted or GetGameTimer()
+
                 local progress = math.min(1, (GetGameTimer() - holdStarted) / Config.HoldDuration)
 
                 send('hold', progress)
@@ -398,7 +381,7 @@ local function enterDeath()
                         early = early,
                         progress = progress,
                         pending = pending,
-                        dead = dead
+                        dead = dead,
                     })
                     holdStarted = nil
                     requestRespawn()
@@ -411,14 +394,8 @@ local function enterDeath()
             if Config.DeathAnim.enabled then
                 local anim = Config.DeathAnim
 
-                if HasAnimDictLoaded(anim.dict)
-                    and not IsEntityPlayingAnim(ped, anim.dict, anim.name, 3)
-                    and not IsPedInAnyVehicle(ped, false)
-                then
-                    TaskPlayAnim(
-                        ped, anim.dict, anim.name, anim.fadeIn, anim.fadeOut, -1,
-                        anim.flags, anim.playbackRate, false, false, false
-                    )
+                if HasAnimDictLoaded(anim.dict) and not IsEntityPlayingAnim(ped, anim.dict, anim.name, 3) and not IsPedInAnyVehicle(ped, false) then
+                    TaskPlayAnim(ped, anim.dict, anim.name, anim.fadeIn, anim.fadeOut, -1, anim.flags, anim.playbackRate, false, false, false)
                 end
             end
 
@@ -463,6 +440,7 @@ local function recover(data)
     end
 
     recovering = true
+
     local thisSession = session
 
     cleanup()
@@ -480,7 +458,7 @@ local function recover(data)
         dbg('recover:aborted-session-or-not-loaded', {
             thisSession = thisSession,
             session = session,
-            playerLoaded = ESX.PlayerLoaded
+            playerLoaded = ESX.PlayerLoaded,
         })
         return
     end
@@ -495,7 +473,7 @@ local function recover(data)
         y = coords.y,
         z = coords.z,
         heading = heading,
-        hasPoint = data.point ~= nil
+        hasPoint = data.point ~= nil,
     })
 
     RequestCollisionAtCoord(coords.x, coords.y, coords.z)
@@ -534,7 +512,7 @@ requestRespawn = function()
         retryAt = retryAt,
         now = GetGameTimer(),
         syncedAt = syncedAt,
-        state = state
+        state = state,
     })
 
     if not dead or pending or GetGameTimer() < retryAt then
@@ -542,7 +520,7 @@ requestRespawn = function()
             dead = dead,
             pending = pending,
             retryAt = retryAt,
-            now = GetGameTimer()
+            now = GetGameTimer(),
         })
         return
     end
@@ -560,7 +538,9 @@ requestRespawn = function()
     refreshUI()
 
     local cycle = generation
+
     requestId = requestId + 1
+
     local request = requestId
 
     dbg('requestRespawn:calling-server', { request = request, generation = generation })
@@ -581,7 +561,7 @@ requestRespawn = function()
             request = request,
             currentRequest = requestId,
             dead = dead,
-            result = result
+            result = result,
         })
 
         if not dead or request ~= requestId then
@@ -617,7 +597,7 @@ AddEventHandler('esx_death:requestDistress', function()
         distressPending = distressPending,
         cooldown = cooldown,
         retryAt = distressRetryAt,
-        now = GetGameTimer()
+        now = GetGameTimer(),
     })
 
     if not dead or distressPending or cooldown > 0 or GetGameTimer() < distressRetryAt then
@@ -626,7 +606,7 @@ AddEventHandler('esx_death:requestDistress', function()
             distressPending = distressPending,
             cooldown = cooldown,
             retryAt = distressRetryAt,
-            now = GetGameTimer()
+            now = GetGameTimer(),
         })
         return
     end
@@ -636,7 +616,9 @@ AddEventHandler('esx_death:requestDistress', function()
     refreshUI()
 
     local cycle = generation
+
     distressId = distressId + 1
+
     local request = distressId
 
     dbg('distress:calling-server', { request = request })
@@ -657,7 +639,7 @@ AddEventHandler('esx_death:requestDistress', function()
             request = request,
             currentRequest = distressId,
             dead = dead,
-            result = result
+            result = result,
         })
 
         if not dead or request ~= distressId then
@@ -687,7 +669,7 @@ syncState = function()
             restorePending = restorePending,
             playerLoaded = ESX.PlayerLoaded,
             recovering = recovering,
-            pending = pending
+            pending = pending,
         })
         return
     end
@@ -697,6 +679,7 @@ syncState = function()
     end
 
     restorePending = true
+
     local thisSession = session
 
     SetTimeout(10000, function()
@@ -757,6 +740,7 @@ AddEventHandler('esx:onPlayerDeath', function(data)
     end
 
     deathInfo = type(data) == 'table' and data or nil
+
     local total = math.ceil((Config.EarlyRespawnTimer + Config.BleedoutTimer) / 1000)
 
     state = {
@@ -797,6 +781,7 @@ AddEventHandler('onResourceStop', function(resource)
     end
 
     dbg('event:onResourceStop', { resource = resource, dead = dead })
+
     local wasDead = dead
 
     cleanup()
@@ -880,12 +865,11 @@ end)
 
 exports('GetDeathState', function()
     local early, total, distress = remaining()
-
     return {
         dead = dead,
         earlyRemaining = early,
         remaining = total,
-        distressRemaining = distress
+        distressRemaining = distress,
     }
 end)
 
@@ -903,6 +887,7 @@ CreateThread(function()
 
             if dead then
                 refreshUI()
+
                 local _, total = remaining()
 
                 if total <= 0 then

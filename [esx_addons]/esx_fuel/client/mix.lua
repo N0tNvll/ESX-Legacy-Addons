@@ -1,13 +1,12 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
-local MIX_BAG <const> = "fuelMix"
-local DRAIN_DICT <const> = "mini@repair"
-local DRAIN_ANIM <const> = "fixing_a_ped"
+local MIX_BAG <const> = 'fuelMix'
+local DRAIN_DICT <const> = 'mini@repair'
+local DRAIN_ANIM <const> = 'fixing_a_ped'
 local DRAIN_KEY <const> = 47
-local FAILURE_RESOURCE <const> = "esx_vehiclefailure"
-local MODIFIER_KEY <const> = "esx_fuel"
-
+local FAILURE_RESOURCE <const> = 'esx_vehiclefailure'
+local MODIFIER_KEY <const> = 'esx_fuel'
 local requested = {}
 local powered = 0
 local poweredSpeed = 1.0
@@ -28,6 +27,7 @@ function Fuel.setMix(vehicle, mix)
     end
 
     local kind = Fuel.getKind(vehicle)
+
     mix = FuelMix.sanitize(mix, kind)
     Entity(vehicle).state:set(MIX_BAG, not FuelMix.isClean(mix, kind) and mix or nil, true)
 
@@ -43,9 +43,9 @@ function Fuel.loadMix(vehicle)
     requested[vehicle] = true
 
     CreateThread(function()
-        local ok, mix = pcall(xLib.callback.await, "esx_fuel:getMix", false, NetworkGetNetworkIdFromEntity(vehicle))
+        local ok, mix = pcall(xLib.callback.await, 'esx_fuel:getMix', false, NetworkGetNetworkIdFromEntity(vehicle))
 
-        if not ok or (type(mix) == "table" and DoesEntityExist(vehicle) and not Fuel.setMix(vehicle, mix)) then
+        if not ok or (type(mix) == 'table' and DoesEntityExist(vehicle) and not Fuel.setMix(vehicle, mix)) then
             requested[vehicle] = nil
         end
     end)
@@ -53,7 +53,7 @@ end
 
 ---@return boolean
 local function hasFailure()
-    return GetResourceState(FAILURE_RESOURCE) == "started"
+    return GetResourceState(FAILURE_RESOURCE) == 'started'
 end
 
 ---@param vehicle integer
@@ -136,7 +136,7 @@ CreateThread(function()
 
                     wearEngine(vehicle, bad * Config.WrongFuel.EngineDamage)
                 end
-            elseif kind == "petrol" and mix.octane > Config.DefaultOctane then
+            elseif kind == 'petrol' and mix.octane > Config.DefaultOctane then
                 torque = 1.0 + (mix.octane - Config.DefaultOctane) * Config.OctaneBonus
             end
 
@@ -170,7 +170,7 @@ CreateThread(function()
     end
 end)
 
-AddEventHandler("onResourceStop", function(resource)
+AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() and powered ~= 0 then
         resetPower(powered)
     end
@@ -181,7 +181,6 @@ if Config.Drain.Enabled then
     local function canDrain()
         local job = ESX.PlayerData.job
         local minimum = job and Config.Drain.Jobs[job.name]
-
         return minimum ~= nil and (tonumber(job.grade) or 0) >= minimum
     end
 
@@ -189,7 +188,7 @@ if Config.Drain.Enabled then
     local function stopDrain(message)
         ClearPedTasks(PlayerPedId())
         RemoveAnimDict(DRAIN_DICT)
-        Fuel.setBusy("drain", false)
+        Fuel.setBusy('drain', false)
         ESX.ShowNotification(_U(message))
     end
 
@@ -197,10 +196,10 @@ if Config.Drain.Enabled then
     local function drain(vehicle)
         local ped = PlayerPedId()
 
-        Fuel.setBusy("drain", true)
+        Fuel.setBusy('drain', true)
 
         if not Fuel.requestControl(vehicle) then
-            return stopDrain("error_vehicle")
+            return stopDrain('error_vehicle')
         end
 
         RequestAnimDict(DRAIN_DICT)
@@ -219,17 +218,17 @@ if Config.Drain.Enabled then
             Wait(100)
 
             if not DoesEntityExist(vehicle) or #(GetEntityCoords(ped) - Fuel.getTankCoords(vehicle)) > Config.Refuel.TankDistance + 1.0 then
-                return stopDrain("drain_cancelled")
+                return stopDrain('drain_cancelled')
             end
         end
 
         if not Fuel.requestControl(vehicle) then
-            return stopDrain("error_vehicle")
+            return stopDrain('error_vehicle')
         end
 
         Fuel.setLevel(vehicle, 0.0, true)
         Fuel.setMix(vehicle, FuelMix.default(Fuel.getKind(vehicle)))
-        stopDrain("drain_done")
+        stopDrain('drain_done')
     end
 
     CreateThread(function()
@@ -240,21 +239,21 @@ if Config.Drain.Enabled then
             if canDrain() and not Fuel.isBusy() and not IsPedInAnyVehicle(PlayerPedId(), false) then
                 vehicle = Fuel.getVehicleAtTank(GetEntityCoords(PlayerPedId()))
 
-                if vehicle and Fuel.getKind(vehicle) == "electric" then
+                if vehicle and Fuel.getKind(vehicle) == 'electric' then
                     vehicle = nil
                 end
             end
 
             if vehicle then
                 sleep = 0
-                Fuel.hint("drain", _U("text_drain"))
+                Fuel.hint('drain', _U('text_drain'))
 
                 if IsControlJustReleased(0, DRAIN_KEY) then
-                    Fuel.hint("drain", nil)
+                    Fuel.hint('drain', nil)
                     drain(vehicle)
                 end
             else
-                Fuel.hint("drain", nil)
+                Fuel.hint('drain', nil)
             end
 
             Wait(sleep)

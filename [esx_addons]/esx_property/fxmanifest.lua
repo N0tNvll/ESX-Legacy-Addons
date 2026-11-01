@@ -29,26 +29,26 @@ version '2.0'
 legacyversion '1.16.3'
 
 shared_scripts { '@esx_lib/imports.lua', '@es_extended/imports.lua', '@esx_paymentgateway/imports.lua', '@es_extended/locale.lua', 'locales/*.lua' }
-file "client/html/copy.html"
-ui_page "client/html/copy.html"
+file 'client/html/copy.html'
+ui_page 'client/html/copy.html'
 
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'config.lua',
     'server/storage.lua',
-    'server/main.lua'
+    'server/main.lua',
 }
 
 client_scripts {
     'config.lua',
     'client/cctv.lua',
     'client/main.lua',
-    'client/furniture.lua'
+    'client/furniture.lua',
 }
 
 dependencies {
-	'esx_lib',
-	'es_extended',
+    'esx_lib',
+    'es_extended',
     'esx_paymentgateway',
-    'oxmysql'
+    'oxmysql',
 }

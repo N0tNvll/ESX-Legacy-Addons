@@ -19,6 +19,7 @@ Shared.Class.Time = {}
 ---@return Time
 function Shared.Class.Time:new(SerializedTime)
     local time = {}
+
     setmetatable(time, self)
     self.__index = self
 
@@ -45,6 +46,6 @@ function Shared.Class.Time:serialize()
     return {
         hours = self.hours,
         minutes = self.minutes,
-        seconds = self.seconds
+        seconds = self.seconds,
     }
 end

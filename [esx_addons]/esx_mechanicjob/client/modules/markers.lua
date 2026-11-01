@@ -45,12 +45,7 @@ AddEventHandler('esx_phone:loaded', function()
         ),
     }
 
-    TriggerEvent(
-        'esx_phone:addSpecialContact',
-        specialContact.name,
-        specialContact.number,
-        specialContact.base64Icon
-    )
+    TriggerEvent('esx_phone:addSpecialContact', specialContact.name, specialContact.number, specialContact.base64Icon)
 end)
 
 AddEventHandler('esx_mechanicjob:hasEnteredMarker', function(zone)
@@ -89,11 +84,7 @@ end)
 
 AddEventHandler('esx_mechanicjob:hasEnteredEntityZone', function(entity)
     if Mechanic.isMechanic() and not IsPedInAnyVehicle(PlayerPedId(), false) then
-        Mechanic.setCurrentAction(
-            'remove_entity',
-            TranslateCap('press_remove_obj'),
-            { entity = entity }
-        )
+        Mechanic.setCurrentAction('remove_entity', TranslateCap('press_remove_obj'), { entity = entity })
         Mechanic.showCurrentAction()
     end
 end)
@@ -130,32 +121,7 @@ CreateThread(function()
             for _, zone in pairs(Config.Zones) do
                 if zone.Type ~= -1 and #(coords - zone.Pos) < Config.DrawDistance then
                     sleep = 0
-                    DrawMarker(
-                        zone.Type,
-                        zone.Pos.x,
-                        zone.Pos.y,
-                        zone.Pos.z,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        zone.Size.x,
-                        zone.Size.y,
-                        zone.Size.z,
-                        zone.Color.r,
-                        zone.Color.g,
-                        zone.Color.b,
-                        100,
-                        true,
-                        true,
-                        2,
-                        true,
-                        nil,
-                        nil,
-                        false
-                    )
+                    DrawMarker(zone.Type, zone.Pos.x, zone.Pos.y, zone.Pos.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, zone.Size.x, zone.Size.y, zone.Size.z, zone.Color.r, zone.Color.g, zone.Color.b, 100, true, true, 2, true, nil, nil, false)
                 end
             end
         end
@@ -181,10 +147,7 @@ CreateThread(function()
                 end
             end
 
-            if
-                (isInMarker and not State.hasAlreadyEnteredMarker)
-                or (isInMarker and State.lastZone ~= currentZone)
-            then
+            if (isInMarker and not State.hasAlreadyEnteredMarker) or (isInMarker and State.lastZone ~= currentZone) then
                 State.hasAlreadyEnteredMarker = true
                 State.lastZone = currentZone
                 TriggerEvent('esx_mechanicjob:hasEnteredMarker', currentZone)
@@ -210,14 +173,7 @@ CreateThread(function()
         local closestEntity = nil
 
         for i = 1, #Mechanic.TrackedObjects do
-            local object = GetClosestObjectOfType(
-                coords,
-                3.0,
-                joaat(Mechanic.TrackedObjects[i]),
-                false,
-                false,
-                false
-            )
+            local object = GetClosestObjectOfType(coords, 3.0, joaat(Mechanic.TrackedObjects[i]), false, false, false)
 
             if DoesEntityExist(object) then
                 local distance = #(coords - GetEntityCoords(object))

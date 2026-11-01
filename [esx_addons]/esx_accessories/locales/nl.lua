@@ -1,20 +1,20 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
-Locales ['nl'] = {
-  ['helmet'] = 'Helm / Hoed',
-  ['glasses'] = 'Brillen',
-  ['mask'] = 'Masker',
-  ['ears'] = 'Oor accessories',
-  ['shop'] = '%s Winkel',
-  ['set_unset'] = 'Doe aan / doe uit',
-  ['not_enough_money'] = 'Je hebt niet genoeg geld',
-  ['press_access'] = 'Druk op [E] om het menu te openen',
-  ['accessories_blip'] = 'Accessories',
-  ['no_ears'] = 'Je hebt geen oor accessories',
-  ['no_glasses'] = 'je hebt geen brillen',
-  ['no_helmet'] = 'je hebt geen helm',
-  ['no_mask'] = 'je hebt geen masker',
-  ['you_paid'] = 'je betaalde €%s',
-  ['keymap'] = 'Open Accessory Menu', --not translated
+Locales['nl'] = {
+    ['helmet'] = 'Helm / Hoed',
+    ['glasses'] = 'Brillen',
+    ['mask'] = 'Masker',
+    ['ears'] = 'Oor accessories',
+    ['shop'] = '%s Winkel',
+    ['set_unset'] = 'Doe aan / doe uit',
+    ['not_enough_money'] = 'Je hebt niet genoeg geld',
+    ['press_access'] = 'Druk op [E] om het menu te openen',
+    ['accessories_blip'] = 'Accessories',
+    ['no_ears'] = 'Je hebt geen oor accessories',
+    ['no_glasses'] = 'je hebt geen brillen',
+    ['no_helmet'] = 'je hebt geen helm',
+    ['no_mask'] = 'je hebt geen masker',
+    ['you_paid'] = 'je betaalde €%s',
+    ['keymap'] = 'Open Accessory Menu', --not translated
 }

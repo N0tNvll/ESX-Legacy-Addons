@@ -4,10 +4,10 @@
 ---Gets ESX theme colors from convars
 ---@return table Theme colors
 function GetESXThemeColors()
-	return xLib.colors.getESXTheme({
-		primaryColor = '#AD0643',
-		secondaryColor = '#1a1a1a',
-		backgroundColor = '#0a0a0a',
-		accentColor = '#ffffff'
-	})
+    return xLib.colors.getESXTheme({
+        primaryColor = '#AD0643',
+        secondaryColor = '#1a1a1a',
+        backgroundColor = '#0a0a0a',
+        accentColor = '#ffffff',
+    })
 end

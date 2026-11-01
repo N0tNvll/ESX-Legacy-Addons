@@ -12,7 +12,6 @@ Locales['es'] = {
     ['chat_cleared'] = 'El chat se ha limpiado.',
     ['display_mode_set'] = 'Visualización del chat: %s',
     ['display_mode_usage'] = 'Uso: /chatmode [always|onMessage|hidden]',
-
     ['title_system'] = 'SISTEMA',
     ['title_ooc'] = 'OOC | %s',
     ['title_environment'] = 'ENTORNO | %s',
@@ -24,16 +23,13 @@ Locales['es'] = {
     ['title_pm_in'] = '[MP] %s → Tú',
     ['title_pm_out'] = '[MP] Tú → %s',
     ['title_report'] = 'REPORTE #%s · %s',
-
     ['dice_result'] = 'ha sacado un %s.',
     ['try_result'] = '%s: %s',
     ['try_success'] = 'ÉXITO',
     ['try_failure'] = 'FALLO',
-
     ['arg_action'] = 'acción',
     ['arg_message'] = 'mensaje',
     ['arg_player'] = 'id del jugador',
-
     ['command_me'] = 'Realizar una acción',
     ['command_do'] = 'Describir los alrededores',
     ['command_environment'] = 'Describir el entorno',
@@ -49,7 +45,6 @@ Locales['es'] = {
     ['command_chatmode'] = 'Cambiar la visualización del chat',
     ['command_clear'] = 'Limpiar tu chat',
     ['key_open'] = 'Abrir el chat',
-
     ['ui_tab_ooc'] = 'OOC',
     ['ui_tab_rp'] = 'RP',
     ['ui_tab_job'] = 'Trabajo',

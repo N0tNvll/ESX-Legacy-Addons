@@ -12,7 +12,6 @@ if IsDuplicityVersion() then
         end
 
         local metatable = type(value) == 'table' and getmetatable(value)
-
         return type(metatable) == 'table' and type(metatable.__call) == 'function'
     end
 
@@ -27,10 +26,7 @@ if IsDuplicityVersion() then
 
         if not isCallable(player.chargeAccount) or not isCallable(player.isCurrent) then
             if not missingApiReported then
-                local message = '[%s] Payment unavailable: '
-                    .. 'es_extended player payment API is missing. '
-                    .. 'Deploy the updated es_extended with chargeAccount '
-                    .. 'and restart the full server to recreate player sessions.'
+                local message = '[%s] Payment unavailable: ' .. 'es_extended player payment API is missing. ' .. 'Deploy the updated es_extended with chargeAccount ' .. 'and restart the full server to recreate player sessions.'
 
                 print(message:format(GetCurrentResourceName()))
                 missingApiReported = true
@@ -58,14 +54,7 @@ if IsDuplicityVersion() then
         local ok, refunded = pcall(player.addAccountMoney, account, amount, reason)
 
         if not ok or refunded ~= true then
-            print(
-                ('[%s] Refund requires review: %s, %s, %s'):format(
-                    GetCurrentResourceName(),
-                    player.getIdentifier(),
-                    account,
-                    amount
-                )
-            )
+            print(('[%s] Refund requires review: %s, %s, %s'):format(GetCurrentResourceName(), player.getIdentifier(), account, amount))
             return false
         end
 
@@ -88,10 +77,7 @@ function PaymentGateway.NotifyFailure(reason, message)
     end
 
     if reason == 'unconfirmed' then
-        ESX.ShowNotification(
-            'Payment not confirmed. Check your purchase before paying again.',
-            'error'
-        )
+        ESX.ShowNotification('Payment not confirmed. Check your purchase before paying again.', 'error')
         return
     end
 
@@ -130,8 +116,7 @@ function PaymentGateway.Await(request, callbackName, ...)
     request.quote = nil
 
     if quote then
-        local ok, amount =
-            pcall(xLib.callback.await, quote, false, table.unpack(arguments, 1, arguments.n))
+        local ok, amount = pcall(xLib.callback.await, quote, false, table.unpack(arguments, 1, arguments.n))
 
         if not ok or type(amount) ~= 'number' then
             pending = false
@@ -151,27 +136,17 @@ function PaymentGateway.Await(request, callbackName, ...)
     arguments.n = arguments.n + 1
     arguments[arguments.n] = account
 
-    local result = table.pack(
-        pcall(xLib.callback.await, callbackName, false, table.unpack(arguments, 1, arguments.n))
-    )
+    local result = table.pack(pcall(xLib.callback.await, callbackName, false, table.unpack(arguments, 1, arguments.n)))
 
     pending = false
 
     if not result[1] then
-        print(
-            ('[%s] Payment result unconfirmed: %s'):format(
-                GetCurrentResourceName(),
-                tostring(result[2])
-            )
-        )
+        print(('[%s] Payment result unconfirmed: %s'):format(GetCurrentResourceName(), tostring(result[2])))
         return false, 'unconfirmed'
     end
 
-    if result[2] == false and result[3] ~= 'insufficient_funds'
-        and result[3] ~= 'busy' and result[3] ~= 'cancelled' then
-        print(('[%s] Purchase rejected (%s): %s'):format(
-            GetCurrentResourceName(), callbackName, tostring(result[3] or 'unspecified')
-        ))
+    if result[2] == false and result[3] ~= 'insufficient_funds' and result[3] ~= 'busy' and result[3] ~= 'cancelled' then
+        print(('[%s] Purchase rejected (%s): %s'):format(GetCurrentResourceName(), callbackName, tostring(result[3] or 'unspecified')))
     end
 
     return table.unpack(result, 2, result.n)
@@ -186,8 +161,6 @@ function PaymentGateway.Pay(request, callbackName, callback, ...)
     local arguments = table.pack(...)
 
     CreateThread(function()
-        callback(
-            PaymentGateway.Await(request, callbackName, table.unpack(arguments, 1, arguments.n))
-        )
+        callback(PaymentGateway.Await(request, callbackName, table.unpack(arguments, 1, arguments.n)))
     end)
 end

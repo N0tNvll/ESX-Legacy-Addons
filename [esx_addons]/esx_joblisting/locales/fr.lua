@@ -69,5 +69,5 @@ Locales['fr'] = {
     ['ui_no_response'] = "Le serveur n'a pas répondu. Veuillez réessayer.",
     ['ui_location_marked'] = 'Lieu de travail marqué sur votre carte.',
     ['ui_location_unavailable'] = 'Lieu indisponible.',
-    ['ui_location_failed'] = 'Impossible de marquer le lieu.'
+    ['ui_location_failed'] = 'Impossible de marquer le lieu.',
 }

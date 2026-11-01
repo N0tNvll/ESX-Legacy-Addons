@@ -17,10 +17,8 @@ function D.legacySchema()
         assert(engine and engine:upper() == 'INNODB', name .. ' must use InnoDB')
     end
 
-    local dateType = MySQL.scalar.await(
-        [[SELECT DATA_TYPE FROM information_schema.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'vehicle_sold' AND COLUMN_NAME = 'date']]
-    )
+    local dateType = MySQL.scalar.await([[SELECT DATA_TYPE FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'vehicle_sold' AND COLUMN_NAME = 'date']])
 
     if dateType == 'varchar' then
         local invalid = MySQL.scalar.await(
@@ -44,26 +42,13 @@ function D.legacySchema()
         if tonumber(invalid) == 0 then
             MySQL.query.await('ALTER TABLE vehicle_sold MODIFY COLUMN date DATETIME NOT NULL')
         else
-            print(
-                (
-                    '[esx_vehicleshop] Historical sale dates need manual '
-                    .. 'review; preserving original '
-                    .. 'values.'
-                )
-            )
+            print(('[esx_vehicleshop] Historical sale dates need manual ' .. 'review; preserving original ' .. 'values.'))
         end
     end
 
-    local index = MySQL.scalar.await(
-        (
-            'SELECT COUNT(*) FROM information_schema.STATISTICS\n        WHERE '
-            .. "TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'vehicle_sold' AND "
-            .. "INDEX_NAME = 'idx_vehicle_sold_date_plate'"
-        )
-    )
+    local index = MySQL.scalar.await(('SELECT COUNT(*) FROM information_schema.STATISTICS\n        WHERE ' .. "TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'vehicle_sold' AND " .. "INDEX_NAME = 'idx_vehicle_sold_date_plate'"))
 
     if tonumber(index) == 0 then
         MySQL.query.await('CREATE INDEX idx_vehicle_sold_date_plate ON vehicle_sold (date, plate)')
     end
-
 end

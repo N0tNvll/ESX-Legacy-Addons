@@ -35,6 +35,7 @@ local function monitorPlayback(item, ped, requestId)
 
         while playing and playbackId == requestId do
             local running
+
             if item.type == 'scenario' then
                 running = IsPedUsingScenario(ped, item.anim)
             else
@@ -58,7 +59,7 @@ end
 local typeIcons = {
     anim = 'Play',
     scenario = 'PlaySquare',
-    attitude = 'PersonStanding'
+    attitude = 'PersonStanding',
 }
 
 ---Gets ESX theme colors from convars
@@ -67,8 +68,9 @@ function AnimationUI.GetESXThemeColors()
     local defaults = {
         secondaryColor = '#252525',
         backgroundColor = '#161616',
-        accentColor = '#383838'
+        accentColor = '#383838',
     }
+
     if type(xLib) == 'table' and type(xLib.colors) == 'table' and type(xLib.colors.getESXTheme) == 'function' then
         return xLib.colors.getESXTheme(defaults)
     end
@@ -79,24 +81,28 @@ end
 ---@return table[]
 function AnimationUI.BuildCategories()
     local categories = {}
+
     for i = 1, #Config.Animations do
         local cat = Config.Animations[i]
         local items = {}
+
         for j = 1, #cat.items do
             local item = cat.items[j]
+
             items[#items + 1] = {
                 name = item.label,
                 label = item.label,
                 type = item.type,
                 lib = item.data and item.data.lib,
                 anim = item.data and item.data.anim,
-                icon = typeIcons[item.type] or 'Play'
+                icon = typeIcons[item.type] or 'Play',
             }
         end
+
         categories[#categories + 1] = {
             name = cat.name,
             label = cat.label,
-            items = items
+            items = items,
         }
     end
     return categories
@@ -121,7 +127,7 @@ function AnimationUI.GetNuiLocalePayload()
         typeAnim = TranslateCap('ui_type_anim'),
         typeScenario = TranslateCap('ui_type_scenario'),
         typeAttitude = TranslateCap('ui_type_attitude'),
-        noAnimations = TranslateCap('ui_no_animations')
+        noAnimations = TranslateCap('ui_no_animations'),
     }
 end
 
@@ -144,7 +150,7 @@ function AnimationUI.Open()
         currentCategory = currentCategory,
         categories = AnimationUI.BuildCategories(),
         locale = AnimationUI.GetNuiLocalePayload(),
-        theme = AnimationUI.GetESXThemeColors()
+        theme = AnimationUI.GetESXThemeColors(),
     }
 
     uiOpen = true
@@ -160,6 +166,7 @@ function AnimationUI.Close()
     end
 
     uiOpen = false
+
     if loadingId then
         resetPlayback()
     end
@@ -171,8 +178,10 @@ end
 ---Stops the currently playing animation and notifies the NUI (for keybinding use)
 function AnimationUI.Stop()
     local resetAttitude = activeItem and activeItem.type == 'attitude'
+
     resetPlayback()
     ClearPedTasks(ESX.PlayerData.ped)
+
     if resetAttitude then
         ResetPedMovementClipset(ESX.PlayerData.ped, 0.0)
     end
@@ -202,16 +211,19 @@ xLib.nui.register('play', function(data)
     if animType ~= 'anim' and animType ~= 'scenario' and animType ~= 'attitude' then
         return xLib.nui.fail('Unknown animation type: ' .. tostring(animType))
     end
-    if type(anim) ~= 'string' or anim == '' or
-        (animType ~= 'scenario' and (type(lib) ~= 'string' or lib == '')) then
+
+    if type(anim) ~= 'string' or anim == '' or (animType ~= 'scenario' and (type(lib) ~= 'string' or lib == '')) then
         return xLib.nui.fail('Invalid animation data')
     end
 
     playbackId = playbackId + 1
+
     local requestId = playbackId
+
     loadingId = requestId
     activeItem = data
     playing = true
+
     local ped = ESX.PlayerData.ped
     local started = false
 
@@ -220,13 +232,19 @@ xLib.nui.register('play', function(data)
         started = true
     elseif animType == 'attitude' then
         xLib.streaming.requestAnimSet(lib, function()
-            if playbackId ~= requestId then return end
+            if playbackId ~= requestId then
+                return
+            end
+
             SetPedMovementClipset(ped, anim, 1.0)
             started = true
         end)
     elseif animType == 'anim' then
         xLib.streaming.requestAnimDict(lib, function()
-            if playbackId ~= requestId then return end
+            if playbackId ~= requestId then
+                return
+            end
+
             TaskPlayAnim(ped, lib, anim, 8.0, -8.0, -1, 0, 0.0, false, false, false)
             RemoveAnimDict(lib)
             started = true
@@ -236,7 +254,9 @@ xLib.nui.register('play', function(data)
     if playbackId ~= requestId then
         return xLib.nui.fail('Animation cancelled')
     end
+
     loadingId = nil
+
     if not started then
         resetPlayback()
         return xLib.nui.fail('Unable to load animation')
@@ -282,14 +302,14 @@ CreateThread(function()
 
         if uiOpen then
             sleep = 0
-            DisableControlAction(2, 288, true)  -- F3
-            DisableControlAction(2, 289, true)  -- F4
-            DisableControlAction(2, 170, true)  -- F2 / Menu
-            DisableControlAction(2, 167, true)  -- F6
-            DisableControlAction(2, 168, true)  -- F7
-            DisableControlAction(2, 23, true)   -- Enter / Sprint
-            DisableControlAction(0, 75, true)   -- Exit vehicle
-            DisableControlAction(27, 75, true)  -- Exit vehicle 2
+            DisableControlAction(2, 288, true) -- F3
+            DisableControlAction(2, 289, true) -- F4
+            DisableControlAction(2, 170, true) -- F2 / Menu
+            DisableControlAction(2, 167, true) -- F6
+            DisableControlAction(2, 168, true) -- F7
+            DisableControlAction(2, 23, true) -- Enter / Sprint
+            DisableControlAction(0, 75, true) -- Exit vehicle
+            DisableControlAction(27, 75, true) -- Exit vehicle 2
         end
 
         Wait(sleep)

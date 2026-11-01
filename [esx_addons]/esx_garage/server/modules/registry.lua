@@ -25,7 +25,6 @@ local callbackLimiters = {}
 ---@return integer
 local function defaultImpoundFee()
     local fee = tonumber(Config.Settings.defaultImpoundFee) or 0
-
     return math.max(0, math.floor(fee))
 end
 
@@ -105,12 +104,7 @@ function CanAccessGarage(source, garage)
         local name = job and job.name
         local allowed = name and access and access.jobs and access.jobs[name]
 
-        if
-            not name
-            or (garage.job and garage.job ~= name)
-            or (not garage.job and allowed == nil)
-            or (access and access.jobs and allowed == nil)
-        then
+        if not name or (garage.job and garage.job ~= name) or (not garage.job and allowed == nil) or (access and access.jobs and allowed == nil) then
             return false
         end
 
@@ -118,20 +112,7 @@ function CanAccessGarage(source, garage)
         local minimum = tonumber(garage.minGrade or 0)
         local accessMinimum = tonumber(allowed or 0)
 
-        if
-            not grade
-            or not minimum
-            or not accessMinimum
-            or grade ~= grade
-            or minimum ~= minimum
-            or accessMinimum ~= accessMinimum
-            or grade == math.huge
-            or minimum < 0
-            or accessMinimum < 0
-            or minimum % 1 ~= 0
-            or accessMinimum % 1 ~= 0
-            or grade < math.max(minimum, accessMinimum)
-        then
+        if not grade or not minimum or not accessMinimum or grade ~= grade or minimum ~= minimum or accessMinimum ~= accessMinimum or grade == math.huge or minimum < 0 or accessMinimum < 0 or minimum % 1 ~= 0 or accessMinimum % 1 ~= 0 or grade < math.max(minimum, accessMinimum) then
             return false
         end
 
@@ -139,14 +120,7 @@ function CanAccessGarage(source, garage)
             local ok, result = pcall(access.authorize, source, garage)
             local current = ESX.GetPlayerFromId(source)
             local currentJob = current and current.job
-
-            return ok
-                and result == true
-                and xPlayer.isCurrent() == true
-                and currentJob
-                and currentJob.name == name
-                and tonumber(currentJob.grade)
-                and tonumber(currentJob.grade) >= math.max(minimum, accessMinimum)
+            return ok and result == true and xPlayer.isCurrent() == true and currentJob and currentJob.name == name and tonumber(currentJob.grade) and tonumber(currentJob.grade) >= math.max(minimum, accessMinimum)
         end
 
         return true
@@ -168,12 +142,7 @@ function CanAccessGarage(source, garage)
         local ok, result = pcall(access.authorize, source, garage)
 
         if not ok then
-            print(
-                ('[esx_garage] garage %s: access.authorize errored: %s'):format(
-                    tostring(garage.id),
-                    tostring(result)
-                )
-            )
+            print(('[esx_garage] garage %s: access.authorize errored: %s'):format(tostring(garage.id), tostring(result)))
             return false
         end
 
@@ -250,12 +219,7 @@ function CanUseGarageScope(scope)
 
     local current = ResolveGarageScope(scope.source, scope.garageId, scope.fleetGarageId)
 
-    if
-        current == nil
-        or current.kind ~= scope.kind
-        or current.job ~= scope.job
-        or current.owner ~= scope.owner
-    then
+    if current == nil or current.kind ~= scope.kind or current.job ~= scope.job or current.owner ~= scope.owner then
         return false
     end
 
@@ -264,10 +228,7 @@ function CanUseGarageScope(scope)
             current.location,
             current.fleetGarageId and Garages[current.fleetGarageId],
         }) do
-            if
-                not GarageCategories.accepts(location, scope.vehicle)
-                or not GarageCategories.acceptsModel(location, scope.vehicle, scope.source)
-            then
+            if not GarageCategories.accepts(location, scope.vehicle) or not GarageCategories.acceptsModel(location, scope.vehicle, scope.source) then
                 return false
             end
         end
@@ -390,53 +351,28 @@ end)
 
 ---@param def Garage
 local function registerGarage(def)
-    assert(
-        type(def) == 'table' and type(def.id) == 'string',
-        'registerGarage: a garage table with a string id is required'
-    )
+    assert(type(def) == 'table' and type(def.id) == 'string', 'registerGarage: a garage table with a string id is required')
     GarageCategories.validate(def)
-    assert(
-        not def.reserve or def.release,
-        'registerGarage: reserve requires a matching release callback'
-    )
+    assert(not def.reserve or def.release, 'registerGarage: reserve requires a matching release callback')
 
     if def.type == 'job' then
-        assert(
-            (type(def.job) == 'string' and def.job ~= '')
-                or (def.access and type(def.access.jobs) == 'table' and next(def.access.jobs)),
-            'registerGarage: a job garage needs job or access.jobs'
-        )
+        assert((type(def.job) == 'string' and def.job ~= '') or (def.access and type(def.access.jobs) == 'table' and next(def.access.jobs)), 'registerGarage: a job garage needs job or access.jobs')
 
         local grade = tonumber(def.minGrade or 0)
 
-        assert(
-            grade and grade == grade and grade >= 0 and grade < math.huge and grade % 1 == 0,
-            'registerGarage: minGrade must be a non-negative integer'
-        )
+        assert(grade and grade == grade and grade >= 0 and grade < math.huge and grade % 1 == 0, 'registerGarage: minGrade must be a non-negative integer')
     end
 
-    assert(
-        hasXYZ(def.entryPoint),
-        ('registerGarage: garage %s needs a valid entryPoint (x, y, z)'):format(def.id)
-    )
+    assert(hasXYZ(def.entryPoint), ('registerGarage: garage %s needs a valid entryPoint (x, y, z)'):format(def.id))
 
     if def.storePoint ~= nil then
-        assert(
-            hasXYZ(def.storePoint),
-            ('registerGarage: garage %s has an invalid storePoint (x, y, z)'):format(def.id)
-        )
+        assert(hasXYZ(def.storePoint), ('registerGarage: garage %s has an invalid storePoint (x, y, z)'):format(def.id))
     end
 
-    assert(
-        type(def.spawns) == 'table' and #def.spawns > 0,
-        ('registerGarage: garage %s needs at least one spawn'):format(def.id)
-    )
+    assert(type(def.spawns) == 'table' and #def.spawns > 0, ('registerGarage: garage %s needs at least one spawn'):format(def.id))
 
     for i = 1, #def.spawns do
-        assert(
-            hasXYZ(def.spawns[i]),
-            ('registerGarage: garage %s spawn #%d is not a valid coordinate'):format(def.id, i)
-        )
+        assert(hasXYZ(def.spawns[i]), ('registerGarage: garage %s spawn #%d is not a valid coordinate'):format(def.id, i))
     end
 
     Garages[def.id] = def

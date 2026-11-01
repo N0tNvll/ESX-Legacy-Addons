@@ -1,20 +1,20 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
-Locales ['pl'] = {
-  ['helmet'] = 'hełm / Czapka',
-  ['glasses'] = 'okulary',
-  ['mask'] = 'maska',
-  ['ears'] = 'akcesoria uszu',
-  ['shop'] = 'sklep %s ',
-  ['set_unset'] = 'załóż / Zdejmij',
-  ['not_enough_money'] = 'nie masz wystarczająco pieniędzy',
-  ['press_access'] = 'wciśnij [E] aby otworzyć menu',
-  ['accessories_blip'] = 'akcesoria',
-  ['no_ears'] = 'nie posiadasz akcesorii uszu',
-  ['no_glasses'] = 'nie posiadasz okularów',
-  ['no_helmet'] = 'nie posiadasz nakrycia głowy',
-  ['no_mask'] = 'nie posiadasz maski',
-  ['you_paid'] = 'płacisz %s $',
-  ['keymap'] = 'Open Accessory Menu', --not translated
+Locales['pl'] = {
+    ['helmet'] = 'hełm / Czapka',
+    ['glasses'] = 'okulary',
+    ['mask'] = 'maska',
+    ['ears'] = 'akcesoria uszu',
+    ['shop'] = 'sklep %s ',
+    ['set_unset'] = 'załóż / Zdejmij',
+    ['not_enough_money'] = 'nie masz wystarczająco pieniędzy',
+    ['press_access'] = 'wciśnij [E] aby otworzyć menu',
+    ['accessories_blip'] = 'akcesoria',
+    ['no_ears'] = 'nie posiadasz akcesorii uszu',
+    ['no_glasses'] = 'nie posiadasz okularów',
+    ['no_helmet'] = 'nie posiadasz nakrycia głowy',
+    ['no_mask'] = 'nie posiadasz maski',
+    ['you_paid'] = 'płacisz %s $',
+    ['keymap'] = 'Open Accessory Menu', --not translated
 }

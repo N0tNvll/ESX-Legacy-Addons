@@ -27,9 +27,7 @@ end
 -- Death camera lifecycle
 
 function StartDeathCam()
-    camera = CreateCamWithParams(
-        'DEFAULT_SCRIPTED_CAMERA', 0, 0, 0, 0, 0, 0, GetGameplayCamFov(), 1
-    )
+    camera = CreateCamWithParams('DEFAULT_SCRIPTED_CAMERA', 0, 0, 0, 0, 0, 0, GetGameplayCamFov(), 1)
     RenderScriptCams(true, true, 1000, true, false)
 
     playerPed = PlayerPedId()
@@ -51,6 +49,7 @@ function ProcessCamControls()
     end
 
     playerPed = PlayerPedId()
+
     local playerCoords = GetEntityCoords(playerPed)
 
     if camera_radius < zoom.max and IsDisabledControlPressed(0, 14) then
@@ -60,6 +59,7 @@ function ProcessCamControls()
     end
 
     local coords = ProcessNewPosition(playerCoords)
+
     SetCamCoord(camera, coords)
     PointCamAtCoord(camera, playerCoords.x, playerCoords.y, playerCoords.z)
 end
@@ -76,16 +76,8 @@ function ProcessNewPosition(playerCoords)
         y = math.rad(90)
     end
 
-    local normal = vector3(
-        math.sin(y) * math.cos(x),
-        math.sin(y) * math.sin(x),
-        math.cos(y)
-    )
-
+    local normal = vector3(math.sin(y) * math.cos(x), math.sin(y) * math.sin(x), math.cos(y))
     local pos = playerCoords + normal * camera_radius
-    local hit, coords = GetShapeTestResultSync(
-        StartShapeTestLosProbe(playerCoords, pos, -1, playerPed)
-    )
-
+    local hit, coords = GetShapeTestResultSync(StartShapeTestLosProbe(playerCoords, pos, -1, playerPed))
     return (hit == 1 and playerCoords + normal * (#(playerCoords - coords) - 1)) or pos
 end

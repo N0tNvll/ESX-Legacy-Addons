@@ -30,4 +30,4 @@ Locales['sv'] = {
     ['errors'] = 'Misstag: ~r~%s/%s',
     ['you_damaged_veh'] = 'Du skadade fordonet',
     ['not_enough_money'] = 'Du har inte tillräckligt med pengar',
-  }
+}

@@ -24,8 +24,7 @@ local function add(shop, coords, action)
         return
     end
 
-    local location =
-        { shop = shop, coords = vector3(coords.x, coords.y, coords.z), action = action }
+    local location = { shop = shop, coords = vector3(coords.x, coords.y, coords.z), action = action }
     local point = xLib.point:new({
         coords = location.coords,
         distance = 3.0,
@@ -137,7 +136,7 @@ end)
 
 xLib.addKeybind({
     name = 'esx_vehicleshop_interact',
-    description = 'Abrir concesionario',
+    description = S.translate('dealership_interact'),
     defaultMapper = 'keyboard',
     defaultKey = 'E',
     onPressed = function()
@@ -165,10 +164,7 @@ xLib.addKeybind({
             local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
 
             if vehicle == 0 then
-                return ESX.ShowNotification(
-                    'Acércate con el vehículo que quieres devolver o vender.',
-                    'error'
-                )
+                return ESX.ShowNotification(S.translate('dealership_vehicle_required'), 'error')
             end
 
             S.openShop(nearest.shop.id, nil, nearest.action, GetVehicleNumberPlateText(vehicle))
@@ -199,41 +195,12 @@ CreateThread(function()
 
         for _, point in ipairs(points) do
             -- Point drawing is intentionally separate from the shared NUI and server rules.
-            if
-                point.marker.enabled ~= false
-                and point.coords
-                and #(coords - point.coords) < (Config.DrawDistance or 10)
-            then
+            if point.marker.enabled ~= false and point.coords and #(coords - point.coords) < (Config.DrawDistance or 10) then
                 local marker = point.marker
                 local color, size = marker.color or Config.MarkerColor or {}, marker.size or {}
 
                 sleep = 0
-                DrawMarker(
-                    marker.type or 1,
-                    point.coords.x,
-                    point.coords.y,
-                    point.coords.z - (marker.offsetZ or 0.9),
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    0,
-                    size.x or 1.2,
-                    size.y or 1.2,
-                    size.z or 0.25,
-                    color.r or 255,
-                    color.g or 172,
-                    color.b or 0,
-                    color.a or 110,
-                    false,
-                    false,
-                    2,
-                    false,
-                    nil,
-                    nil,
-                    false
-                )
+                DrawMarker(marker.type or 1, point.coords.x, point.coords.y, point.coords.z - (marker.offsetZ or 0.9), 0, 0, 0, 0, 0, 0, size.x or 1.2, size.y or 1.2, size.z or 0.25, color.r or 255, color.g or 172, color.b or 0, color.a or 110, false, false, 2, false, nil, nil, false)
             end
         end
 

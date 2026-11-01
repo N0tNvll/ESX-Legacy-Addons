@@ -5,3 +5,13 @@ INSERT INTO `items` (`name`, `label`, `weight`) VALUES
     ('bread', 'Brot', 1),
     ('water', 'Wasser', 1)
 ;
+
+INSERT INTO `items` (`name`, `label`, `weight`) VALUES
+    ('beer', 'Bier', 1)
+;
+
+INSERT INTO `shops` (store, item, price) VALUES
+    ('TwentyFourSeven', 'beer', 45),
+    ('RobsLiquor', 'beer', 45),
+    ('LTDgasoline', 'beer', 45)
+;

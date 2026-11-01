@@ -6,33 +6,38 @@ ESXCatalog.awaitReady()
 local PendingAccessoryPurchases = {}
 local purchaseLimiter = xLib.rateLimiter({ capacity = 2, refill = 1, interval = 2000 })
 local ValidAccessories = {
-	ears = 'Ears',
-	mask = 'Mask',
-	helmet = 'Helmet',
-	glasses = 'Glasses'
+    ears = 'Ears',
+    mask = 'Mask',
+    helmet = 'Helmet',
+    glasses = 'Glasses',
 }
 
 local function normalizeAccessory(accessory)
-	return ValidAccessories[string.lower(tostring(accessory or ''))]
+    return ValidAccessories[string.lower(tostring(accessory or ''))]
 end
 
 local function isNearAccessoryShop(source, accessory)
-	local ped = GetPlayerPed(source)
-	local zone = Config.Zones[accessory]
-	if ped <= 0 or not zone or type(zone.Pos) ~= 'table' then return false end
+    local ped = GetPlayerPed(source)
+    local zone = Config.Zones[accessory]
 
-	local coords = GetEntityCoords(ped)
-	for i = 1, #zone.Pos do
-		if #(coords - zone.Pos[i]) <= (Config.ShopDistance or 3.0) then
-			return true
-		end
-	end
+    if ped <= 0 or not zone or type(zone.Pos) ~= 'table' then
+        return false
+    end
 
-	return false
+    local coords = GetEntityCoords(ped)
+
+    for i = 1, #zone.Pos do
+        if #(coords - zone.Pos[i]) <= (Config.ShopDistance or 3.0) then
+            return true
+        end
+    end
+
+    return false
 end
 
 local function beginAccessoryPurchase(source, accessory, account)
     local xPlayer = ESX.GetPlayerFromId(source)
+
     accessory = normalizeAccessory(accessory)
 
     if not xPlayer or not accessory or not isNearAccessoryShop(source, accessory) then
@@ -50,8 +55,7 @@ local function beginAccessoryPurchase(source, accessory, account)
         return false, 'busy'
     end
 
-    local charged, failure =
-        PaymentGateway.Charge(xPlayer, account, Config.Price, "Accessory Purchase")
+    local charged, failure = PaymentGateway.Charge(xPlayer, account, Config.Price, 'Accessory Purchase')
 
     if not charged then
         return false, failure
@@ -63,19 +67,19 @@ local function beginAccessoryPurchase(source, accessory, account)
         expires = GetGameTimer() + (Config.PurchaseSessionDuration or 60000),
     }
 
-    TriggerClientEvent('esx:showNotification', source,
-        TranslateCap('you_paid', ESX.Math.GroupDigits(Config.Price)))
+    TriggerClientEvent('esx:showNotification', source, TranslateCap('you_paid', ESX.Math.GroupDigits(Config.Price)))
     return true
 end
 
 RegisterServerEvent('esx_accessories:pay')
 AddEventHandler('esx_accessories:pay', function(accessory)
-	beginAccessoryPurchase(source, accessory)
+    beginAccessoryPurchase(source, accessory)
 end)
 
 RegisterServerEvent('esx_accessories:save')
 AddEventHandler('esx_accessories:save', function(skin, accessory)
     local playerId = source
+
     accessory = normalizeAccessory(accessory)
 
     if not accessory or type(skin) ~= 'table' then
@@ -134,29 +138,32 @@ AddEventHandler('esx_accessories:save', function(skin, accessory)
 end)
 
 xLib.callback.registerCompat('esx_accessories:get', function(source, cb, accessory)
-	local xPlayer = ESX.Player(source)
-	accessory = normalizeAccessory(accessory)
-	if not xPlayer or not accessory then return cb(false, {}) end
+    local xPlayer = ESX.Player(source)
 
-	TriggerEvent('esx_datastore:getDataStore', 'user_' .. string.lower(accessory), xPlayer.getIdentifier(), function(store)
-		local hasAccessory = (store.get('has' .. accessory) and store.get('has' .. accessory) or false)
-		local skin = (store.get('skin') and store.get('skin') or {})
+    accessory = normalizeAccessory(accessory)
 
-		cb(hasAccessory, skin)
-	end)
+    if not xPlayer or not accessory then
+        return cb(false, {})
+    end
 
+    TriggerEvent('esx_datastore:getDataStore', 'user_' .. string.lower(accessory), xPlayer.getIdentifier(), function(store)
+        local hasAccessory = (store.get('has' .. accessory) and store.get('has' .. accessory) or false)
+        local skin = (store.get('skin') and store.get('skin') or {})
+
+        cb(hasAccessory, skin)
+    end)
 end)
 
 xLib.callback.registerCompat('esx_accessories:buy', function(source, cb, accessory, account)
-	cb(beginAccessoryPurchase(source, accessory, account))
+    cb(beginAccessoryPurchase(source, accessory, account))
 end)
 
 xLib.callback.registerCompat('esx_accessories:checkMoney', function(source, cb, accessory)
-	local xPlayer = ESX.Player(source)
+    local xPlayer = ESX.Player(source)
 
-	cb(xPlayer and normalizeAccessory(accessory) and isNearAccessoryShop(source, normalizeAccessory(accessory)) and xPlayer.getMoney() >= Config.Price)
+    cb(xPlayer and normalizeAccessory(accessory) and isNearAccessoryShop(source, normalizeAccessory(accessory)) and xPlayer.getMoney() >= Config.Price)
 end)
 
 AddEventHandler('esx:playerDropped', function(playerId)
-	PendingAccessoryPurchases[playerId] = nil
+    PendingAccessoryPurchases[playerId] = nil
 end)

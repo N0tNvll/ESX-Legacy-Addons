@@ -69,5 +69,5 @@ Locales['sl'] = {
     ['ui_no_response'] = 'Strežnik se ni odzval. Poskusi znova.',
     ['ui_location_marked'] = 'Lokacija dela je označena na zemljevidu.',
     ['ui_location_unavailable'] = 'Lokacija ni na voljo.',
-    ['ui_location_failed'] = 'Lokacije ni bilo mogoče označiti.'
+    ['ui_location_failed'] = 'Lokacije ni bilo mogoče označiti.',
 }

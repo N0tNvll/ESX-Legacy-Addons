@@ -3,7 +3,7 @@
 
 Config = {}
 
-Config.Locale = GetConvar("esx:locale", "en")
+Config.Locale = GetConvar('esx:locale', 'en')
 
 -- Fuel consumption, in percent of the tank per second at full throttle.
 -- Final usage = (Idle + RPM^2 * Load) * ClassMultiplier[vehicle class]
@@ -14,18 +14,38 @@ Config.Consumption = {
 }
 
 Config.ClassMultiplier = {
-    [0] = 1.0, [1] = 1.0, [2] = 1.2, [3] = 1.0, [4] = 1.1, [5] = 1.1, [6] = 1.2, [7] = 1.4,
-    [8] = 0.6, [9] = 1.2, [10] = 1.4, [11] = 1.0, [12] = 1.2, [13] = 0.0, [14] = 1.0, [15] = 1.0,
-    [16] = 1.0, [17] = 1.1, [18] = 1.1, [19] = 1.3, [20] = 1.4, [21] = 1.0, [22] = 1.0
+    [0] = 1.0,
+    [1] = 1.0,
+    [2] = 1.2,
+    [3] = 1.0,
+    [4] = 1.1,
+    [5] = 1.1,
+    [6] = 1.2,
+    [7] = 1.4,
+    [8] = 0.6,
+    [9] = 1.2,
+    [10] = 1.4,
+    [11] = 1.0,
+    [12] = 1.2,
+    [13] = 0.0,
+    [14] = 1.0,
+    [15] = 1.0,
+    [16] = 1.0,
+    [17] = 1.1,
+    [18] = 1.1,
+    [19] = 1.3,
+    [20] = 1.4,
+    [21] = 1.0,
+    [22] = 1.0,
 }
 
 -- Fuel sold at the pumps. `price` is per liter, `octane` is only used by petrol.
 Config.FuelTypes = {
-    { name = "regular", kind = "petrol", octane = 87, price = 1.55 },
-    { name = "plus", kind = "petrol", octane = 89, price = 1.70 },
-    { name = "premium", kind = "petrol", octane = 91, price = 1.90 },
-    { name = "diesel", kind = "diesel", price = 1.60 },
-    { name = "electric", kind = "electric", price = 0.45 }
+    { name = 'regular', kind = 'petrol', octane = 87, price = 1.55 },
+    { name = 'plus', kind = 'petrol', octane = 89, price = 1.70 },
+    { name = 'premium', kind = 'petrol', octane = 91, price = 1.90 },
+    { name = 'diesel', kind = 'diesel', price = 1.60 },
+    { name = 'electric', kind = 'electric', price = 0.45 },
 }
 
 -- Octane of a petrol tank when nothing is known about it.
@@ -36,7 +56,7 @@ Config.WrongFuel = {
     Tolerance = 0.1, -- below this share nothing happens
     PowerLoss = 0.6, -- share of the top speed lost at 100% wrong fuel
     StallChance = 0.04, -- stall chance per second at 100% wrong fuel
-    EngineDamage = 3.0 -- engine health lost per second at 100% wrong fuel
+    EngineDamage = 3.0, -- engine health lost per second at 100% wrong fuel
 }
 
 -- Links with vehicle damage. A damaged tank leaks, a worn engine burns more fuel.
@@ -46,7 +66,7 @@ Config.Damage = {
     LeakTankHealth = 650, -- the tank starts leaking below this health (1000 = new)
     LeakPercentPerSecond = 0.08, -- leak at 0 tank health, in percent of the tank per second
     WornEngineHealth = 600, -- the engine burns more fuel below this health
-    WornEngineConsumption = 0.6 -- extra consumption at 0 engine health (0.6 = +60%)
+    WornEngineConsumption = 0.6, -- extra consumption at 0 engine health (0.6 = +60%)
 }
 
 -- Torque bonus per octane point above Config.DefaultOctane
@@ -56,13 +76,13 @@ Config.OctaneBonus = 0.01
 Config.Drain = {
     Enabled = true,
     Jobs = { mechanic = 0 }, -- job name = minimum grade
-    Duration = 10000
+    Duration = 10000,
 }
 
 Config.JerryCan = {
     Enabled = true,
     Liters = 20.0,
-    PourLitersPerSecond = 2.0
+    PourLitersPerSecond = 2.0,
 }
 
 -- Extra charging spots for electric vehicles, on top of the gas station pumps.
@@ -74,10 +94,10 @@ Config.Stock = {
     Enabled = false,
     Capacity = 2000, -- liters per station
     Default = 1000, -- liters for a station seen for the first time
-    DeliveryItem = "petrol_raffin",
+    DeliveryItem = 'petrol_raffin',
     LitersPerItem = 50,
     DeliveryPay = 20, -- paid per item, by the owning society when there is one
-    Owners = {} -- [station index in Config.Stations] = "society_name"
+    Owners = {}, -- [station index in Config.Stations] = "society_name"
 }
 
 -- Vehicle classes running on diesel. Everything else uses petrol, electric vehicles are detected by the game.
@@ -92,17 +112,17 @@ Config.Refuel = {
     HoseLength = 6.0,
     TankDistance = 1.6,
     ChargePerSecond = 1.5,
-    PayWith = { "money", "bank" }
+    PayWith = { 'money', 'bank' },
 }
 
 Config.PumpModels = {
-    "prop_gas_pump_1a",
-    "prop_gas_pump_1b",
-    "prop_gas_pump_1c",
-    "prop_gas_pump_1d",
-    "prop_gas_pump_old2",
-    "prop_gas_pump_old3",
-    "prop_vintage_pump"
+    'prop_gas_pump_1a',
+    'prop_gas_pump_1b',
+    'prop_gas_pump_1c',
+    'prop_gas_pump_1d',
+    'prop_gas_pump_old2',
+    'prop_gas_pump_old3',
+    'prop_vintage_pump',
 }
 
 -- The server only accepts purchases within StationRadius of one of these stations.
@@ -136,5 +156,5 @@ Config.Stations = {
     vector3(2581.32, 362.04, 108.47),
     vector3(176.63, -1562.03, 29.26),
     vector3(-319.29, -1471.72, 30.55),
-    vector3(1784.32, 3330.55, 41.25)
+    vector3(1784.32, 3330.55, 41.25),
 }

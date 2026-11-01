@@ -2,12 +2,12 @@
 -- Copyright (C) 2022-2026 ESX Framework
 
 return {
-    ["parking_blip_name"] = 'Garaj',
-    ["Impound_blip_name"] = 'Depo',
-    ["access_parking"] = 'Araç parkına erişmek için [E] tuşuna basın.',
-    ["access_Impound"] = 'Depoya erişmek için [E] tuşuna basın.',
-    ["park_veh"] = 'Araç park etmek için [E] tuşuna basın.',
-    ["not_owning_veh"] = 'Bu aracın sahibi değilsiniz!',
+    ['parking_blip_name'] = 'Garaj',
+    ['Impound_blip_name'] = 'Depo',
+    ['access_parking'] = 'Araç parkına erişmek için [E] tuşuna basın.',
+    ['access_Impound'] = 'Depoya erişmek için [E] tuşuna basın.',
+    ['park_veh'] = 'Araç park etmek için [E] tuşuna basın.',
+    ['not_owning_veh'] = 'Bu aracın sahibi değilsiniz!',
     ['veh_released'] = 'Araç başarıyla alındı.',
     ['veh_Impound_released'] = 'Araç başarıyla depodan alındı.',
     ['veh_stored'] = 'Araç başarıyla garaja kaldırıldı',
@@ -28,5 +28,5 @@ return {
     ['not_in_vehicle'] = 'bir araçta değilsiniz.',
     ['cannot_store'] = 'bu araç park edilemiyor.',
     ['cannot_access_garage'] = 'bu garaja erişiminiz yok.',
-    ['received_vehicle'] = 'bir araç aldınız (plaka: %s).'
+    ['received_vehicle'] = 'bir araç aldınız (plaka: %s).',
 }

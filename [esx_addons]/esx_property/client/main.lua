@@ -18,6 +18,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
+
 local GameBuild = GetGameBuildNumber()
 
 Properties = {}
@@ -142,36 +143,27 @@ RegisterNetEvent('esx_property:syncProperty', function(propertyId, property)
     RefreshBlips()
 end)
 
-RegisterNetEvent(
-    'esx_property:receivePropertyOffer',
-    function(token, sellerName, propertyName, price)
-        PaymentGateway.Pay(
-            {
-                amount = price,
-                title = propertyName,
-                description = sellerName,
-            },
-            'esx_property:respondToSaleOffer',
-            function(success, reason)
-                if success then
-                    ESX.ShowNotification('Property purchased.', 'success')
-                elseif reason == 'cancelled' then
-                    xLib.callback(
-                        'esx_property:respondToSaleOffer',
-                        false,
-                        function() end,
-                        token,
-                        false
-                    )
-                else
-                    ESX.ShowNotification(TranslateCap('cannot_sell'), 'error')
-                end
-            end,
-            token,
-            true
-        )
-    end
-)
+RegisterNetEvent('esx_property:receivePropertyOffer', function(token, sellerName, propertyName, price)
+    PaymentGateway.Pay(
+        {
+            amount = price,
+            title = propertyName,
+            description = sellerName,
+        },
+        'esx_property:respondToSaleOffer',
+        function(success, reason)
+            if success then
+                ESX.ShowNotification('Property purchased.', 'success')
+            elseif reason == 'cancelled' then
+                xLib.callback('esx_property:respondToSaleOffer', false, function() end, token, false)
+            else
+                ESX.ShowNotification(TranslateCap('cannot_sell'), 'error')
+            end
+        end,
+        token,
+        true
+    )
+end)
 
 RegisterNetEvent('esx_property:giveKeyAccess', function(Property)
     xLib.callback('esx_property:ShouldHaveKey', false, function(Should)
@@ -337,18 +329,12 @@ function PropertyMenuElements(PropertyId)
         end
 
         if ESX.PlayerData.identifier == Property.Owner then
-            table.insert(
-                elements,
-                { title = TranslateCap('name_manage'), description = TranslateCap('name_manage_desc'), icon = 'fa-solid fa-signature', value = 'property_name' }
-            )
+            table.insert(elements, { title = TranslateCap('name_manage'), description = TranslateCap('name_manage_desc'), icon = 'fa-solid fa-signature', value = 'property_name' })
         end
 
         if not InProperty then
             if ESX.PlayerData.identifier == Property.Owner then
-                table.insert(
-                    elements,
-                    { title = TranslateCap('key_management'), description = TranslateCap('key_management_desc'), icon = 'fas fa-key', value = 'property_keys' }
-                )
+                table.insert(elements, { title = TranslateCap('key_management'), description = TranslateCap('key_management_desc'), icon = 'fas fa-key', value = 'property_keys' })
                 table.insert(elements, {
                     title = TranslateCap('sell_title'),
                     description = TranslateCap('sell_desc', ESX.Math.GroupDigits(ESX.Round(Property.Price * 0.6))),
@@ -358,17 +344,11 @@ function PropertyMenuElements(PropertyId)
             end
 
             if Config.Raiding.Enabled and Property.Locked and ESX.PlayerData.job and ESX.GetPlayerData().job.name == 'police' then
-                table.insert(
-                    elements,
-                    { title = TranslateCap('raid_title'), description = TranslateCap('raid_desc'), icon = 'fas fa-bomb', value = 'property_raid' }
-                )
+                table.insert(elements, { title = TranslateCap('raid_title'), description = TranslateCap('raid_desc'), icon = 'fas fa-bomb', value = 'property_raid' })
             end
         else
             if (Config.CCTV.Enabled and Properties[PropertyId].cctv.enabled) and (ESX.PlayerData.identifier == Property.Owner or PlayerKeys[PropertyId]) then
-                table.insert(
-                    elements,
-                    { title = TranslateCap('cctv_title'), description = TranslateCap('cctv_desc'), icon = 'fas fa-video', value = 'property_cctv' }
-                )
+                table.insert(elements, { title = TranslateCap('cctv_title'), description = TranslateCap('cctv_desc'), icon = 'fas fa-video', value = 'property_cctv' })
             end
 
             if ESX.PlayerData.identifier == Property.Owner or PlayerKeys[PropertyId] then
@@ -403,11 +383,7 @@ function PropertyMenuElements(PropertyId)
             table.insert(elements, { title = TranslateCap('enter_title'), icon = 'fas fa-door-open', value = 'property_enter' })
         end
 
-        if
-            Property.Locked
-            and not InProperty
-            and not (Config.OwnerCanAlwaysEnter and ESX.PlayerData.identifier == Property.Owner or PlayerKeys[PropertyId])
-        then
+        if Property.Locked and not InProperty and not (Config.OwnerCanAlwaysEnter and ESX.PlayerData.identifier == Property.Owner or PlayerKeys[PropertyId]) then
             table.insert(elements, { title = TranslateCap('knock_title'), icon = 'fa-solid fa-hand-sparkles', value = 'property_knock' })
         end
     else
@@ -586,18 +562,23 @@ function OpenPropertyMenu(PropertyId)
         end
 
         if element.value == 'property_buy' then
-            PaymentGateway.Pay({
-                amount = tonumber(Properties[PropertyId].Price),
-                title = Properties[PropertyId].Name,
-            }, 'esx_property:buyProperty', function(IsBought, paymentFailure)
-                if IsBought then
-                    local eles = PropertyMenuElements(PropertyId)
+            PaymentGateway.Pay(
+                {
+                    amount = tonumber(Properties[PropertyId].Price),
+                    title = Properties[PropertyId].Name,
+                },
+                'esx_property:buyProperty',
+                function(IsBought, paymentFailure)
+                    if IsBought then
+                        local eles = PropertyMenuElements(PropertyId)
 
-                    exports['esx_context']:Refresh(eles)
-                else
-                    PaymentGateway.NotifyFailure(paymentFailure, TranslateCap('cannot_afford'))
-                end
-            end, PropertyId)
+                        exports['esx_context']:Refresh(eles)
+                    else
+                        PaymentGateway.NotifyFailure(paymentFailure, TranslateCap('cannot_afford'))
+                    end
+                end,
+                PropertyId
+            )
         end
 
         if element.value == 'property_sell_re' then
@@ -777,30 +758,7 @@ function AttemptHouseEntry(PropertyId)
             if Interior.type == 'shell' then
                 if #(PlayerCoords - vector3(Property.Entrance.x, Property.Entrance.y, 1999)) < 5.0 then
                     Sleep = 0
-                    DrawMarker(
-                        27,
-                        vector3(Property.Entrance.x, Property.Entrance.y, 2000.2),
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        1.0,
-                        1.0,
-                        1.0,
-                        50,
-                        50,
-                        200,
-                        200,
-                        false,
-                        false,
-                        2,
-                        true,
-                        nil,
-                        nil,
-                        false
-                    )
+                    DrawMarker(27, vector3(Property.Entrance.x, Property.Entrance.y, 2000.2), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 50, 50, 200, 200, false, false, 2, true, nil, nil, false)
 
                     if #(PlayerCoords.xy - vector2(Property.Entrance.x, Property.Entrance.y)) <= 2.5 then
                         Near = true
@@ -866,30 +824,7 @@ function AttemptHouseEntry(PropertyId)
             else
                 if #(PlayerCoords - Interior.pos) < 5.0 then
                     Sleep = 0
-                    DrawMarker(
-                        27,
-                        vector3(Interior.pos.xy, Interior.pos.z - 0.98),
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        1.0,
-                        1.0,
-                        1.0,
-                        50,
-                        50,
-                        200,
-                        200,
-                        false,
-                        false,
-                        2,
-                        true,
-                        nil,
-                        nil,
-                        false
-                    )
+                    DrawMarker(27, vector3(Interior.pos.xy, Interior.pos.z - 0.98), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 50, 50, 200, 200, false, false, 2, true, nil, nil, false)
 
                     if #(PlayerCoords - Interior.pos) < 2.0 then
                         if not ShowingUIs.Exit then
@@ -921,30 +856,7 @@ function AttemptHouseEntry(PropertyId)
                         if CanDo then
                             if #(PlayerCoords - v) < 5.0 then
                                 Sleep = 0
-                                DrawMarker(
-                                    27,
-                                    vector3(v.xy, v.z - 0.98),
-                                    0.0,
-                                    0.0,
-                                    0.0,
-                                    0.0,
-                                    0.0,
-                                    0.0,
-                                    1.0,
-                                    1.0,
-                                    1.0,
-                                    200,
-                                    50,
-                                    50,
-                                    200,
-                                    false,
-                                    false,
-                                    2,
-                                    true,
-                                    nil,
-                                    nil,
-                                    false
-                                )
+                                DrawMarker(27, vector3(v.xy, v.z - 0.98), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 200, 50, 50, 200, false, false, 2, true, nil, nil, false)
 
                                 if #(PlayerCoords - v) < 2.0 then
                                     if not ShowingUIs[k] then
@@ -1008,24 +920,14 @@ function AccessGarage(PropertyId)
                     ESX.CloseContext()
                     ESX.ShowNotification(TranslateCap('retriving_notify', element.Properties.DisplayName))
 
-                    if
-                        xLib.game.isSpawnPointClear(
-                            vector3(Properties[PropertyId].garage.pos.x, Properties[PropertyId].garage.pos.y, Properties[PropertyId].garage.pos.z),
-                            3.0
-                        )
-                    then
-                        xLib.game.spawnVehicle(
-                            element.Properties.model,
-                            Properties[PropertyId].garage.pos,
-                            Properties[PropertyId].garage.Heading,
-                            function(vehicle)
-                                SetEntityAsMissionEntity(vehicle, true, true)
-                                xLib.game.setVehicleProperties(vehicle, element.Properties)
-                                TaskWarpPedIntoVehicle(ESX.PlayerData.ped, vehicle, -1)
-                                SetModelAsNoLongerNeeded(element.Properties.model)
-                                TriggerServerEvent('esx_property:SetVehicleOut', PropertyId, element.index)
-                            end
-                        )
+                    if xLib.game.isSpawnPointClear(vector3(Properties[PropertyId].garage.pos.x, Properties[PropertyId].garage.pos.y, Properties[PropertyId].garage.pos.z), 3.0) then
+                        xLib.game.spawnVehicle(element.Properties.model, Properties[PropertyId].garage.pos, Properties[PropertyId].garage.Heading, function(vehicle)
+                            SetEntityAsMissionEntity(vehicle, true, true)
+                            xLib.game.setVehicleProperties(vehicle, element.Properties)
+                            TaskWarpPedIntoVehicle(ESX.PlayerData.ped, vehicle, -1)
+                            SetModelAsNoLongerNeeded(element.Properties.model)
+                            TriggerServerEvent('esx_property:SetVehicleOut', PropertyId, element.index)
+                        end)
                     end
                 end
             end)
@@ -1340,8 +1242,7 @@ RegisterNetEvent('esx_property:CreateProperty', function()
                         if element.index == 'entrance' then
                             local PlayerPos = GetEntityCoords(ESX.PlayerData.ped)
 
-                            HouseData.entrance =
-                                { x = ESX.Math.Round(PlayerPos.x, 2), y = ESX.Math.Round(PlayerPos.y, 2), z = ESX.Math.Round(PlayerPos.z, 2) - 0.98 }
+                            HouseData.entrance = { x = ESX.Math.Round(PlayerPos.x, 2), y = ESX.Math.Round(PlayerPos.y, 2), z = ESX.Math.Round(PlayerPos.z, 2) - 0.98 }
                             Property[7].title = TranslateCap('entrance_set_title')
                             Property[7].description = TranslateCap('entrance_set_description', HouseData.entrance.x, HouseData.entrance.y, HouseData.entrance.z)
                             OpenCreate()
@@ -1367,8 +1268,7 @@ RegisterNetEvent('esx_property:CreateProperty', function()
                             local ints = { { unselectable = true, icon = 'fas fa-warehouse', title = TranslateCap('shell_title') } }
 
                             for i = 1, #Config.Interiors.Shells do
-                                ints[#ints + 1] =
-                                    { title = Config.Interiors.Shells[i].label, index = 'selectedinterior', value = Config.Interiors.Shells[i].value }
+                                ints[#ints + 1] = { title = Config.Interiors.Shells[i].label, index = 'selectedinterior', value = Config.Interiors.Shells[i].value }
                                 exports['esx_context']:Refresh(ints, 'right')
                             end
                         end
@@ -1640,22 +1540,14 @@ RegisterNetEvent('esx_property:AdminMenu', function()
                             end
 
                             if Config.Garage.Enabled then
-                                elements[#elements + 1] =
-                                    { title = 'Garage', description = 'Change Garage Settings', icon = 'fa-solid fa-warehouse', value = 'garage' }
+                                elements[#elements + 1] = { title = 'Garage', description = 'Change Garage Settings', icon = 'fa-solid fa-warehouse', value = 'garage' }
                             end
 
                             if Config.CCTV.Enabled then
                                 elements[#elements + 1] = { title = 'CCTV', description = 'Change CCTV Settings', icon = 'fa-solid fa-camera', value = 'cctv' }
                             end
 
-                            if
-                                Config.OxInventory
-                                and Properties[currentProperty].positions.Storage
-                                and (
-                                    ESX.Round(Interior.positions.Storage.x, 2) ~= Properties[currentProperty].positions.Storage.x
-                                    or ESX.Round(Interior.positions.Storage.y, 2) ~= Properties[currentProperty].positions.Storage.y
-                                )
-                            then
+                            if Config.OxInventory and Properties[currentProperty].positions.Storage and (ESX.Round(Interior.positions.Storage.x, 2) ~= Properties[currentProperty].positions.Storage.x or ESX.Round(Interior.positions.Storage.y, 2) ~= Properties[currentProperty].positions.Storage.y) then
                                 elements[#elements + 1] = {
                                     title = 'Reset Storage Position',
                                     description = 'Set Storage Position To Interior Default.',
@@ -1665,10 +1557,7 @@ RegisterNetEvent('esx_property:AdminMenu', function()
                             end
 
                             if Interior.positions.Wardrobe then
-                                if
-                                    ESX.Round(Interior.positions.Wardrobe.x, 2) ~= ESX.Round(Properties[currentProperty].positions.Wardrobe.x, 2)
-                                    or ESX.Round(Interior.positions.Wardrobe.y, 2) ~= ESX.Round(Properties[currentProperty].positions.Wardrobe.y, 2)
-                                then
+                                if ESX.Round(Interior.positions.Wardrobe.x, 2) ~= ESX.Round(Properties[currentProperty].positions.Wardrobe.x, 2) or ESX.Round(Interior.positions.Wardrobe.y, 2) ~= ESX.Round(Properties[currentProperty].positions.Wardrobe.y, 2) then
                                     elements[#elements + 1] = {
                                         title = 'Reset Wardrobe Position',
                                         description = 'Set Wardrobe Position To Interior Default.',
@@ -2054,8 +1943,7 @@ RegisterNetEvent('esx_property:AdminMenu', function()
                                             local elements = { { unselectable = true, icon = 'fas fa-warehouse', title = 'Interiors' } }
 
                                             for i = 1, #Config.Interiors[element.value] do
-                                                elements[#elements + 1] =
-                                                    { title = Config.Interiors[element.value][i].label, value = Config.Interiors[element.value][i].value }
+                                                elements[#elements + 1] = { title = Config.Interiors[element.value][i].label, value = Config.Interiors[element.value][i].value }
                                             end
 
                                             ESX.OpenContext('right', elements, function(menu, element)
@@ -2106,12 +1994,7 @@ RegisterNetEvent('esx_property:AdminMenu', function()
                         ESX.OpenContext('right', elements, function(menu, element)
                             if element.value then
                                 if element.value == 'goto' then
-                                    SetEntityCoords(
-                                        ESX.PlayerData.ped,
-                                        Properties[currentProperty].Entrance.x,
-                                        Properties[currentProperty].Entrance.y,
-                                        Properties[currentProperty].Entrance.z
-                                    )
+                                    SetEntityCoords(ESX.PlayerData.ped, Properties[currentProperty].Entrance.x, Properties[currentProperty].Entrance.y, Properties[currentProperty].Entrance.z)
                                     ESX.ShowNotification('Teleported to Property!')
                                 end
 

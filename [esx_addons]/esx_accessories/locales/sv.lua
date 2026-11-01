@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
-Locales ['sv'] = {
+Locales['sv'] = {
     ['helmet'] = 'Hjälm / Hatt',
     ['glasses'] = 'Glasögon',
     ['mask'] = 'Mask',
@@ -17,4 +17,4 @@ Locales ['sv'] = {
     ['no_mask'] = 'Du har ingen mask',
     ['you_paid'] = 'Du betalade %skr',
     ['keymap'] = 'Öppna accessoar meny',
-  }
+}

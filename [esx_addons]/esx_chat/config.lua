@@ -9,6 +9,9 @@ Config.Locale = GetConvar('esx:locale', 'en')
 Config.OpenKey = 'T'
 Config.MaxMessageLength = 280
 Config.ProximityDistance = 20.0
+Config.ProximityMaxLength = 256
+Config.EnableESXIdentity = true
+Config.OnlyFirstname = false
 Config.MaxVisibleMessages = 5
 Config.KeepMessages = 100
 Config.EmitLegacyChatMessage = true
@@ -17,7 +20,16 @@ Config.AllowGlobalChat = true -- kept for compatibility with resources that trig
 -- Anti-spam: `burst` messages at once, then one more every `interval` milliseconds
 Config.RateLimit = {
     burst = 3,
-    interval = 1500
+    interval = 1500,
+}
+
+Config.CommandCooldowns = {
+    ooc = 3000,
+    twt = 10000,
+    anontwt = 15000,
+    me = 1000,
+    ['do'] = 1000,
+    pm = 1000,
 }
 
 -- UI behavior
@@ -33,7 +45,7 @@ Config.UseGameClock = true
 -- or with the `esx:logs:Chat` convar when esx_lib provides xLib.logs.
 Config.Logs = {
     enabled = true,
-    channel = 'Chat'
+    channel = 'Chat',
 }
 
 -- Groups that receive /report messages.
@@ -62,5 +74,5 @@ Config.Commands = {
     { name = 'job', scope = 'job', group = 'user' },
     { name = 'pm', aliases = { 'msg' }, scope = 'private', group = 'user' },
     { name = 'report', scope = 'staff', group = 'user' },
-    { name = 'help', scope = 'help', group = 'user' }
+    { name = 'help', scope = 'help', group = 'user' },
 }

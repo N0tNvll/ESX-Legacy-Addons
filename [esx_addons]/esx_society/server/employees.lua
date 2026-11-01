@@ -22,9 +22,7 @@ function SocietyEmployees.ensureIndex()
     assert(tonumber(indexed), 'Unable to inspect employee indexes')
 
     if tonumber(indexed) == 0 then
-        MySQL.query.await(
-            'CREATE INDEX `esx_society_employees` ON `users` (`job`, `job_grade`, `identifier`)'
-        )
+        MySQL.query.await('CREATE INDEX `esx_society_employees` ON `users` (`job`, `job_grade`, `identifier`)')
     end
 end
 
@@ -42,9 +40,7 @@ MySQL.ready(function()
 end)
 
 local function followsCursor(employee, cursor)
-    return not cursor.identifier
-        or employee.job.grade < cursor.grade
-        or (employee.job.grade == cursor.grade and employee.identifier < cursor.identifier)
+    return not cursor.identifier or employee.job.grade < cursor.grade or (employee.job.grade == cursor.grade and employee.identifier < cursor.identifier)
 end
 
 local function makeCursor(phase, employee)
@@ -68,13 +64,7 @@ local function validCursor(cursor)
         return cursor.phase == 'offline' and cursor.grade == nil
     end
 
-    return type(cursor.identifier) == 'string'
-        and #cursor.identifier > 0
-        and #cursor.identifier <= 60
-        and type(cursor.grade) == 'number'
-        and cursor.grade == math.floor(cursor.grade)
-        and cursor.grade >= 0
-        and cursor.grade <= 2147483647
+    return type(cursor.identifier) == 'string' and #cursor.identifier > 0 and #cursor.identifier <= 60 and type(cursor.grade) == 'number' and cursor.grade == math.floor(cursor.grade) and cursor.grade >= 0 and cursor.grade <= 2147483647
 end
 
 function SocietyEmployees.getPage(society, cursor)
@@ -136,8 +126,7 @@ function SocietyEmployees.getPage(society, cursor)
         end)
 
         if #employees >= pageSize then
-            local nextCursor = #employees > pageSize and makeCursor('online', employees[pageSize])
-                or { phase = 'offline' }
+            local nextCursor = #employees > pageSize and makeCursor('online', employees[pageSize]) or { phase = 'offline' }
 
             for i = #employees, pageSize + 1, -1 do
                 employees[i] = nil

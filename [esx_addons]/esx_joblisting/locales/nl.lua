@@ -69,5 +69,5 @@ Locales['nl'] = {
     ['ui_no_response'] = 'De server reageerde niet. Probeer het opnieuw.',
     ['ui_location_marked'] = 'Werklocatie gemarkeerd op je kaart.',
     ['ui_location_unavailable'] = 'Locatie niet beschikbaar.',
-    ['ui_location_failed'] = 'De locatie kon niet worden gemarkeerd.'
+    ['ui_location_failed'] = 'De locatie kon niet worden gemarkeerd.',
 }

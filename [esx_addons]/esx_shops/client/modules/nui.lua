@@ -8,105 +8,112 @@ local nuiReady = false
 
 -- NUI Ready Callback
 xLib.nui.register('ready', function()
-	nuiReady = true
-	return { theme = GetESXThemeColors() }
+    nuiReady = true
+    return { theme = GetESXThemeColors() }
 end)
 
 ---Opens shop NUI
 ---@param zone string Shop zone name
 function OpenShop(zone)
-	if uiOpen or openingShop then
-		DebugPrint('[esx_shops] Shop already open')
-		return
-	end
+    if uiOpen or openingShop then
+        DebugPrint('[esx_shops] Shop already open')
+        return
+    end
 
-	if not nuiReady then
-		DebugPrint('[esx_shops] NUI not ready yet')
-		ESX.ShowNotification(_U('nui_not_ready'))
-		return
-	end
+    if not nuiReady then
+        DebugPrint('[esx_shops] NUI not ready yet')
+        ESX.ShowNotification(_U('nui_not_ready'))
+        return
+    end
 
-	local zoneData = Config.Zones[zone]
-	if not zoneData then return end
+    local zoneData = Config.Zones[zone]
 
-	local callbackReceived = false
-	local defaultTaxRate = Config.TaxRate
-	openingShop = true
+    if not zoneData then
+        return
+    end
 
-	local processedItems = ProcessItemImages(zoneData.Items)
+    local callbackReceived = false
+    local defaultTaxRate = Config.TaxRate
 
-	SetTimeout(5000, function()
-		if not callbackReceived then
-			DebugPrint('[^3WARNING^7] ' .. _U('tax_callback_timeout'))
+    openingShop = true
 
-			local shopData = {
-				shopName = zone,
-				items = processedItems,
-				categories = zoneData.Categories,
-				taxRate = defaultTaxRate,
-				taxMessage = nil
-			}
+    local processedItems = ProcessItemImages(zoneData.Items)
 
-			xLib.nui.focus(true, true)
-			xLib.nui.send({
-				type = 'openShop',
-				shopData = shopData
-			})
+    SetTimeout(5000, function()
+        if not callbackReceived then
+            DebugPrint('[^3WARNING^7] ' .. _U('tax_callback_timeout'))
 
-			currentShop = zone
-			uiOpen = true
-			openingShop = false
-		end
-	end)
+            local shopData = {
+                shopName = zone,
+                items = processedItems,
+                categories = zoneData.Categories,
+                taxRate = defaultTaxRate,
+                taxMessage = nil,
+            }
 
-	-- Get player's dynamic tax rate
-	xLib.callback('esx_shops:getTaxRate', false, function(taxRate, taxMessage)
-		if callbackReceived then return end
-		callbackReceived = true
+            xLib.nui.focus(true, true)
+            xLib.nui.send({
+                type = 'openShop',
+                shopData = shopData,
+            })
 
-		local shopData = {
-			shopName = zone,
-			items = processedItems,
-			categories = zoneData.Categories,
-			taxRate = taxRate,
-			taxMessage = taxMessage
-		}
+            currentShop = zone
+            uiOpen = true
+            openingShop = false
+        end
+    end)
 
-		xLib.nui.focus(true, true)
-		xLib.nui.send({
-			type = 'openShop',
-			shopData = shopData
-		})
+    -- Get player's dynamic tax rate
+    xLib.callback('esx_shops:getTaxRate', false, function(taxRate, taxMessage)
+        if callbackReceived then
+            return
+        end
 
-		currentShop = zone
-		uiOpen = true
-		openingShop = false
-	end)
+        callbackReceived = true
+
+        local shopData = {
+            shopName = zone,
+            items = processedItems,
+            categories = zoneData.Categories,
+            taxRate = taxRate,
+            taxMessage = taxMessage,
+        }
+
+        xLib.nui.focus(true, true)
+        xLib.nui.send({
+            type = 'openShop',
+            shopData = shopData,
+        })
+
+        currentShop = zone
+        uiOpen = true
+        openingShop = false
+    end)
 end
 
 function CloseShop()
-	xLib.nui.close({ type = 'closeShop' })
-	currentShop = nil
-	uiOpen = false
-	openingShop = false
+    xLib.nui.close({ type = 'closeShop' })
+    currentShop = nil
+    uiOpen = false
+    openingShop = false
 end
 
 ---Gets current shop name
 ---@return string|nil
 function GetCurrentShop()
-	return currentShop
+    return currentShop
 end
 
 ---Checks if UI is open
 ---@return boolean
 function IsUIOpen()
-	return uiOpen
+    return uiOpen
 end
 
 ---Checks if NUI is ready
 ---@return boolean
 function IsNUIReady()
-	return nuiReady
+    return nuiReady
 end
 
 -- Purchase callback
@@ -143,6 +150,6 @@ end)
 
 -- Close UI callback
 xLib.nui.register('closeUI', function()
-	CloseShop()
-	return 'ok'
+    CloseShop()
+    return 'ok'
 end)

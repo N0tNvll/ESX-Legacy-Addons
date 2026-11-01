@@ -146,6 +146,10 @@
         resetHideTimer();
     }
 
+    new ResizeObserver(() => {
+        messageList.scrollTop = messageList.scrollHeight;
+    }).observe(messageList);
+
     const iconForType = (message) => {
         if (message.icon) {
             const known = new Set(['system', 'discord', 'user', 'message', 'user-plus']);

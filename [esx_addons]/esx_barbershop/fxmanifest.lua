@@ -16,22 +16,22 @@ shared_script '@esx_paymentgateway/imports.lua'
 
 shared_script '@esx_lib/imports.lua'
 server_scripts {
-	'@es_extended/locale.lua',
-	'locales/*.lua',
-	'config.lua',
-	'server/*.lua'
+    '@es_extended/locale.lua',
+    'locales/*.lua',
+    'config.lua',
+    'server/*.lua',
 }
 
 client_scripts {
-	'@es_extended/locale.lua',
-	'locales/*.lua',
-	'config.lua',
-	'client/*.lua'
+    '@es_extended/locale.lua',
+    'locales/*.lua',
+    'config.lua',
+    'client/*.lua',
 }
 
 dependencies {
-	'esx_lib',
-	'es_extended',
-	'esx_paymentgateway',
-	'esx_skin'
+    'esx_lib',
+    'es_extended',
+    'esx_paymentgateway',
+    'esx_skin',
 }

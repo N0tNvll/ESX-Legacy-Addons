@@ -6,10 +6,12 @@ fx_version 'cerulean'
 game 'gta5'
 
 author 'ESX-Framework'
-description 'Adds a Hunger & Thirst system'
+description 'Hunger, thirst, consumables and alcohol effects'
 lua54 'yes'
 version '1.0'
 legacyversion '1.16.3'
+
+provide 'esx_optionalneeds'
 
 shared_script '@es_extended/imports.lua'
 
@@ -28,6 +30,7 @@ client_scripts {
     'locales/*.lua',
     'config.lua',
     'client/main.lua',
+    'client/alcohol.lua',
 }
 
 dependencies {

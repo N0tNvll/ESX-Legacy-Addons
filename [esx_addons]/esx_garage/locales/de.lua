@@ -2,12 +2,12 @@
 -- Copyright (C) 2022-2026 ESX Framework
 
 return {
-    ["parking_blip_name"] = 'Garage',
-    ["Impound_blip_name"] = 'Abschlepphof',
-    ["access_parking"] = 'Drücke [E] um auf die Garage zuzugreifen.',
-    ["access_Impound"] = 'Drücke [E]  um auf den Abschlepphof zuzugreifen.',
-    ["park_veh"] = 'Drücke [E] um das Fahrzeug einzuparken.',
-    ["not_owning_veh"] = 'Dies ist nicht dein Fahrzeug!',
+    ['parking_blip_name'] = 'Garage',
+    ['Impound_blip_name'] = 'Abschlepphof',
+    ['access_parking'] = 'Drücke [E] um auf die Garage zuzugreifen.',
+    ['access_Impound'] = 'Drücke [E]  um auf den Abschlepphof zuzugreifen.',
+    ['park_veh'] = 'Drücke [E] um das Fahrzeug einzuparken.',
+    ['not_owning_veh'] = 'Dies ist nicht dein Fahrzeug!',
     ['veh_released'] = 'Erfolgreich zurückgeholtes Fahrzeug.',
     ['veh_Impound_released'] = 'Du hastb erfolgreich dein Fahrzeug aus dem Abschlepphof geholt!',
     ['veh_stored'] = 'Fahrzeug erfolgreich eingeparkt',
@@ -28,5 +28,5 @@ return {
     ['not_in_vehicle'] = 'du sitzt in keinem Fahrzeug.',
     ['cannot_store'] = 'dieses Fahrzeug kann nicht eingeparkt werden.',
     ['cannot_access_garage'] = 'du hast keinen Zugriff auf diese Garage.',
-    ['received_vehicle'] = 'du hast ein Fahrzeug erhalten (Kennzeichen: %s).'
+    ['received_vehicle'] = 'du hast ein Fahrzeug erhalten (Kennzeichen: %s).',
 }

@@ -10,20 +10,10 @@ Config.Dealerships = Config.Dealerships
             label = 'Premium Deluxe Motorsport',
             mode = Config.EnablePlayerManagement and 'managed' or 'public',
             coords = Config.Zones.ShopEntering.Pos,
-            preview = vector4(
-                Config.Zones.ShopInside.Pos.x,
-                Config.Zones.ShopInside.Pos.y,
-                Config.Zones.ShopInside.Pos.z,
-                Config.Zones.ShopInside.Heading
-            ),
+            preview = vector4(Config.Zones.ShopInside.Pos.x, Config.Zones.ShopInside.Pos.y, Config.Zones.ShopInside.Pos.z, Config.Zones.ShopInside.Heading),
             delivery = {
                 mode = 'spawn',
-                coords = vector4(
-                    Config.Zones.ShopOutside.Pos.x,
-                    Config.Zones.ShopOutside.Pos.y,
-                    Config.Zones.ShopOutside.Pos.z,
-                    Config.Zones.ShopOutside.Heading
-                ),
+                coords = vector4(Config.Zones.ShopOutside.Pos.x, Config.Zones.ShopOutside.Pos.y, Config.Zones.ShopOutside.Pos.z, Config.Zones.ShopOutside.Heading),
                 garage = 'san_andreas_avenue',
             },
             managementPoint = Config.Zones.BossActions.Pos,

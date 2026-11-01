@@ -1,19 +1,19 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
-Locales["tr"] = {
+Locales['tr'] = {
     toggleHud = "HUD'u aç / kapat",
-    indicatorLeft = "Sol sinyal",
-    indicatorRight = "Sağ sinyal",
-    toggleEngine = "Motoru aç / kapat",
-    speedChanged = "Hız değiştirildi, yeni hız: ",
-    resource_not_built = "Kaynak kurulmamış, lütfen son sürümü indirin",
-    settingsSaveSuccess = "Ayarlar başarıyla kaydedildi",
-    settingsResetSuccess = "Ayarlar başarıyla sıfırlandı",
-    currentVersion = "En son sürüm: ",
-    yourVersion = "Sizin sürümünüz: ",
-    latestVersion = "Şu anda en son sürümü kullanıyorsunuz!",
-    needUpdateResource = "En son sürümü indirmeniz gerekiyor! Şu anda eski bir sürümü kullanıyorsunuz!",
-    errorGetCurrentVersion = "Geçerli sürümü alırken bir hata oluştu!",
-    job_off_duty = " (Görev dışı)",
+    indicatorLeft = 'Sol sinyal',
+    indicatorRight = 'Sağ sinyal',
+    toggleEngine = 'Motoru aç / kapat',
+    speedChanged = 'Hız değiştirildi, yeni hız: ',
+    resource_not_built = 'Kaynak kurulmamış, lütfen son sürümü indirin',
+    settingsSaveSuccess = 'Ayarlar başarıyla kaydedildi',
+    settingsResetSuccess = 'Ayarlar başarıyla sıfırlandı',
+    currentVersion = 'En son sürüm: ',
+    yourVersion = 'Sizin sürümünüz: ',
+    latestVersion = 'Şu anda en son sürümü kullanıyorsunuz!',
+    needUpdateResource = 'En son sürümü indirmeniz gerekiyor! Şu anda eski bir sürümü kullanıyorsunuz!',
+    errorGetCurrentVersion = 'Geçerli sürümü alırken bir hata oluştu!',
+    job_off_duty = ' (Görev dışı)',
 }

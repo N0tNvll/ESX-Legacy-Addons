@@ -2,8 +2,8 @@
 -- Copyright (C) 2022-2026 ESX Framework
 
 Locales['fi'] = {
-  ['not_enough_money'] = 'sinulla ei ole tarpeeksi rahaa',
-  ['press_access'] = 'paina [E] avataksesi menu',
-  ['barber_blip'] = 'Kampaamo',
-  ['you_paid'] = 'sinä maksoit $%s',
+    ['not_enough_money'] = 'sinulla ei ole tarpeeksi rahaa',
+    ['press_access'] = 'paina [E] avataksesi menu',
+    ['barber_blip'] = 'Kampaamo',
+    ['you_paid'] = 'sinä maksoit $%s',
 }

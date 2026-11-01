@@ -6,14 +6,15 @@ AdminMode = nil
 
 local function getCallbackError(res, fallback)
     if not res then
-        return fallback or "No response from server."
+        return fallback or 'No response from server.'
     end
 
-    return res.err or res.error or fallback or "Action failed."
+    return res.err or res.error or fallback or 'Action failed.'
 end
 
 local function respondFailure(cb, label, res, fallback)
     local err = getCallbackError(res, fallback)
+
     print(label, err)
 
     cb({
@@ -25,7 +26,7 @@ end
 
 local function sendQuickMenuState(action, active, value)
     xLib.nui.send({
-        action = "adminMenuState",
+        action = 'adminMenuState',
         data = {
             action = action,
             active = active == true,
@@ -38,7 +39,7 @@ local function closeAdminUi()
     xLib.nui.focus(false, false, false)
     AdminOpen = false
     AdminMode = nil
-    xLib.nui.send({ action = "closeAdmin" })
+    xLib.nui.send({ action = 'closeAdmin' })
 
     CreateThread(function()
         Wait(0)
@@ -50,7 +51,7 @@ local function applyAdminFocus(mode)
     AdminOpen = true
     AdminMode = mode
 
-    if mode == "dashboard" then
+    if mode == 'dashboard' then
         xLib.nui.focus(true, true, false)
         return
     end
@@ -64,25 +65,26 @@ function ToggleNUIFocus(bool, mode)
         return
     end
 
-    applyAdminFocus(mode or "dashboard")
+    applyAdminFocus(mode or 'dashboard')
 end
 
 local function notifyClientError(err)
     if ESX and ESX.ShowNotification then
-        ESX.ShowNotification(err or "Action failed.", "error")
+        ESX.ShowNotification(err or 'Action failed.', 'error')
     end
 end
 
 local function refreshInitData()
-    if type(RefreshAdminInitData) == "function" then
+    if type(RefreshAdminInitData) == 'function' then
         RefreshAdminInitData()
     end
 end
 
 local function openDashboard(cb)
-    xLib.callback("esx-adminmenu:server:openDashboard", false, function(res)
+    xLib.callback('esx-adminmenu:server:openDashboard', false, function(res)
         if not res or not res.success then
-            local err = getCallbackError(res, "You do not have permission to open the admin dashboard.")
+            local err = getCallbackError(res, 'You do not have permission to open the admin dashboard.')
+
             notifyClientError(err)
 
             if cb then
@@ -92,9 +94,9 @@ local function openDashboard(cb)
         end
 
         refreshInitData()
-        ToggleNUIFocus(true, "dashboard")
+        ToggleNUIFocus(true, 'dashboard')
         xLib.nui.send({
-            action = "openAdminDashboard",
+            action = 'openAdminDashboard',
             data = {
                 players = res.players or {},
                 serverData = res.serverData,
@@ -109,9 +111,10 @@ local function openDashboard(cb)
 end
 
 local function openAdminMenu(cb)
-    xLib.callback("esx-adminmenu:server:canOpen", false, function(res)
+    xLib.callback('esx-adminmenu:server:canOpen', false, function(res)
         if not res or not res.success then
-            local err = getCallbackError(res, "You do not have permission to open the admin menu.")
+            local err = getCallbackError(res, 'You do not have permission to open the admin menu.')
+
             notifyClientError(err)
 
             if cb then
@@ -121,9 +124,9 @@ local function openAdminMenu(cb)
         end
 
         refreshInitData()
-        ToggleNUIFocus(true, "menu")
+        ToggleNUIFocus(true, 'menu')
         xLib.nui.send({
-            action = "openAdminMenu",
+            action = 'openAdminMenu',
             data = {
                 serverData = res.serverData,
                 impounds = res.impounds,
@@ -141,25 +144,25 @@ local function pushServerData()
         return
     end
 
-    xLib.callback("esx-adminmenu:server:canOpen", false, function(res)
+    xLib.callback('esx-adminmenu:server:canOpen', false, function(res)
         if not res or not res.success then
             return
         end
 
         xLib.nui.send({
-            action = "updateServerData",
+            action = 'updateServerData',
             data = res.serverData,
         })
     end)
 end
 
 local function checkAdminAction(action, cb)
-    xLib.callback("esx-adminmenu:server:canUseAdminAction", false, cb, { action = action })
+    xLib.callback('esx-adminmenu:server:canUseAdminAction', false, cb, { action = action })
 end
 
 local function runProtectedClientAction(cb, label, action, permissionAction)
     if not permissionAction then
-        cb({ success = false, err = "Missing admin action permission." })
+        cb({ success = false, err = 'Missing admin action permission.' })
         return
     end
 
@@ -170,13 +173,14 @@ local function runProtectedClientAction(cb, label, action, permissionAction)
         end
 
         local ok, success, err, extra = pcall(action)
+
         if not ok then
             cb({ success = false, err = success })
             return
         end
 
         if not success then
-            cb({ success = false, err = err or "Action failed." })
+            cb({ success = false, err = err or 'Action failed.' })
             return
         end
 
@@ -194,39 +198,40 @@ function OpenAdminMenu()
     openAdminMenu()
 end
 
-RegisterCommand("adminmenu", function()
+RegisterCommand('adminmenu', function()
     OpenAdminMenu()
 end, false)
 
-RegisterCommand("admindashboard", function()
+RegisterCommand('admindashboard', function()
     OpenAdminDashboard()
 end, false)
 
 local function runAdminCommandAction(action, handler)
     checkAdminAction(action, function(res)
         if not res or not res.success then
-            notifyClientError(getCallbackError(res, "You do not have permission to use this command."))
+            notifyClientError(getCallbackError(res, 'You do not have permission to use this command.'))
             return
         end
 
         local active = handler()
+
         sendQuickMenuState(action, active)
 
-        if action == "noclip" and ClientActions.IsInvisibleActive then
-            sendQuickMenuState("invisible", ClientActions.IsInvisibleActive())
+        if action == 'noclip' and ClientActions.IsInvisibleActive then
+            sendQuickMenuState('invisible', ClientActions.IsInvisibleActive())
         end
     end)
 end
 
-RegisterKeyMapping("adminmenu", "Open Admin Menu", "keyboard", Config.Keybinds.AdminMenu)
-RegisterKeyMapping("admindashboard", "Open Admin Dashboard", "keyboard", Config.Keybinds.AdminDashboard)
+RegisterKeyMapping('adminmenu', 'Open Admin Menu', 'keyboard', Config.Keybinds.AdminMenu)
+RegisterKeyMapping('admindashboard', 'Open Admin Dashboard', 'keyboard', Config.Keybinds.AdminDashboard)
 
-xLib.nui.register("openDashboard", function(data, cb)
+xLib.nui.register('openDashboard', function(data, cb)
     openDashboard(cb)
     return xLib.nui.defer
 end)
 
-xLib.nui.register("openAdminMenu", function(data, cb)
+xLib.nui.register('openAdminMenu', function(data, cb)
     openAdminMenu(cb)
     return xLib.nui.defer
 end)
@@ -236,21 +241,23 @@ end)
 -- sendQuickMenuState and return the { active } extra. Entries flagged with
 -- command = true also expose the same permission-gated command path.
 local toggleActions = {
-    { action = "noclip", toggle = ClientActions.ToggleNoClip, command = true, mirrorInvisible = true },
-    { action = "names", toggle = ClientActions.ToggleNames, command = true },
-    { action = "blips", toggle = ClientActions.ToggleBlips, command = true },
-    { action = "godmode", toggle = ClientActions.ToggleGodmode },
-    { action = "invisible", toggle = ClientActions.ToggleInvisible },
-    { action = "infiniteAmmo", toggle = ClientActions.ToggleInfiniteAmmo },
+    { action = 'noclip', toggle = ClientActions.ToggleNoClip, command = true, mirrorInvisible = true },
+    { action = 'names', toggle = ClientActions.ToggleNames, command = true },
+    { action = 'blips', toggle = ClientActions.ToggleBlips, command = true },
+    { action = 'godmode', toggle = ClientActions.ToggleGodmode },
+    { action = 'invisible', toggle = ClientActions.ToggleInvisible },
+    { action = 'infiniteAmmo', toggle = ClientActions.ToggleInfiniteAmmo },
 }
 
 for _, entry in ipairs(toggleActions) do
-    xLib.nui.register("adminMenu:" .. entry.action, function(data, cb)
-        runProtectedClientAction(cb, "[esx-adminmenu:" .. entry.action .. "]", function()
+    xLib.nui.register('adminMenu:' .. entry.action, function(data, cb)
+        runProtectedClientAction(cb, '[esx-adminmenu:' .. entry.action .. ']', function()
             local active = entry.toggle()
+
             sendQuickMenuState(entry.action, active)
+
             if entry.mirrorInvisible and ClientActions.IsInvisibleActive then
-                sendQuickMenuState("invisible", ClientActions.IsInvisibleActive())
+                sendQuickMenuState('invisible', ClientActions.IsInvisibleActive())
             end
             return true, nil, { active = active }
         end, entry.action)
@@ -268,25 +275,43 @@ end
 -- run receives the raw NUI data; functions that ignore arguments are safe to
 -- reference bare.
 local directActions = {
-    { name = "heal", permission = "heal", run = ClientActions.Heal },
-    { name = "armor", permission = "armor", run = function() return ClientActions.SetArmor(100) end },
-    { name = "repairVehicle", permission = "repairVehicle", run = ClientActions.RepairVehicle },
-    { name = "cleanVehicle", permission = "cleanVehicle", run = ClientActions.CleanVehicle },
-    { name = "deleteVehicle", permission = "deleteVehicle", run = ClientActions.DeleteVehicle },
-    { name = "waypoint", permission = "waypoint", run = ClientActions.TeleportToWaypoint },
-    { name = "spawnVehicle", permission = "spawnVehicle", run = function(data) return ClientActions.SpawnVehicle(data or {}) end },
-    { name = "flipVehicle", permission = "flipVehicle", run = ClientActions.FlipVehicle },
-    { name = "customizeVehicle", permission = "customizeVehicle", run = function(data) return ClientActions.CustomizeVehicle(data or {}) end },
-    { name = "copyCoords", permission = "copyCoords", run = ClientActions.CopyCoords },
-    { name = "cycleVehicleTransmission", permission = "transmissionLevel", run = ClientActions.CycleVehicleTransmission },
-    { name = "cycleVehicleSuspension", permission = "suspensionLevel", run = ClientActions.CycleVehicleSuspension },
-    { name = "cycleVehicleArmor", permission = "armorLevel", run = ClientActions.CycleVehicleArmor },
-    { name = "cycleVehicleNeonColor", permission = "neonColorCycle", run = ClientActions.CycleVehicleNeonColor },
+    { name = 'heal', permission = 'heal', run = ClientActions.Heal },
+    {
+        name = 'armor',
+        permission = 'armor',
+        run = function()
+            return ClientActions.SetArmor(100)
+        end,
+    },
+    { name = 'repairVehicle', permission = 'repairVehicle', run = ClientActions.RepairVehicle },
+    { name = 'cleanVehicle', permission = 'cleanVehicle', run = ClientActions.CleanVehicle },
+    { name = 'deleteVehicle', permission = 'deleteVehicle', run = ClientActions.DeleteVehicle },
+    { name = 'waypoint', permission = 'waypoint', run = ClientActions.TeleportToWaypoint },
+    {
+        name = 'spawnVehicle',
+        permission = 'spawnVehicle',
+        run = function(data)
+            return ClientActions.SpawnVehicle(data or {})
+        end,
+    },
+    { name = 'flipVehicle', permission = 'flipVehicle', run = ClientActions.FlipVehicle },
+    {
+        name = 'customizeVehicle',
+        permission = 'customizeVehicle',
+        run = function(data)
+            return ClientActions.CustomizeVehicle(data or {})
+        end,
+    },
+    { name = 'copyCoords', permission = 'copyCoords', run = ClientActions.CopyCoords },
+    { name = 'cycleVehicleTransmission', permission = 'transmissionLevel', run = ClientActions.CycleVehicleTransmission },
+    { name = 'cycleVehicleSuspension', permission = 'suspensionLevel', run = ClientActions.CycleVehicleSuspension },
+    { name = 'cycleVehicleArmor', permission = 'armorLevel', run = ClientActions.CycleVehicleArmor },
+    { name = 'cycleVehicleNeonColor', permission = 'neonColorCycle', run = ClientActions.CycleVehicleNeonColor },
 }
 
 for _, entry in ipairs(directActions) do
-    xLib.nui.register("adminMenu:" .. entry.name, function(data, cb)
-        runProtectedClientAction(cb, "[esx-adminmenu:" .. entry.name .. "]", function()
+    xLib.nui.register('adminMenu:' .. entry.name, function(data, cb)
+        runProtectedClientAction(cb, '[esx-adminmenu:' .. entry.name .. ']', function()
             return entry.run(data)
         end, entry.permission)
         return xLib.nui.defer
@@ -294,74 +319,77 @@ for _, entry in ipairs(directActions) do
 end
 
 -- Bespoke closures: quick actions that emit extra menu state on success.
-xLib.nui.register("adminMenu:revive", function(data, cb)
-    xLib.callback("esx-adminmenu:server:selfAction", false, function(res)
+xLib.nui.register('adminMenu:revive', function(data, cb)
+    xLib.callback('esx-adminmenu:server:selfAction', false, function(res)
         if not res or not res.success then
-            respondFailure(cb, "[esx-adminmenu:revive]", res)
+            respondFailure(cb, '[esx-adminmenu:revive]', res)
             return
         end
 
         cb({ success = true })
-    end, { action = "revive" })
+    end, { action = 'revive' })
     return xLib.nui.defer
 end)
 
-xLib.nui.register("adminMenu:setVehiclePerformance", function(data, cb)
-    runProtectedClientAction(cb, "[esx-adminmenu:setVehiclePerformance]", function()
+xLib.nui.register('adminMenu:setVehiclePerformance', function(data, cb)
+    runProtectedClientAction(cb, '[esx-adminmenu:setVehiclePerformance]', function()
         local success, err, extra = ClientActions.SetVehiclePerformance(data or {})
+
         if success then
-            sendQuickMenuState("engineLevel", true,
-                data and data.engineLevel and (tostring(data.engineLevel) .. "/5") or nil)
-            sendQuickMenuState("brakeLevel", true,
-                data and data.brakeLevel and (tostring(data.brakeLevel) .. "/5") or nil)
+            sendQuickMenuState('engineLevel', true, data and data.engineLevel and (tostring(data.engineLevel) .. '/5') or nil)
+            sendQuickMenuState('brakeLevel', true, data and data.brakeLevel and (tostring(data.brakeLevel) .. '/5') or nil)
         end
 
         return success, err, extra
-    end, "customizeVehicle")
+    end, 'customizeVehicle')
     return xLib.nui.defer
 end)
 
-xLib.nui.register("adminMenu:cycleVehicleEngine", function(data, cb)
-    runProtectedClientAction(cb, "[esx-adminmenu:cycleVehicleEngine]", function()
+xLib.nui.register('adminMenu:cycleVehicleEngine', function(data, cb)
+    runProtectedClientAction(cb, '[esx-adminmenu:cycleVehicleEngine]', function()
         local success, err, extra = ClientActions.CycleVehicleEngine()
+
         if success then
-            sendQuickMenuState("engineLevel", extra and extra.active or true, extra and extra.value)
+            sendQuickMenuState('engineLevel', extra and extra.active or true, extra and extra.value)
         end
         return success, err, extra
-    end, "engineLevel")
+    end, 'engineLevel')
     return xLib.nui.defer
 end)
 
-xLib.nui.register("adminMenu:cycleVehicleBrakes", function(data, cb)
-    runProtectedClientAction(cb, "[esx-adminmenu:cycleVehicleBrakes]", function()
+xLib.nui.register('adminMenu:cycleVehicleBrakes', function(data, cb)
+    runProtectedClientAction(cb, '[esx-adminmenu:cycleVehicleBrakes]', function()
         local success, err, extra = ClientActions.CycleVehicleBrakes()
+
         if success then
-            sendQuickMenuState("brakeLevel", extra and extra.active or true, extra and extra.value)
+            sendQuickMenuState('brakeLevel', extra and extra.active or true, extra and extra.value)
         end
         return success, err, extra
-    end, "brakeLevel")
+    end, 'brakeLevel')
     return xLib.nui.defer
 end)
 
-xLib.nui.register("adminMenu:cycleVehicleColor", function(data, cb)
-    runProtectedClientAction(cb, "[esx-adminmenu:cycleVehicleColor]", function()
+xLib.nui.register('adminMenu:cycleVehicleColor', function(data, cb)
+    runProtectedClientAction(cb, '[esx-adminmenu:cycleVehicleColor]', function()
         local success, err, extra = ClientActions.CycleVehicleColor()
+
         if success then
-            sendQuickMenuState("colorCycle", extra and extra.active or true, extra and extra.value)
+            sendQuickMenuState('colorCycle', extra and extra.active or true, extra and extra.value)
         end
         return success, err, extra
-    end, "colorCycle")
+    end, 'colorCycle')
     return xLib.nui.defer
 end)
 
-xLib.nui.register("adminMenu:maxVehiclePerformance", function(data, cb)
-    runProtectedClientAction(cb, "[esx-adminmenu:maxVehiclePerformance]", function()
+xLib.nui.register('adminMenu:maxVehiclePerformance', function(data, cb)
+    runProtectedClientAction(cb, '[esx-adminmenu:maxVehiclePerformance]', function()
         local success, err, extra = ClientActions.MaxVehiclePerformance()
+
         if success then
-            sendQuickMenuState("maxPerformance", extra and extra.active or true, extra and extra.value)
+            sendQuickMenuState('maxPerformance', extra and extra.active or true, extra and extra.value)
         end
         return success, err, extra
-    end, "maxPerformance")
+    end, 'maxPerformance')
     return xLib.nui.defer
 end)
 
@@ -376,7 +404,9 @@ local function registerServerBridge(spec)
             if not res or res.err then
                 if spec.soft then
                     print(spec.label, res and res.err)
+
                     local out = { success = false, err = getCallbackError(res, spec.softError) }
+
                     out[spec.collection] = {}
                     cb(out)
                 else
@@ -392,6 +422,7 @@ local function registerServerBridge(spec)
 
             if spec.soft then
                 local coll = res[spec.collection] or {}
+
                 if spec.mapItem then
                     for i = 1, #coll do
                         spec.mapItem(coll[i])
@@ -399,31 +430,38 @@ local function registerServerBridge(spec)
                 end
 
                 local out = { success = true }
+
                 out[spec.collection] = coll
+
                 if spec.paging then
                     out.hasMore = res.hasMore == true
                     out.nextOffset = res.nextOffset
                     out.nextCursor = res.nextCursor
                     out.limit = res.limit
                 end
+
                 cb(out)
                 return
             end
 
             local out = { success = spec.successTrue and true or res.success }
+
             if spec.forward then
                 for _, field in ipairs(spec.forward) do
-                    if type(field) == "table" then
+                    if type(field) == 'table' then
                         local val = res[field.key]
+
                         if val == nil then
                             val = field.default
                         end
+
                         out[field.key] = val
                     else
                         out[field] = res[field]
                     end
                 end
             end
+
             cb(out)
         end
 
@@ -439,40 +477,40 @@ end
 
 local serverBridges = {
     {
-        name = "server:action",
-        event = "esx-adminmenu:server:serverAction",
-        label = "[esx-adminmenu:serverAction]",
-        forward = { "serverData" },
+        name = 'server:action',
+        event = 'esx-adminmenu:server:serverAction',
+        label = '[esx-adminmenu:serverAction]',
+        forward = { 'serverData' },
     },
     {
-        name = "server:radioPlayers",
-        event = "esx-adminmenu:server:getRadioChannelPlayers",
-        label = "[esx-adminmenu:radioPlayers]",
+        name = 'server:radioPlayers',
+        event = 'esx-adminmenu:server:getRadioChannelPlayers',
+        label = '[esx-adminmenu:radioPlayers]',
         successTrue = true,
-        forward = { { key = "players", default = {} } },
+        forward = { { key = 'players', default = {} } },
     },
     {
-        name = "player:action",
-        event = "esx-adminmenu:server:playerAction",
-        label = "[esx-adminmenu:playerAction]",
-        forward = { "playerOnline" },
+        name = 'player:action',
+        event = 'esx-adminmenu:server:playerAction',
+        label = '[esx-adminmenu:playerAction]',
+        forward = { 'playerOnline' },
     },
     {
-        name = "goto",
-        event = "esx-adminmenu:server:goto",
-        label = "[esx-adminmenu:goto]",
-        forward = { "playerOnline" },
+        name = 'goto',
+        event = 'esx-adminmenu:server:goto',
+        label = '[esx-adminmenu:goto]',
+        forward = { 'playerOnline' },
     },
     {
-        name = "bring",
-        event = "esx-adminmenu:server:bring",
-        label = "[esx-adminmenu:bring]",
-        forward = { "playerOnline" },
+        name = 'bring',
+        event = 'esx-adminmenu:server:bring',
+        label = '[esx-adminmenu:bring]',
+        forward = { 'playerOnline' },
     },
     {
-        name = "spectate",
-        event = "esx-adminmenu:server:spectate",
-        label = "[esx-adminmenu:spectate]",
+        name = 'spectate',
+        event = 'esx-adminmenu:server:spectate',
+        label = '[esx-adminmenu:spectate]',
         onSuccess = function(res, cb, data)
             if not res.isAdmin or not res.playerOnline then
                 cb({ success = false, err = getCallbackError(res), playerOnline = res.playerOnline })
@@ -484,98 +522,98 @@ local serverBridges = {
         end,
     },
     {
-        name = "kick",
-        event = "esx-adminmenu:server:kick",
-        label = "[esx-adminmenu:kick]",
-        forward = { "playerOnline" },
+        name = 'kick',
+        event = 'esx-adminmenu:server:kick',
+        label = '[esx-adminmenu:kick]',
+        forward = { 'playerOnline' },
     },
     {
-        name = "ban",
-        event = "esx-adminmenu:server:ban",
-        label = "[esx-adminmenu:ban]",
-        forward = { "playerOnline" },
+        name = 'ban',
+        event = 'esx-adminmenu:server:ban',
+        label = '[esx-adminmenu:ban]',
+        forward = { 'playerOnline' },
     },
     {
-        name = "ban:offline",
-        event = "esx-adminmenu:server:ban:offline",
-        label = "[esx-adminmenu:banOffline]",
+        name = 'ban:offline',
+        event = 'esx-adminmenu:server:ban:offline',
+        label = '[esx-adminmenu:banOffline]',
     },
     {
-        name = "ban:changeExpiry",
-        event = "esx-adminmenu:server:ban:changeExpiry",
-        label = "[esx-adminmenu:changeExpiry]",
+        name = 'ban:changeExpiry',
+        event = 'esx-adminmenu:server:ban:changeExpiry',
+        label = '[esx-adminmenu:changeExpiry]',
     },
     {
-        name = "ban:revoke",
-        event = "esx-adminmenu:server:ban:revoke",
-        label = "[esx-adminmenu:revokeBan]",
+        name = 'ban:revoke',
+        event = 'esx-adminmenu:server:ban:revoke',
+        label = '[esx-adminmenu:revokeBan]',
     },
     {
-        name = "player:notify",
-        event = "esx-adminmenu:server:notify",
-        label = "[esx-adminmenu:notifyPlayer]",
-        forward = { "playerOnline" },
+        name = 'player:notify',
+        event = 'esx-adminmenu:server:notify',
+        label = '[esx-adminmenu:notifyPlayer]',
+        forward = { 'playerOnline' },
     },
     {
-        name = "vehicle:impound",
-        event = "esx-adminmenu:server:vehicleImpound",
-        label = "[esx-adminmenu:vehicleImpound]",
+        name = 'vehicle:impound',
+        event = 'esx-adminmenu:server:vehicleImpound',
+        label = '[esx-adminmenu:vehicleImpound]',
     },
     {
-        name = "vehicle:unimpound",
-        event = "esx-adminmenu:server:vehicleUnimpound",
-        label = "[esx-adminmenu:vehicleUnimpound]",
+        name = 'vehicle:unimpound',
+        event = 'esx-adminmenu:server:vehicleUnimpound',
+        label = '[esx-adminmenu:vehicleUnimpound]',
     },
     {
-        name = "vehicle:delete",
-        event = "esx-adminmenu:server:vehicleDelete",
-        label = "[esx-adminmenu:vehicleDelete]",
+        name = 'vehicle:delete',
+        event = 'esx-adminmenu:server:vehicleDelete',
+        label = '[esx-adminmenu:vehicleDelete]',
     },
     {
-        name = "getBans",
-        event = "esx-adminmenu:server:getBans",
-        label = "[esx-adminmenu:getBans]",
+        name = 'getBans',
+        event = 'esx-adminmenu:server:getBans',
+        label = '[esx-adminmenu:getBans]',
         soft = true,
-        collection = "bans",
-        softError = "Failed to fetch bans.",
+        collection = 'bans',
+        softError = 'Failed to fetch bans.',
         paging = true,
     },
     {
-        name = "getVehicles",
-        event = "esx-adminmenu:server:getVehicles",
-        label = "[esx-adminmenu:getVehicles]",
+        name = 'getVehicles',
+        event = 'esx-adminmenu:server:getVehicles',
+        label = '[esx-adminmenu:getVehicles]',
         soft = true,
-        collection = "vehicles",
-        softError = "Failed to fetch vehicles.",
+        collection = 'vehicles',
+        softError = 'Failed to fetch vehicles.',
         paging = true,
         mapItem = function(v)
             v.name = Helpers.resolveVehicleName(v.model)
         end,
     },
     {
-        name = "getRecentPlayers",
-        event = "esx-adminmenu:server:getRecentPlayers",
-        label = "[esx-adminmenu:getRecentPlayers]",
+        name = 'getRecentPlayers',
+        event = 'esx-adminmenu:server:getRecentPlayers',
+        label = '[esx-adminmenu:getRecentPlayers]',
         soft = true,
-        collection = "players",
-        softError = "Failed to fetch recent players.",
+        collection = 'players',
+        softError = 'Failed to fetch recent players.',
         passData = false,
     },
     {
-        name = "player:searchOffline",
-        event = "esx-adminmenu:server:searchOfflinePlayer",
-        label = "[esx-adminmenu:searchOffline]",
+        name = 'player:searchOffline',
+        event = 'esx-adminmenu:server:searchOfflinePlayer',
+        label = '[esx-adminmenu:searchOffline]',
         soft = true,
-        collection = "players",
-        softError = "Failed to search offline players.",
+        collection = 'players',
+        softError = 'Failed to search offline players.',
     },
     {
-        name = "getAdminLogs",
-        event = "esx-adminmenu:server:getAdminLogs",
-        label = "[esx-adminmenu:getAdminLogs]",
+        name = 'getAdminLogs',
+        event = 'esx-adminmenu:server:getAdminLogs',
+        label = '[esx-adminmenu:getAdminLogs]',
         soft = true,
-        collection = "logs",
-        softError = "Failed to fetch admin logs.",
+        collection = 'logs',
+        softError = 'Failed to fetch admin logs.',
         paging = true,
     },
 }
@@ -584,15 +622,15 @@ for _, spec in ipairs(serverBridges) do
     registerServerBridge(spec)
 end
 
-xLib.nui.register("releaseFocus", function(data, cb)
+xLib.nui.register('releaseFocus', function(data, cb)
     ToggleNUIFocus(false)
     return { success = true }
 end)
 
-xLib.nui.register("adminMenu:setInputFocus", function(data, cb)
+xLib.nui.register('adminMenu:setInputFocus', function(data, cb)
     local enabled = data and data.enabled == true
 
-    if AdminOpen and AdminMode == "menu" then
+    if AdminOpen and AdminMode == 'menu' then
         if enabled then
             xLib.nui.focus(true, true, false)
         else
@@ -603,27 +641,27 @@ xLib.nui.register("adminMenu:setInputFocus", function(data, cb)
     return { success = true }
 end)
 
-RegisterNetEvent("esx-adminmenu:client:open", function(data)
+RegisterNetEvent('esx-adminmenu:client:open', function(data)
     refreshInitData()
-    ToggleNUIFocus(true, "dashboard")
+    ToggleNUIFocus(true, 'dashboard')
     xLib.nui.send({
-        action = "openAdminDashboard",
+        action = 'openAdminDashboard',
         data = {
             players = data or {},
         },
     })
 end)
 
-RegisterNetEvent("esx-adminmenu:client:openAdminMenu", function()
+RegisterNetEvent('esx-adminmenu:client:openAdminMenu', function()
     openAdminMenu()
 end)
 
-RegisterNetEvent("esx-adminmenu:client:openInformation", function(data)
+RegisterNetEvent('esx-adminmenu:client:openInformation', function(data)
     data = data or {}
     refreshInitData()
-    ToggleNUIFocus(true, "dashboard")
+    ToggleNUIFocus(true, 'dashboard')
     xLib.nui.send({
-        action = "openAdminDashboard",
+        action = 'openAdminDashboard',
         data = {
             players = data.players or {},
             selectedPlayerId = data.selectedPlayerId,
@@ -634,6 +672,7 @@ end)
 
 CreateThread(function()
     local interval = (Config.AdminMenu and Config.AdminMenu.ServerDataInterval) or 60000
+
     while true do
         Wait(interval)
         pushServerData()

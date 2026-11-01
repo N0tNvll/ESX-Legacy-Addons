@@ -7,14 +7,21 @@ local STAT_RANGES = {
     speed = { field = 'fInitialDriveMaxFlatVel', min = 20.0, max = 55.0 },
     accel = { field = 'fInitialDriveForce', min = 0.10, max = 0.45 },
     brake = { field = 'fBrakeForce', min = 0.40, max = 1.60 },
-    handling = { field = 'fTractionCurveMax', min = 1.80, max = 3.20 }
+    handling = { field = 'fTractionCurveMax', min = 1.80, max = 3.20 },
 }
 
 local function normalizeStat(value, min, max)
-    if max <= min then return 0 end
+    if max <= min then
+        return 0
+    end
 
     local pct = (value - min) / (max - min) * 100.0
-    if pct < 0 then pct = 0 elseif pct > 100 then pct = 100 end
+
+    if pct < 0 then
+        pct = 0
+    elseif pct > 100 then
+        pct = 100
+    end
 
     return math.floor(pct + 0.5)
 end
@@ -25,6 +32,7 @@ function WorkshopStats.CalcHandling(vehicle)
     end
 
     local stats = {}
+
     for key, data in pairs(STAT_RANGES) do
         stats[key] = normalizeStat(GetVehicleHandlingFloat(vehicle, 'CHandlingData', data.field), data.min, data.max)
     end
@@ -37,10 +45,11 @@ function WorkshopStats.CalcModded(vehicle, base)
         speed = base.speed,
         accel = base.accel,
         brake = base.brake,
-        handling = base.handling
+        handling = base.handling,
     }
 
     local gains = Config.Workshop and Config.Workshop.StatGains or {}
+
     for modKey, modGains in pairs(gains) do
         local menu = Config.Menus[modKey]
         local factor = 0.0

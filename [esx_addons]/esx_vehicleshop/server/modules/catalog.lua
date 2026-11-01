@@ -21,18 +21,8 @@ function D.seedShop(shop)
 
         local category = offer.category or shop.catalog or kind
 
-        MySQL.insert.await(
-            'INSERT IGNORE INTO vehicle_categories (name, label) VALUES (?, ?)',
-            { category, offer.categoryLabel or category }
-        )
-        MySQL.insert.await(
-            (
-                'INSERT IGNORE INTO vehicles (model, name, price, category, '
-                .. 'type) VALUES (?, ?, ?, ?, '
-                .. '?)'
-            ),
-            { model, offer.name or offer.label or model, price, category, kind }
-        )
+        MySQL.insert.await('INSERT IGNORE INTO vehicle_categories (name, label) VALUES (?, ?)', { category, offer.categoryLabel or category })
+        MySQL.insert.await(('INSERT IGNORE INTO vehicles (model, name, price, category, ' .. 'type) VALUES (?, ?, ?, ?, ' .. '?)'), { model, offer.name or offer.label or model, price, category, kind })
         MySQL.insert.await(
             [[INSERT IGNORE INTO dealership_vehicles (shop_id, model, price, vehicle_type, props)
             VALUES (?, ?, ?, ?, ?)]],
@@ -58,12 +48,7 @@ function D.seedShop(shop)
                 params[#params + 1] = category
             end
 
-            condition = condition
-                .. (
-                    #categories > 0
-                        and (' AND category IN (' .. table.concat(categories, ',') .. ')')
-                    or ' AND 0 = 1'
-                )
+            condition = condition .. (#categories > 0 and (' AND category IN (' .. table.concat(categories, ',') .. ')') or ' AND 0 = 1')
         end
         -- Job offers share the SQL model catalog, but must never be automatically
         -- enrolled into an unrestricted civilian dealership during a later reload.
@@ -85,20 +70,11 @@ function D.seedShop(shop)
             end
 
             if #reserved > 0 then
-                condition = condition
-                    .. ' AND LOWER(model) NOT IN ('
-                    .. table.concat(reserved, ',')
-                    .. ')'
+                condition = condition .. ' AND LOWER(model) NOT IN (' .. table.concat(reserved, ',') .. ')'
             end
         end
 
-        MySQL.insert.await(
-            (
-                'INSERT IGNORE INTO dealership_vehicles (shop_id, model) '
-                .. 'SELECT ?, LOWER(model) FROM vehicles WHERE '
-            ) .. condition,
-            params
-        )
+        MySQL.insert.await(('INSERT IGNORE INTO dealership_vehicles (shop_id, model) ' .. 'SELECT ?, LOWER(model) FROM vehicles WHERE ') .. condition, params)
     end
 
     seededOffers[shop.id] = shop
@@ -117,20 +93,10 @@ function D.reloadCatalog()
         end
 
         local categories = MySQL.query.await('SELECT * FROM vehicle_categories')
-        local rows = MySQL.query.await(
-            (
-                'SELECT v.*, c.label AS categoryLabel FROM vehicles v LEFT '
-                .. 'JOIN vehicle_categories c ON v.category = '
-                .. 'c.name'
-            )
-        )
-
+        local rows = MySQL.query.await(('SELECT v.*, c.label AS categoryLabel FROM vehicles v LEFT ' .. 'JOIN vehicle_categories c ON v.category = ' .. 'c.name'))
         local members = MySQL.query.await('SELECT * FROM dealership_vehicles')
 
-        assert(
-            type(categories) == 'table' and type(rows) == 'table' and type(members) == 'table',
-            'Unable to load complete dealership catalog'
-        )
+        assert(type(categories) == 'table' and type(rows) == 'table' and type(members) == 'table', 'Unable to load complete dealership catalog')
 
         local catalog, membership = {}, {}
 
@@ -159,7 +125,7 @@ function D.offer(shop, model, player)
     local base = model and D.catalog[model]
     local member = model and D.members[shop.id] and D.members[shop.id][model]
 
-    if not base or not member or tonumber(base.enabled) ~= 1 or tonumber(member.enabled) ~= 1 then
+    if not base or not member or (base.enabled ~= true and tonumber(base.enabled) ~= 1) or (member.enabled ~= true and tonumber(member.enabled) ~= 1) then
         return nil
     end
 
@@ -213,19 +179,7 @@ end
 function D.catalogFor(shop, player)
     local stock = {}
 
-    for _, row in
-        ipairs(
-            MySQL.query.await(
-                (
-                    'SELECT vehicle, COUNT(*) AS amount FROM '
-                    .. 'cardealer_vehicles WHERE shop_id = ? AND available = 1 '
-                    .. 'GROUP BY '
-                    .. 'vehicle'
-                ),
-                { shop.id }
-            ) or {}
-        )
-    do
+    for _, row in ipairs(MySQL.query.await(('SELECT vehicle, COUNT(*) AS amount FROM ' .. 'cardealer_vehicles WHERE shop_id = ? AND available = 1 ' .. 'GROUP BY ' .. 'vehicle'), { shop.id }) or {}) do
         stock[row.vehicle:lower()] = tonumber(row.amount)
     end
 

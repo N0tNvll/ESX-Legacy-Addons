@@ -17,10 +17,11 @@ Accessories.Catalog = {
     { id = 'bags', fields = { 'bags_1', 'bags_2' }, component = 5 },
     { id = 'tshirt', fields = { 'tshirt_1', 'tshirt_2' }, component = 8, undressed = 'tshirt' },
     { id = 'bracelets', fields = { 'bracelets_1', 'bracelets_2' }, prop = 7 },
-    { id = 'bproof', fields = { 'bproof_1', 'bproof_2' }, component = 9 }
+    { id = 'bproof', fields = { 'bproof_1', 'bproof_2' }, component = 9 },
 }
 
 Accessories.ById = {}
+
 for _, category in ipairs(Accessories.Catalog) do
     Accessories.ById[category.id] = category
 end
@@ -32,6 +33,7 @@ end
 
 function Accessories.GetLabels()
     local labels = {}
+
     for key, value in pairs(Locales.en) do
         if key:sub(1, 7) == 'radial_' then
             labels[key:sub(8)] = (Locales[Config.Locale] or {})[key] or value

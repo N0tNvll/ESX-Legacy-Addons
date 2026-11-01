@@ -35,7 +35,7 @@ local function closeMenu()
     requestId = requestId + 1
     menuIsShowed = false
     SetNuiFocus(false, false)
-    SendNUIMessage({action = 'close'})
+    SendNUIMessage({ action = 'close' })
 end
 
 function ShowJobListingMenu()
@@ -45,6 +45,7 @@ function ShowJobListingMenu()
 
     menuIsShowed = true
     requestId = requestId + 1
+
     local currentRequest = requestId
 
     CreateThread(function()
@@ -64,18 +65,18 @@ function ShowJobListingMenu()
         ESX.HideUI()
         TextUIdrawing = false
         SetNuiFocus(true, true)
-        SendNUIMessage(withUi({action = 'open', jobs = result.jobs, profile = result.profile}))
+        SendNUIMessage(withUi({ action = 'open', jobs = result.jobs, profile = result.profile }))
     end)
 end
 
 RegisterNUICallback('close', function(_, cb)
     closeMenu()
-    cb({ok = true})
+    cb({ ok = true })
 end)
 
 local function submit(action, data, cb)
     if not menuIsShowed or applying then
-        cb({ok = false})
+        cb({ ok = false })
         return
     end
 
@@ -85,12 +86,10 @@ local function submit(action, data, cb)
         local ok, result = pcall(xLib.callback.await, 'esx_joblisting:' .. action, false, data.job)
 
         applying = false
-        cb(
-            ok and result or {
-                ok = false,
-                message = Translate('ui_no_response')
-            }
-        )
+        cb(ok and result or {
+            ok = false,
+            message = Translate('ui_no_response'),
+        })
 
         if ok and result and result.ok then
             ESX.ShowNotification(TranslateCap('new_job', result.profile.job.label), 'success')
@@ -113,31 +112,31 @@ RegisterNUICallback('waypoint', function(data, cb)
 
             if job.name == data.job and job.location then
                 SetNewWaypoint(job.location.x, job.location.y)
-                cb({ok = true})
+                cb({ ok = true })
                 return
             end
         end
     end
 
-    cb({ok = false})
+    cb({ ok = false })
 end)
 
 RegisterNetEvent('esx_joblisting:profileUpdated', function(profile)
     if menuIsShowed then
-        SendNUIMessage({action = 'profile', profile = profile})
+        SendNUIMessage({ action = 'profile', profile = profile })
     end
 end)
 
 exports('ShowTasks', function(tasks, grade)
-    SendNUIMessage(withUi({action = 'tasks', visible = true, tasks = tasks, grade = grade}))
+    SendNUIMessage(withUi({ action = 'tasks', visible = true, tasks = tasks, grade = grade }))
 end)
 
 exports('HideTasks', function()
-    SendNUIMessage({action = 'tasks', visible = false})
+    SendNUIMessage({ action = 'tasks', visible = false })
 end)
 
 exports('ShowTaskProgress', function(task)
-    SendNUIMessage(withUi({action = 'taskProgress', task = task}))
+    SendNUIMessage(withUi({ action = 'taskProgress', task = task }))
 end)
 
 AddEventHandler('onResourceStop', function(resource)
@@ -159,7 +158,7 @@ RegisterNetEvent('esx:onPlayerLogout', function()
         closeMenu()
     end
 
-    SendNUIMessage({action = 'tasks', visible = false})
+    SendNUIMessage({ action = 'tasks', visible = false })
 end)
 
 local function drawTextUI()
@@ -188,7 +187,7 @@ for i = 1, #Config.Zones do
             size = Config.ZoneSize,
             color = Config.MarkerColor,
             bobUpAndDown = false,
-            faceCamera = true
+            faceCamera = true,
         },
         onEnter = function()
             isNear = true
@@ -209,7 +208,7 @@ for i = 1, #Config.Zones do
             if menuIsShowed then
                 closeMenu()
             end
-        end
+        end,
     })
 end
 
@@ -224,7 +223,7 @@ if Config.Blip.Enabled then
                 scale = Config.Blip.Scale,
                 color = Config.Blip.Colour,
                 shortRange = Config.Blip.ShortRange,
-                label = TranslateCap('blip_text')
+                label = TranslateCap('blip_text'),
             })
         end
     end)

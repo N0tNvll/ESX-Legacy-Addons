@@ -1,4 +1,3 @@
-
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
@@ -6,7 +5,9 @@ local hasAlreadyEnteredMarker, cachedSkin, lastZone, currentAction, currentActio
 local purchasePending = false
 
 function OpenShopMenu()
-    if purchasePending then return end
+    if purchasePending then
+        return
+    end
 
     ESX.HideUI()
     hasPaid = false
@@ -22,7 +23,9 @@ function OpenShopMenu()
     TriggerEvent('esx_skin:openRestrictedMenu', function(data, menu)
         menu.close()
 
-        if purchasePending then return end
+        if purchasePending then
+            return
+        end
 
         local selectedSkin
 
@@ -36,34 +39,36 @@ function OpenShopMenu()
 
         purchasePending = true
 
-        PaymentGateway.Pay({
-            amount = Config.Price,
-            title = TranslateCap('barber_blip'),
-        }, 'esx_barbershop:pay', function(paid, reason)
-            purchasePending = false
+        PaymentGateway.Pay(
+            {
+                amount = Config.Price,
+                title = TranslateCap('barber_blip'),
+            },
+            'esx_barbershop:pay',
+            function(paid, reason)
+                purchasePending = false
 
-            if paid then
-                TriggerEvent('esx_skin:setLastSkin', selectedSkin)
-                hasPaid = true
-            else
-                TriggerEvent('skinchanger:loadSkin', cachedSkin)
-
-                if reason == 'insufficient_funds' then
-                    ESX.ShowNotification(TranslateCap('not_enough_money'))
+                if paid then
+                    TriggerEvent('esx_skin:setLastSkin', selectedSkin)
+                    hasPaid = true
                 else
-                    PaymentGateway.NotifyFailure(
-                        reason,
-                        TranslateCap('purchase_failed')
-                    )
-                end
-            end
+                    TriggerEvent('skinchanger:loadSkin', cachedSkin)
 
-            if hasAlreadyEnteredMarker then
-                currentAction = 'shop_menu'
-                currentActionMsg = TranslateCap('press_access')
-                ESX.TextUI(currentActionMsg)
-            end
-        end, selectedSkin)
+                    if reason == 'insufficient_funds' then
+                        ESX.ShowNotification(TranslateCap('not_enough_money'))
+                    else
+                        PaymentGateway.NotifyFailure(reason, TranslateCap('purchase_failed'))
+                    end
+                end
+
+                if hasAlreadyEnteredMarker then
+                    currentAction = 'shop_menu'
+                    currentActionMsg = TranslateCap('press_access')
+                    ESX.TextUI(currentActionMsg)
+                end
+            end,
+            selectedSkin
+        )
     end, function(data, menu)
         menu.close()
 
@@ -121,7 +126,7 @@ CreateThread(function()
             sprite = 71,
             color = 51,
             shortRange = true,
-            label = TranslateCap('barber_blip')
+            label = TranslateCap('barber_blip'),
         })
     end
 end)
@@ -140,8 +145,8 @@ CreateThread(function()
                     r = Config.MarkerColor.r,
                     g = Config.MarkerColor.g,
                     b = Config.MarkerColor.b,
-                    a = 100
-                }
+                    a = 100,
+                },
             },
             onEnter = function()
                 hasAlreadyEnteredMarker, lastZone = true, i
@@ -150,7 +155,7 @@ CreateThread(function()
             onExit = function()
                 hasAlreadyEnteredMarker = false
                 TriggerEvent('esx_barbershop:hasExitedMarker', i)
-            end
+            end,
         })
     end
 end)

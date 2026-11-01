@@ -1,45 +1,52 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
-fx_version "cerulean"
-game "gta5"
-lua54 "yes"
+fx_version 'cerulean'
+game 'gta5'
+lua54 'yes'
 
-author "ESX-Framework"
-description "The default HUD resource for ESX-Legacy."
-version "1.10.2"
+author 'ESX-Framework'
+description 'The default HUD resource for ESX-Legacy.'
+version '1.10.2'
 legacyversion '1.16.2'
+
+provide 'esx_cruisecontrol'
 
 shared_scripts {
     '@esx_lib/imports.lua',
-    "@es_extended/imports.lua",
-    "@es_extended/locale.lua",
-    "shared/config.lua",
-    "shared/main.lua",
-    "locales/*.lua",
+    '@es_extended/imports.lua',
+    '@es_extended/locale.lua',
+    'shared/config.lua',
+    'shared/main.lua',
+    'locales/*.lua',
+    'shared/driving_locales.lua',
 }
 
 server_scripts {
-    "@oxmysql/lib/MySQL.lua",
-    "server/*.lua",
+    '@oxmysql/lib/MySQL.lua',
+    'server/*.lua',
 }
 
 client_scripts {
-    "client/*.lua",
-    "client/player/*.lua",
-    "client/vehicle/*.lua",
+    'client/*.lua',
+    'client/player/*.lua',
+    'client/vehicle/*.lua',
+    'client/driving/utils.lua',
+    'client/driving/cruisecontrol.lua',
+    'client/driving/seatbelt.lua',
+    'client/driving/keybind.lua',
 }
 
-ui_page "web/dist/index.html"
+ui_page 'web/dist/index.html'
 
 files {
-    "web/dist/**",
-    "web/dist/assets/**",
+    'web/dist/**',
+    'web/dist/assets/**',
 }
 
 dependencies {
-	'esx_lib',
-    "es_extended",
-    "esx_status",
-    "oxmysql",
+    'esx_lib',
+    'es_extended',
+    'esx_status',
+    'oxmysql',
 }

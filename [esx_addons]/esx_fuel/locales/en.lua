@@ -36,13 +36,11 @@ Locales['en'] = {
     ['error_society_no_money'] = 'The station owner cannot pay for the delivery.',
     ['error_not_owner'] = 'You do not manage this station.',
     ['error_price_range'] = 'The price must be between 50 and 200 percent.',
-
     ['fuel_regular'] = 'Regular',
     ['fuel_plus'] = 'Plus',
     ['fuel_premium'] = 'Premium',
     ['fuel_diesel'] = 'Diesel',
     ['fuel_electric'] = 'Electric',
-
     ['ui_price_per_liter'] = 'PRICE PER UNIT',
     ['ui_quantity'] = 'QUANTITY',
     ['ui_vehicle_fuel'] = 'TANK',

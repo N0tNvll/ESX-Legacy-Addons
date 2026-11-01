@@ -11,14 +11,8 @@ if ESX.GetConfig().OxInventory then
             for i = 1, #stashes do
                 local stash = stashes[i]
                 local jobStash = stash.name:find('society') and string.sub(stash.name, 9)
-                exports.ox_inventory:RegisterStash(
-                    stash.name,
-                    stash.label,
-                    100,
-                    200000,
-                    stash.shared == 0 and true or false,
-                    jobStash
-                )
+
+                exports.ox_inventory:RegisterStash(stash.name, stash.label, 100, 200000, stash.shared == 0 and true or false, jobStash)
             end
         end
     end)
@@ -32,20 +26,15 @@ if ESX.GetConfig().OxInventory then
 
         for _, stash in ipairs(stashes) do
             local job = stash.name:find('society') and string.sub(stash.name, 9)
-            exports.ox_inventory:RegisterStash(
-                stash.name,
-                stash.label,
-                100,
-                200000,
-                stash.shared == 0 and true or false,
-                job
-            )
+
+            exports.ox_inventory:RegisterStash(stash.name, stash.label, 100, 200000, stash.shared == 0 and true or false, job)
         end
     end)
     return
 end
 
 Items = {}
+
 local InventoriesIndex = {}
 local Inventories = {}
 local InventoriesByOwner = {}
@@ -89,19 +78,15 @@ MySQL.ready(function()
         local name = result[i].name
         local label = result[i].label
         local shared = result[i].shared
-
-        local result2 = MySQL.query.await(
-            'SELECT * FROM addon_inventory_items WHERE inventory_name = @inventory_name',
-            {
-                ['@inventory_name'] = name,
-            }
-        )
+        local result2 = MySQL.query.await('SELECT * FROM addon_inventory_items WHERE inventory_name = @inventory_name', {
+            ['@inventory_name'] = name,
+        })
 
         if shared == 0 then
-
             table.insert(InventoriesIndex, name)
 
             Inventories[name] = {}
+
             local items = {}
 
             for j = 1, #result2, 1 do
@@ -123,7 +108,6 @@ MySQL.ready(function()
             for k, v in pairs(items) do
                 addInventory(name, k, v)
             end
-
         else
             local items = {}
 
@@ -136,10 +120,12 @@ MySQL.ready(function()
             end
 
             local addonInventory = CreateAddonInventory(name, nil, items)
+
             SharedInventories[name] = addonInventory
             GlobalState.SharedInventories = SharedInventories
         end
     end
+
     catalogsReady = true
 
     if catalogRefreshPending then
@@ -166,14 +152,11 @@ function AddSharedInventory(society)
     -- society (array) containing name (string) and label (string)
 
     -- addon inventory:
-    MySQL.Async.execute(
-        'INSERT INTO addon_inventory (name, label, shared) VALUES (@name, @label, @shared)',
-        {
-            ['name'] = society.name,
-            ['label'] = society.label,
-            ['shared'] = 1,
-        }
-    )
+    MySQL.Async.execute('INSERT INTO addon_inventory (name, label, shared) VALUES (@name, @label, @shared)', {
+        ['name'] = society.name,
+        ['label'] = society.label,
+        ['shared'] = 1,
+    })
 
     SharedInventories[society.name] = CreateAddonInventory(society.name, nil, {})
 end
@@ -220,18 +203,12 @@ refreshCatalogs = function()
                 Items[item.name] = item.label
             end
 
-            for _, definition in
-                ipairs(MySQL.query.await('SELECT name, shared FROM addon_inventory'))
-            do
+            for _, definition in ipairs(MySQL.query.await('SELECT name, shared FROM addon_inventory')) do
                 local name = definition.name
-                local missing = definition.shared == 1 and not SharedInventories[name]
-                    or definition.shared == 0 and not Inventories[name]
+                local missing = definition.shared == 1 and not SharedInventories[name] or definition.shared == 0 and not Inventories[name]
 
                 if missing then
-                    local rows = MySQL.query.await(
-                        'SELECT name, count, owner FROM addon_inventory_items WHERE inventory_name = ?',
-                        { name }
-                    )
+                    local rows = MySQL.query.await('SELECT name, count, owner FROM addon_inventory_items WHERE inventory_name = ?', { name })
 
                     if definition.shared == 1 then
                         local items = {}
@@ -248,6 +225,7 @@ refreshCatalogs = function()
                     else
                         Inventories[name] = {}
                         InventoriesIndex[#InventoriesIndex + 1] = name
+
                         local owners = {}
 
                         for _, row in ipairs(rows) do

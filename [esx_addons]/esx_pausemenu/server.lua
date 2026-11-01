@@ -3,12 +3,12 @@
 local dataLimiter = xLib.rateLimiter({
     capacity = 2,
     refill = 1,
-    interval = 750
+    interval = 750,
 })
 
 local function stripFormatting(value)
-    value = tostring(value or "")
-    return value:gsub("%^%d", "")
+    value = tostring(value or '')
+    return value:gsub('%^%d', '')
 end
 
 local function getAccountMoney(xPlayer, accountName)
@@ -16,7 +16,7 @@ local function getAccountMoney(xPlayer, accountName)
     return account and tonumber(account.money) or 0
 end
 
-ESX.RegisterServerCallback("esx_pausemenu:getData", function(source, cb)
+ESX.RegisterServerCallback('esx_pausemenu:getData', function(source, cb)
     local xPlayer = ESX.GetPlayerFromId(source)
 
     if not xPlayer then
@@ -30,45 +30,46 @@ ESX.RegisterServerCallback("esx_pausemenu:getData", function(source, cb)
     end
 
     local job = xPlayer.getJob and xPlayer.getJob() or xPlayer.job or {}
-    local jobName = job.name or "unknown"
-    local jobLabel = job.label or Translate("unknown_job")
+    local jobName = job.name or 'unknown'
+    local jobLabel = job.label or Translate('unknown_job')
 
-    if jobName == "unemployed" then
-        jobLabel = Translate("unemployed")
+    if jobName == 'unemployed' then
+        jobLabel = Translate('unemployed')
     end
 
     local playTime = 0
+
     if xPlayer.getPlayTime then
         playTime = tonumber(xPlayer.getPlayTime()) or 0
     end
 
-    local projectName = GetConvar("sv_projectName", "")
-    local serverName = projectName ~= "" and projectName or GetConvar("sv_hostname", Config.Brand.title)
+    local projectName = GetConvar('sv_projectName', '')
+    local serverName = projectName ~= '' and projectName or GetConvar('sv_hostname', Config.Brand.title)
 
     cb({
         id = source,
-        name = stripFormatting(GetPlayerName(source) or xPlayer.name or (xPlayer.getName and xPlayer.getName()) or "Player"),
-        characterName = stripFormatting((xPlayer.getName and xPlayer.getName()) or xPlayer.name or GetPlayerName(source) or "Player"),
-        sex = xPlayer.get and xPlayer.get("sex") or nil,
+        name = stripFormatting(GetPlayerName(source) or xPlayer.name or (xPlayer.getName and xPlayer.getName()) or 'Player'),
+        characterName = stripFormatting((xPlayer.getName and xPlayer.getName()) or xPlayer.name or GetPlayerName(source) or 'Player'),
+        sex = xPlayer.get and xPlayer.get('sex') or nil,
         ping = math.max(0, GetPlayerPing(source)),
         role = jobLabel,
-        bank = getAccountMoney(xPlayer, "bank"),
-        cash = getAccountMoney(xPlayer, "money"),
+        bank = getAccountMoney(xPlayer, 'bank'),
+        cash = getAccountMoney(xPlayer, 'money'),
         job = jobLabel,
         jobName = jobName,
         playTime = playTime,
         players = #GetPlayers(),
-        maxPlayers = GetConvarInt("sv_maxclients", 48),
-        serverName = stripFormatting(serverName)
+        maxPlayers = GetConvarInt('sv_maxclients', 48),
+        serverName = stripFormatting(serverName),
     })
 end)
 
-RegisterNetEvent("esx_pausemenu:leaveServer", function()
+RegisterNetEvent('esx_pausemenu:leaveServer', function()
     local src = source
 
     if src < 1 then
         return
     end
 
-    DropPlayer(src, Translate("leave_reason"))
+    DropPlayer(src, Translate('leave_reason'))
 end)

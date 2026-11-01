@@ -5,14 +5,7 @@ local D = VehicleShop
 function D.employee(player, shop, boss)
     local rule, job = shop.management, player and player.job
 
-    if
-        shop.mode ~= 'managed'
-        or not rule
-        or not job
-        or job.name ~= rule.job
-        or job.grade < (rule.minGrade or 0)
-        or job.onDuty == false
-    then
+    if shop.mode ~= 'managed' or not rule or not job or job.name ~= rule.job or job.grade < (rule.minGrade or 0) or job.onDuty == false then
         return false
     end
 
@@ -24,10 +17,7 @@ function D.canAccess(player, shop)
         return false
     end
 
-    if
-        shop.ownershipJob
-        and (not player.job or player.job.name ~= shop.ownershipJob or player.job.onDuty == false)
-    then
+    if shop.ownershipJob and (not player.job or player.job.name ~= shop.ownershipJob or player.job.onDuty == false) then
         return false
     end
 
@@ -48,9 +38,7 @@ function D.canAccess(player, shop)
 
         local job = player.job
 
-        if
-            shop.ownershipJob and (not job or job.name ~= shop.ownershipJob or job.onDuty == false)
-        then
+        if shop.ownershipJob and (not job or job.name ~= shop.ownershipJob or job.onDuty == false) then
             return false
         end
 
@@ -75,17 +63,11 @@ function D.location(source, shop, action)
         return D.near(source, shop.returnPoint, 12)
     end
 
-    if
-        action == nil
-        and (D.near(source, shop.returnPoint, 12) or D.near(source, shop.resalePoint, 12))
-    then
+    if action == nil and (D.near(source, shop.returnPoint, 12) or D.near(source, shop.resalePoint, 12)) then
         return true
     end
 
-    return D.near(source, shop.coords, 12)
-        or D.near(source, shop.managementPoint, 8)
-        or D.near(source, shop.preview, 8)
-        or (action == 'inventory' and D.near(source, shop.resalePoint, 12))
+    return D.near(source, shop.coords, 12) or D.near(source, shop.managementPoint, 8) or D.near(source, shop.preview, 8) or (action == 'inventory' and D.near(source, shop.resalePoint, 12))
 end
 
 function D.playerShop(source, id, action, employee)
@@ -110,18 +92,12 @@ function D.hasLicense(player, name)
         return false
     end
 
-    return MySQL.scalar.await(
-        'SELECT 1 FROM user_licenses WHERE owner = ? AND type = ? LIMIT 1',
-        { player.getIdentifier(), name }
-    ) ~= nil
+    return MySQL.scalar.await('SELECT 1 FROM user_licenses WHERE owner = ? AND type = ? LIMIT 1', { player.getIdentifier(), name }) ~= nil
 end
 
 function D.validBuyer(player, shop, offer)
     D.assert(D.canAccess(player, shop) and D.location(player.source, shop), 'purchase_invalidated')
-    D.assert(
-        D.hasLicense(player, shop.license) and D.hasLicense(player, offer and offer.license),
-        'license_required'
-    )
+    D.assert(D.hasLicense(player, shop.license) and D.hasLicense(player, offer and offer.license), 'license_required')
     D.assert(D.canAccess(player, shop) and D.location(player.source, shop), 'purchase_invalidated')
 end
 
@@ -133,12 +109,7 @@ function D.entity(source, plate)
     end
 
     for _, entity in ipairs(GetAllVehicles()) do
-        if
-            DoesEntityExist(entity)
-            and xLib.vehiclePlate.normalize(GetVehicleNumberPlateText(entity)) == plate
-            and #(GetEntityCoords(entity) - GetEntityCoords(ped)) <= 10
-            and GetEntityRoutingBucket(entity) == GetPlayerRoutingBucket(source)
-        then
+        if DoesEntityExist(entity) and xLib.vehiclePlate.normalize(GetVehicleNumberPlateText(entity)) == plate and #(GetEntityCoords(entity) - GetEntityCoords(ped)) <= 10 and GetEntityRoutingBucket(entity) == GetPlayerRoutingBucket(source) then
             return entity
         end
     end
@@ -146,11 +117,11 @@ end
 
 function D.shopPayload(shop, player)
     local manager = D.employee(player, shop)
-
     return {
         id = shop.id,
         name = shop.label or shop.id,
         mode = shop.mode,
+        vehicleTypes = D.copy(shop.vehicleTypes),
         coords = D.point(shop.coords),
         preview = D.point(shop.preview),
         delivery = shop.delivery and D.point(shop.delivery.coords),
@@ -173,5 +144,7 @@ function D.shopPayload(shop, player)
         rentals = shop.rentals and shop.rentals.enabled == true,
         resale = shop.resale and shop.resale.enabled == true,
         stockMode = shop.stockMode,
+        testDrive = Config.TestDrive.enabled and shop.testDrive ~= false,
+        testDriveDuration = Config.TestDrive.duration,
     }
 end

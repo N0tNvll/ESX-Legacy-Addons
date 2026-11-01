@@ -20,8 +20,7 @@ local function onDuty(source)
     end
 
     if Config.EnableESXService then
-        return GetResourceState('esx_service') == 'started'
-            and exports['esx_service']:IsInService(job, source) == true
+        return GetResourceState('esx_service') == 'started' and exports['esx_service']:IsInService(job, source) == true
     end
 
     return true
@@ -43,12 +42,9 @@ local function register()
         ESXCatalog.awaitReady()
 
         local settings, definitions = Config.GarageIntegration or {}, {}
-        local labels = settings.labels
-            or { ground = 'Garage', boat = 'Marina', helicopter = 'Helipad', plane = 'Hangar' }
-        local locations = resource == 'esx_policejob' and Config.PoliceStations
-            or resource == 'esx_ambulancejob' and Config.Hospitals
-        local categories =
-            { Vehicles = 'ground', Helicopters = 'helicopter', Planes = 'plane', Boats = 'boat' }
+        local labels = settings.labels or { ground = 'Garage', boat = 'Marina', helicopter = 'Helipad', plane = 'Hangar' }
+        local locations = resource == 'esx_policejob' and Config.PoliceStations or resource == 'esx_ambulancejob' and Config.Hospitals
+        local categories = { Vehicles = 'ground', Helicopters = 'helicopter', Planes = 'plane', Boats = 'boat' }
 
         for key, location in pairs(locations or {}) do
             for group, category in pairs(categories) do
@@ -57,29 +53,19 @@ local function register()
                     local spawnPoints = garage.SpawnPoints or {}
 
                     for _, spawn in ipairs(spawnPoints) do
-                        spawns[#spawns + 1] = vector4(
-                            spawn.coords.x,
-                            spawn.coords.y,
-                            spawn.coords.z,
-                            spawn.heading or 0
-                        )
+                        spawns[#spawns + 1] = vector4(spawn.coords.x, spawn.coords.y, spawn.coords.z, spawn.heading or 0)
                     end
 
                     definitions[#definitions + 1] = {
                         id = ('%s_%s_%s_%s'):format(job, key, group:lower(), index),
-                        label = garage.GarageLabel
-                            or ('%s - %s'):format(
-                                location.label or location.Label or key,
-                                labels[category] or category
-                            ),
+                        label = garage.GarageLabel or ('%s - %s'):format(location.label or location.Label or key, labels[category] or category),
                         type = 'job',
                         job = job,
                         shared = settings.shared ~= false,
                         minGrade = garage.GarageMinGrade or settings.minGrade or 0,
                         vehicleCategories = { category },
                         entryPoint = garage.GaragePoint,
-                        storePoint = garage.StorePoint
-                            or (spawnPoints[1] and spawnPoints[1].coords),
+                        storePoint = garage.StorePoint or (spawnPoints[1] and spawnPoints[1].coords),
                         spawns = spawns,
                         pound = garage.Pound or settings.pound,
                         access = { authorize = onDuty },
@@ -90,8 +76,8 @@ local function register()
 
         if job == 'taxi' or job == 'mechanic' then
             local zones = Config.Zones
-            local entry = job == 'taxi' and zones.VehicleSpawner.Pos
-                or (zones.MechanicActions.Pos + vector3(0, 6, 0))
+            local entry = job == 'taxi' and zones.VehicleSpawner.Pos or (zones.MechanicActions.Pos + vector3(0, 6, 0))
+
             entry = vector3(entry.x, entry.y, entry.z)
 
             local spawn = zones.VehicleSpawnPoint
@@ -111,10 +97,7 @@ local function register()
                     local player = ESX.GetPlayerFromId(source)
                     local grade = player and player.job and player.job.grade_name
 
-                    if
-                        Config.EnablePlayerManagement
-                        and (grade == 'boss' or grade == 'chief' or grade == 'experimente')
-                    then
+                    if Config.EnablePlayerManagement and (grade == 'boss' or grade == 'chief' or grade == 'experimente') then
                         allowed[#allowed + 1] = 'slamvan3'
                     end
 
@@ -132,11 +115,7 @@ local function register()
                 vehicleCategories = { 'ground' },
                 models = models,
                 entryPoint = entry,
-                storePoint = vector3(
-                    zones.VehicleDeleter.Pos.x,
-                    zones.VehicleDeleter.Pos.y,
-                    zones.VehicleDeleter.Pos.z
-                ),
+                storePoint = vector3(zones.VehicleDeleter.Pos.x, zones.VehicleDeleter.Pos.y, zones.VehicleDeleter.Pos.z),
                 spawns = { vector4(spawn.Pos.x, spawn.Pos.y, spawn.Pos.z, spawn.Heading or 90.0) },
                 pound = settings.pound,
                 access = { authorize = onDuty },
@@ -151,7 +130,6 @@ local function register()
                     end
 
                     local allowed, acquired = exports['esx_service']:TryEnableService(job, source)
-
                     return allowed and { acquired = acquired } or false
                 end
 
@@ -179,10 +157,7 @@ local function register()
                 end
             end
 
-            assert(
-                exports['esx_garage']:prepareJobFleet(job, fleet, 'society_' .. job),
-                'Fleet initialization failed'
-            )
+            assert(exports['esx_garage']:prepareJobFleet(job, fleet, 'society_' .. job), 'Fleet initialization failed')
         end
 
         exports['esx_garage']:registerGarages(definitions)

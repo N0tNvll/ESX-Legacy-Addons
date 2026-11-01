@@ -4,8 +4,7 @@
 --- Checks of the requests other resources pass to the RequestPayment export. A request is
 --- turned into the payment the dialog shows, or refused with the reason the export returns.
 
-local Validate = require "shared.module.validate.main"
-
+local Validate = require('shared.module.validate.main')
 local Request = {}
 
 ---@class PaymentRequest
@@ -27,14 +26,18 @@ local MAX_CURRENCY <const> = 4
 ---@return table<PaymentMethod, boolean> allowed
 local function methodsOf(value)
     local wanted = {}
+
     if value then
         for _, account in ipairs(value) do
             -- Only names count; anything else, NaN too, could not be a table key anyway.
-            if type(account) == "string" then wanted[account] = true end
+            if type(account) == 'string' then
+                wanted[account] = true
+            end
         end
     end
 
     local methods, allowed = {}, {}
+
     for _, method in ipairs(Config.Methods) do
         if not value or wanted[Config.Accounts[method]] then
             methods[#methods + 1] = method
@@ -49,9 +52,12 @@ end
 ---@param value any
 ---@return boolean
 function Request.isCallable(value)
-    if type(value) == "function" then return true end
-    local meta = type(value) == "table" and getmetatable(value)
-    return type(meta) == "table" and meta.__call ~= nil
+    if type(value) == 'function' then
+        return true
+    end
+
+    local meta = type(value) == 'table' and getmetatable(value)
+    return type(meta) == 'table' and meta.__call ~= nil
 end
 
 ---Turns the table a resource passed into the payment the dialog shows. Optional fields that are
@@ -60,24 +66,34 @@ end
 ---@return PaymentRequest|nil request
 ---@return string|nil reason Why the request was refused
 function Request.normalize(input)
-    if type(input) ~= "table" then return nil, "The request must be a table." end
-    if not Validate.isAmount(input.amount) then return nil, "Amount must be a positive whole number." end
+    if type(input) ~= 'table' then
+        return nil, 'The request must be a table.'
+    end
+
+    if not Validate.isAmount(input.amount) then
+        return nil, 'Amount must be a positive whole number.'
+    end
+
     if not Validate.isText(input.title, MAX_TEXT) then
-        return nil, ("A title is required, at most %s bytes."):format(MAX_TEXT)
+        return nil, ('A title is required, at most %s bytes.'):format(MAX_TEXT)
     end
+
     if input.description ~= nil and not Validate.isText(input.description, MAX_TEXT) then
-        return nil, ("The description must be text of at most %s bytes."):format(MAX_TEXT)
+        return nil, ('The description must be text of at most %s bytes.'):format(MAX_TEXT)
     end
+
     if input.currency ~= nil and not Validate.isText(input.currency, MAX_CURRENCY) then
-        return nil, ("The currency must be a symbol of at most %s bytes."):format(MAX_CURRENCY)
+        return nil, ('The currency must be a symbol of at most %s bytes.'):format(MAX_CURRENCY)
     end
-    if input.methods ~= nil and type(input.methods) ~= "table" then
-        return nil, "Methods must be a list of ESX accounts, e.g. { \"money\", \"bank\" }."
+
+    if input.methods ~= nil and type(input.methods) ~= 'table' then
+        return nil, 'Methods must be a list of ESX accounts, e.g. { "money", "bank" }.'
     end
 
     local methods, allowed = methodsOf(input.methods)
+
     if #methods == 0 then
-        return nil, "None of the requested methods is available; name them by ESX account, e.g. \"money\" or \"bank\"."
+        return nil, 'None of the requested methods is available; name them by ESX account, e.g. "money" or "bank".'
     end
 
     return {

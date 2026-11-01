@@ -10,9 +10,7 @@ local published = {}
 local retries = {}
 local recoveredAt = {}
 local ready = false
-
 local deathLimiter = xLib.rateLimiter({ capacity = 3, refill = 1, interval = 5000, staleMs = 60000 })
-
 local earlySeconds = math.ceil(Config.EarlyRespawnTimer / 1000)
 local totalSeconds = earlySeconds + math.ceil(Config.BleedoutTimer / 1000)
 
@@ -72,7 +70,6 @@ end)
 
 local function current(src, player)
     local active = ESX.GetPlayerFromId(src)
-
     return active ~= nil and player ~= nil and active.identifier == player.identifier
 end
 
@@ -187,7 +184,6 @@ end
 
 local function snapshot(state)
     local elapsed = state.dead and math.max(0, os.time() - state.time) or 0
-
     return {
         ok = true,
         dead = state.dead,

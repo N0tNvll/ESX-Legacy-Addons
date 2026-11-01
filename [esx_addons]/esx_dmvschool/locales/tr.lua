@@ -30,5 +30,4 @@ Locales['tr'] = {
     ['errors'] = 'Hatalar: ~r~%s/%s',
     ['you_damaged_veh'] = 'Araç hasar gördü',
     ['not_enough_money'] = 'Yeterli paranız yok',
-  }
-  
+}

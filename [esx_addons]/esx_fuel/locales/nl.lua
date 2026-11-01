@@ -36,13 +36,11 @@ Locales['nl'] = {
     ['error_society_no_money'] = 'De eigenaar van het tankstation kan de levering niet betalen.',
     ['error_not_owner'] = 'Je beheert dit tankstation niet.',
     ['error_price_range'] = 'De prijs moet tussen 50 en 200 %% liggen.',
-
     ['fuel_regular'] = 'Normaal',
     ['fuel_plus'] = 'Plus',
     ['fuel_premium'] = 'Premium',
     ['fuel_diesel'] = 'Diesel',
     ['fuel_electric'] = 'Elektrisch',
-
     ['ui_price_per_liter'] = 'PRIJS PER EENHEID',
     ['ui_quantity'] = 'HOEVEELHEID',
     ['ui_vehicle_fuel'] = 'TANK',

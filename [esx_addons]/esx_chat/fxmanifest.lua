@@ -11,6 +11,9 @@ version '1.1.0'
 
 lua54 'yes'
 
+provide 'chat'
+provide 'esx_rpchat'
+
 shared_scripts {
     '@es_extended/imports.lua',
     '@es_extended/locale.lua',
@@ -27,7 +30,7 @@ files {
     'locales/*.lua',
     'web/index.html',
     'web/style.css',
-    'web/app.js'
+    'web/app.js',
 }
 
 dependencies {

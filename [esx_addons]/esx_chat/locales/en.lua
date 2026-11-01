@@ -12,7 +12,6 @@ Locales['en'] = {
     ['chat_cleared'] = 'The chat has been cleared.',
     ['display_mode_set'] = 'Chat display: %s',
     ['display_mode_usage'] = 'Usage: /chatmode [always|onMessage|hidden]',
-
     ['title_system'] = 'SYSTEM',
     ['title_ooc'] = 'OOC | %s',
     ['title_environment'] = 'ENVIRONMENT | %s',
@@ -24,16 +23,13 @@ Locales['en'] = {
     ['title_pm_in'] = '[PM] %s → You',
     ['title_pm_out'] = '[PM] You → %s',
     ['title_report'] = 'REPORT #%s · %s',
-
     ['dice_result'] = 'rolled a %s.',
     ['try_result'] = '%s: %s',
     ['try_success'] = 'SUCCESS',
     ['try_failure'] = 'FAILURE',
-
     ['arg_action'] = 'action',
     ['arg_message'] = 'message',
     ['arg_player'] = 'player id',
-
     ['command_me'] = 'Perform an action',
     ['command_do'] = 'Describe the surroundings',
     ['command_environment'] = 'Describe the environment',
@@ -49,7 +45,6 @@ Locales['en'] = {
     ['command_chatmode'] = 'Change how the chat is displayed',
     ['command_clear'] = 'Clear your chat',
     ['key_open'] = 'Open chat',
-
     ['ui_tab_ooc'] = 'OOC',
     ['ui_tab_rp'] = 'RP',
     ['ui_tab_job'] = 'Job',

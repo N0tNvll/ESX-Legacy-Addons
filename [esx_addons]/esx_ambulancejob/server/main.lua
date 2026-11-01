@@ -32,38 +32,20 @@ local function deathDbg(message, data)
 end
 
 if GetResourceState('esx_phone') ~= 'missing' then
-    TriggerEvent(
-        'esx_phone:registerNumber',
-        'ambulance',
-        TranslateCap('alert_ambulance'),
-        true,
-        true
-    )
+    TriggerEvent('esx_phone:registerNumber', 'ambulance', TranslateCap('alert_ambulance'), true, true)
 end
 
 if GetResourceState('esx_society') ~= 'missing' then
-    TriggerEvent(
-        'esx_society:registerSociety',
-        'ambulance',
-        'Ambulance',
-        'society_ambulance',
-        'society_ambulance',
-        'society_ambulance',
-        { type = 'public' }
-    )
+    TriggerEvent('esx_society:registerSociety', 'ambulance', 'Ambulance', 'society_ambulance', 'society_ambulance', 'society_ambulance', { type = 'public' })
 end
 
 local function isNearPlayer(source, target, distance)
     local nearby = xLib.player.isNearPlayer(source, target, distance)
-
     return nearby
 end
 
 local function isAmbulanceOnDuty(xPlayer)
-    return xPlayer
-        and xPlayer.job
-        and xPlayer.job.name == 'ambulance'
-        and xPlayer.job.onDuty ~= false
+    return xPlayer and xPlayer.job and xPlayer.job.name == 'ambulance' and xPlayer.job.onDuty ~= false
 end
 
 local function isNearHospitalMarker(source, markerName, distance)
@@ -106,15 +88,12 @@ end
 
 local function hasItem(xPlayer, itemName)
     local item = xPlayer.getInventoryItem(itemName)
-
     return item ~= nil and (tonumber(item.count) or 0) >= 1
 end
 
 local function consumeItem(xPlayer, itemName)
     xPlayer.removeInventoryItem(itemName, 1)
-    xPlayer.showNotification(
-        TranslateCap(itemName == 'bandage' and 'used_bandage' or 'used_medikit')
-    )
+    xPlayer.showNotification(TranslateCap(itemName == 'bandage' and 'used_bandage' or 'used_medikit'))
 end
 
 -- EMS permissions and rewards stay here; the lifecycle belongs to esx_death.
@@ -124,10 +103,7 @@ RegisterNetEvent('esx_ambulancejob:revive', function(playerId)
     local target = tonumber(playerId)
     local xTarget = target and ESX.GetPlayerFromId(target)
 
-    deathDbg(
-        'revive:attempt',
-        { src = src, target = target, hasMedic = xPlayer ~= nil, hasTarget = xTarget ~= nil }
-    )
+    deathDbg('revive:attempt', { src = src, target = target, hasMedic = xPlayer ~= nil, hasTarget = xTarget ~= nil })
 
     if not isAmbulanceOnDuty(xPlayer) then
         deathDbg('revive:blocked-medic-not-on-duty', { src = src, job = xPlayer and xPlayer.job })
@@ -157,10 +133,7 @@ RegisterNetEvent('esx_ambulancejob:revive', function(playerId)
     local targetDead = exports.esx_death:IsDead(target)
 
     if not nearby or not targetDead then
-        deathDbg(
-            'revive:blocked-nearby-or-target-alive',
-            { src = src, target = target, nearby = nearby, targetDead = targetDead }
-        )
+        deathDbg('revive:blocked-nearby-or-target-alive', { src = src, target = target, nearby = nearby, targetDead = targetDead })
         return
     end
 
@@ -178,9 +151,7 @@ RegisterNetEvent('esx_ambulancejob:revive', function(playerId)
 
         if Config.ReviveReward > 0 then
             xPlayer.addMoney(Config.ReviveReward, 'Revive Reward')
-            xPlayer.showNotification(
-                TranslateCap('revive_complete_award', xTarget.name, Config.ReviveReward)
-            )
+            xPlayer.showNotification(TranslateCap('revive_complete_award', xTarget.name, Config.ReviveReward))
         else
             xPlayer.showNotification(TranslateCap('revive_complete', xTarget.name))
         end
@@ -194,10 +165,7 @@ local function notifyMedics(event, ...)
 end
 
 AddEventHandler('esx_death:stateChanged', function(playerId, dead)
-    notifyMedics(
-        dead and 'esx_ambulancejob:PlayerDead' or 'esx_ambulancejob:PlayerNotDead',
-        playerId
-    )
+    notifyMedics(dead and 'esx_ambulancejob:PlayerDead' or 'esx_ambulancejob:PlayerNotDead', playerId)
 end)
 
 AddEventHandler('esx_death:distress', function(playerId, coords)
@@ -231,12 +199,7 @@ AddEventHandler('esx_ambulancejob:heal', function(target, type)
 
     type = tostring(type or '')
 
-    if
-        not isAmbulanceOnDuty(xPlayer)
-        or not xTarget
-        or (type ~= 'small' and type ~= 'big')
-        or not isNearPlayer(src, xTarget.source, 8.0)
-    then
+    if not isAmbulanceOnDuty(xPlayer) or not xTarget or (type ~= 'small' and type ~= 'big') or not isNearPlayer(src, xTarget.source, 8.0) then
         return
     end
 
@@ -247,9 +210,7 @@ AddEventHandler('esx_ambulancejob:heal', function(target, type)
     local itemName = type == 'small' and 'bandage' or 'medikit'
 
     if not hasItem(xPlayer, itemName) then
-        xPlayer.showNotification(
-            TranslateCap(itemName == 'bandage' and 'not_enough_bandage' or 'not_enough_medikit')
-        )
+        xPlayer.showNotification(TranslateCap(itemName == 'bandage' and 'not_enough_bandage' or 'not_enough_medikit'))
         return
     end
 
@@ -264,11 +225,7 @@ AddEventHandler('esx_ambulancejob:putInVehicle', function(target)
     local xPlayer = ESX.GetPlayerFromId(source)
     local xTarget = ESX.GetPlayerFromId(tonumber(target))
 
-    if
-        not isAmbulanceOnDuty(xPlayer)
-        or not xTarget
-        or not isNearPlayer(src, xTarget.source, 8.0)
-    then
+    if not isAmbulanceOnDuty(xPlayer) or not xTarget or not isNearPlayer(src, xTarget.source, 8.0) then
         return
     end
 
@@ -308,26 +265,10 @@ AddEventHandler('esx_ambulancejob:giveItem', function(itemName, amount)
     amount = getValidItemAmount(amount)
 
     if not isAmbulanceOnDuty(xPlayer) then
-        print(
-            (
-                '[^2WARNING^7] Player ^5%s^7 Tried Giving Themselves -> ^5'
-                .. tostring(itemName)
-                .. '^7!'
-            ):format(source)
-        )
+        print(('[^2WARNING^7] Player ^5%s^7 Tried Giving Themselves -> ^5' .. tostring(itemName) .. '^7!'):format(source))
         return
-    elseif
-        (itemName ~= 'medikit' and itemName ~= 'bandage')
-        or not amount
-        or not isNearHospitalMarker(source, 'Pharmacies', 8.0)
-    then
-        print(
-            (
-                '[^2WARNING^7] Player ^5%s^7 Tried Giving Themselves -> ^5'
-                .. tostring(itemName)
-                .. '^7!'
-            ):format(xPlayer.source)
-        )
+    elseif (itemName ~= 'medikit' and itemName ~= 'bandage') or not amount or not isNearHospitalMarker(source, 'Pharmacies', 8.0) then
+        print(('[^2WARNING^7] Player ^5%s^7 Tried Giving Themselves -> ^5' .. tostring(itemName) .. '^7!'):format(xPlayer.source))
         return
     end
 

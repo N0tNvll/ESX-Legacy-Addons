@@ -36,13 +36,11 @@ Locales['es'] = {
     ['error_society_no_money'] = 'El propietario de la gasolinera no puede pagar la entrega.',
     ['error_not_owner'] = 'No gestionas esta gasolinera.',
     ['error_price_range'] = 'El precio debe estar entre el 50 y el 200 %%.',
-
     ['fuel_regular'] = 'Normal',
     ['fuel_plus'] = 'Plus',
     ['fuel_premium'] = 'Premium',
     ['fuel_diesel'] = 'Diésel',
     ['fuel_electric'] = 'Eléctrico',
-
     ['ui_price_per_liter'] = 'PRECIO POR UNIDAD',
     ['ui_quantity'] = 'CANTIDAD',
     ['ui_vehicle_fuel'] = 'DEPÓSITO',

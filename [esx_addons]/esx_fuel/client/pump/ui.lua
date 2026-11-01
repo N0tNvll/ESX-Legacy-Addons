@@ -10,9 +10,9 @@ local function getWallet()
     local money, bank = 0, 0
 
     for _, account in ipairs(ESX.PlayerData.accounts or {}) do
-        if account.name == "money" then
+        if account.name == 'money' then
             money = account.money
-        elseif account.name == "bank" then
+        elseif account.name == 'bank' then
             bank = account.money
         end
     end
@@ -25,20 +25,22 @@ end
 ---@return table station
 local function getFuelsFor(kind)
     local fuels = {}
-    local ok, station = pcall(xLib.callback.await, "esx_fuel:getStation", false)
-    station = ok and type(station) == "table" and station or {}
+    local ok, station = pcall(xLib.callback.await, 'esx_fuel:getStation', false)
+
+    station = ok and type(station) == 'table' and station or {}
+
     local multiplier = tonumber(station.priceMultiplier) or 1.0
 
     for i = 1, #Config.FuelTypes do
         local fuel = Config.FuelTypes[i]
 
-        if (kind == "electric") == (fuel.kind == "electric") then
+        if (kind == 'electric') == (fuel.kind == 'electric') then
             fuels[#fuels + 1] = {
                 name = fuel.name,
                 kind = fuel.kind,
                 octane = fuel.octane,
                 price = fuel.price * multiplier,
-                label = _(("fuel_%s"):format(fuel.name))
+                label = _(('fuel_%s'):format(fuel.name)),
             }
         end
     end
@@ -52,31 +54,31 @@ local function openPump(target)
     local money, bank = getWallet()
 
     Pump.uiTarget = target
-    Fuel.hint("pump", nil)
+    Fuel.hint('pump', nil)
     SetNuiFocus(true, true)
     SendNUIMessage({
-        action = "open",
+        action = 'open',
         vehicle = {
             kind = target.kind,
             capacity = target.capacity,
             liters = target.liters,
-            unit = target.kind == "electric" and "kWh" or "L",
-            can = target.type == "can"
+            unit = target.kind == 'electric' and 'kWh' or 'L',
+            can = target.type == 'can',
         },
         fuels = fuels,
-        stock = target.kind ~= "electric" and station.stock or nil,
+        stock = target.kind ~= 'electric' and station.stock or nil,
         wallet = { money = money, bank = bank },
         accounts = Config.Refuel.PayWith,
         maxLiters = Config.Refuel.MaxLitersPerPurchase,
         locale = Fuel.getUILocale(),
-        theme = xLib.colors.getESXTheme()
+        theme = xLib.colors.getESXTheme(),
     })
 end
 
 function Pump.closeUi()
     Pump.uiTarget = nil
     SetNuiFocus(false, false)
-    SendNUIMessage({ action = "close" })
+    SendNUIMessage({ action = 'close' })
 end
 
 ---@param vehicle integer
@@ -84,11 +86,11 @@ function Pump.openForVehicle(vehicle)
     local capacity = Fuel.getCapacity(vehicle)
 
     openPump({
-        type = "vehicle",
+        type = 'vehicle',
         vehicle = vehicle,
         kind = Fuel.getKind(vehicle),
         capacity = capacity,
-        liters = capacity * Fuel.getLevel(vehicle) / 100.0
+        liters = capacity * Fuel.getLevel(vehicle) / 100.0,
     })
 end
 
@@ -96,24 +98,24 @@ function Pump.openForCan()
     local ammo = GetAmmoInPedWeapon(PlayerPedId(), PETROLCAN)
 
     openPump({
-        type = "can",
-        kind = "petrol",
+        type = 'can',
+        kind = 'petrol',
         capacity = Config.JerryCan.Liters,
-        liters = Config.JerryCan.Liters * ammo / CAN_MAX_AMMO
+        liters = Config.JerryCan.Liters * ammo / CAN_MAX_AMMO,
     })
 end
 
 ---@param fuel table
 ---@param account string
 local function buyCan(fuel, account)
-    local called, ok, result, granted = pcall(xLib.callback.await, "esx_fuel:buyCan", false, fuel.name, account)
+    local called, ok, result, granted = pcall(xLib.callback.await, 'esx_fuel:buyCan', false, fuel.name, account)
 
     if not called or not ok then
-        return ESX.ShowNotification(_U(("error_%s"):format(called and result or "invalid")))
+        return ESX.ShowNotification(_U(('error_%s'):format(called and result or 'invalid')))
     end
 
     SetPedAmmo(PlayerPedId(), PETROLCAN, CAN_MAX_AMMO)
-    ESX.ShowNotification(_U("can_filled", math.floor(granted + 0.5), result))
+    ESX.ShowNotification(_U('can_filled', math.floor(granted + 0.5), result))
 end
 
 ---@param target FuelPumpTarget
@@ -122,33 +124,35 @@ end
 ---@param account string
 local function buyRefuel(target, fuel, liters, account)
     local vehicle = target.vehicle
+
     liters = math.floor(tonumber(liters) or 0)
 
     if liters < 1 or not vehicle or not DoesEntityExist(vehicle) then
         return
     end
 
-    local called, ok, result = pcall(xLib.callback.await, "esx_fuel:startRefuel", false, NetworkGetNetworkIdFromEntity(vehicle), fuel.name, liters, account)
+    local called, ok, result = pcall(xLib.callback.await, 'esx_fuel:startRefuel', false, NetworkGetNetworkIdFromEntity(vehicle), fuel.name, liters, account)
 
     if not called or not ok then
-        return ESX.ShowNotification(_U(("error_%s"):format(called and result or "invalid")))
+        return ESX.ShowNotification(_U(('error_%s'):format(called and result or 'invalid')))
     end
 
     Pump.fillVehicle(vehicle, fuel, liters, result)
 end
 
-RegisterNUICallback("close", function(_, cb)
+RegisterNUICallback('close', function(_, cb)
     Pump.closeUi()
     cb({ ok = true })
 end)
 
-RegisterNUICallback("confirm", function(data, cb)
+RegisterNUICallback('confirm', function(data, cb)
     cb({ ok = true })
 
     local target = Pump.uiTarget
+
     Pump.closeUi()
 
-    if type(data) ~= "table" or Pump.filling or not target then
+    if type(data) ~= 'table' or Pump.filling or not target then
         return
     end
 
@@ -158,7 +162,7 @@ RegisterNUICallback("confirm", function(data, cb)
         return
     end
 
-    if target.type == "can" then
+    if target.type == 'can' then
         buyCan(fuel, data.account)
     else
         buyRefuel(target, fuel, data.liters, data.account)

@@ -70,29 +70,20 @@ function BillingRecovery.retry(operationId)
 
     context.nextAttempt = GetGameTimer() + RETRY_INTERVAL
 
-    print(
-        ('[esx_billing] Payment %s awaiting persistence; retry scheduled: %s'):format(
-            operationId,
-            ok and 'save not confirmed' or tostring(saved)
-        )
-    )
+    print(('[esx_billing] Payment %s awaiting persistence; retry scheduled: %s'):format(operationId, ok and 'save not confirmed' or tostring(saved)))
 
     return false
 end
 
 function BillingRecovery.start()
-    local receipts = MySQL.query.await(
-        "SELECT bill_id, operation_id FROM billing_payments WHERE state = 'claimed' ORDER BY created_at, bill_id LIMIT 20"
-    )
+    local receipts = MySQL.query.await("SELECT bill_id, operation_id FROM billing_payments WHERE state = 'claimed' ORDER BY created_at, bill_id LIMIT 20")
 
     assert(receipts, 'Unable to inspect pending payment receipts')
 
     ready = true
 
     if #receipts > 0 then
-        print(
-            '[esx_billing] Unresolved receipts found. Use billingpayments list/show and the reconciliation guide.'
-        )
+        print('[esx_billing] Unresolved receipts found. Use billingpayments list/show and the reconciliation guide.')
     end
 end
 
@@ -129,13 +120,8 @@ RegisterCommand('billingpayments', function(source, args)
     local action = args[1] or 'list'
     local operationId = args[2]
 
-    if
-        action ~= 'list'
-        and (type(operationId) ~= 'string' or #operationId > 64 or not operationId:match('^[%x]+$'))
-    then
-        print(
-            '[esx_billing] Usage: billingpayments list | show <operation_id> | retry <operation_id>'
-        )
+    if action ~= 'list' and (type(operationId) ~= 'string' or #operationId > 64 or not operationId:match('^[%x]+$')) then
+        print('[esx_billing] Usage: billingpayments list | show <operation_id> | retry <operation_id>')
         return
     end
 
@@ -143,30 +129,17 @@ RegisterCommand('billingpayments', function(source, args)
         if action == 'retry' then
             local recovered = BillingRecovery.retry(operationId)
 
-            print(
-                ('[esx_billing] Retry %s: %s'):format(
-                    operationId,
-                    recovered and 'confirmed'
-                        or 'pending, busy or no live context; inspect the receipt'
-                )
-            )
+            print(('[esx_billing] Retry %s: %s'):format(operationId, recovered and 'confirmed' or 'pending, busy or no live context; inspect the receipt'))
         elseif action == 'show' then
-            local receipt = MySQL.single.await(
-                'SELECT * FROM billing_payments WHERE operation_id = ?',
-                { operationId }
-            )
+            local receipt = MySQL.single.await('SELECT * FROM billing_payments WHERE operation_id = ?', { operationId })
 
             print(json.encode(receipt or {}))
         elseif action == 'list' then
-            local receipts = MySQL.query.await(
-                "SELECT bill_id, operation_id, identifier, sender, target_type, target, amount, payment_account, created_at FROM billing_payments WHERE state = 'claimed' ORDER BY created_at, bill_id LIMIT 20"
-            )
+            local receipts = MySQL.query.await("SELECT bill_id, operation_id, identifier, sender, target_type, target, amount, payment_account, created_at FROM billing_payments WHERE state = 'claimed' ORDER BY created_at, bill_id LIMIT 20")
 
             print(json.encode(assert(receipts, 'Unable to list payment receipts')))
         else
-            print(
-                '[esx_billing] Usage: billingpayments list | show <operation_id> | retry <operation_id>'
-            )
+            print('[esx_billing] Usage: billingpayments list | show <operation_id> | retry <operation_id>')
         end
     end)
 
@@ -184,11 +157,7 @@ AddEventHandler('onResourceStop', function(resource)
         release(context)
         pending[operationId] = nil
 
-        print(
-            ('[esx_billing] Payment %s interrupted; inspect its durable receipt after restart.'):format(
-                operationId
-            )
-        )
+        print(('[esx_billing] Payment %s interrupted; inspect its durable receipt after restart.'):format(operationId))
     end
 
     for identifier, cleanup in pairs(held) do

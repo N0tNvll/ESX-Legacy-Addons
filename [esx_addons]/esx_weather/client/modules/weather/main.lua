@@ -11,19 +11,20 @@ Modules.Weather.transitionEnd = 0 ---@type integer
 
 ---@param toggle boolean
 function Modules.Weather.toggleSync(toggle)
-    assert(type(toggle) == "boolean", "toggle must be a boolean")
+    assert(type(toggle) == 'boolean', 'toggle must be a boolean')
 
     Modules.Weather.isSyncEnabled = toggle
 end
 
 function Modules.Weather.tick()
-    if (not Modules.Weather.isSyncEnabled) then
+    if not Modules.Weather.isSyncEnabled then
         return
     end
 
     local currentZone = Modules.Zone.getClosest()
     local zoneWeather = Modules.Weather.ByZone[currentZone]
-    if (not zoneWeather or zoneWeather == Modules.Weather.currentType) then
+
+    if not zoneWeather or zoneWeather == Modules.Weather.currentType then
         return
     end
 
@@ -33,7 +34,7 @@ function Modules.Weather.tick()
 
     ClearWeatherTypePersist()
 
-    Shared.Modules.Debug.print(("Entered zone %s. Changing weather: %s -> %s"):format(currentZone, Modules.Weather.currentType or "NONE", zoneWeather))
+    Shared.Modules.Debug.print(('Entered zone %s. Changing weather: %s -> %s'):format(currentZone, Modules.Weather.currentType or 'NONE', zoneWeather))
     Modules.Weather.currentType = zoneWeather
     Modules.Weather.transitionTarget = zoneWeather
     Modules.Weather.transitionEnd = GetGameTimer() + (Config.Weather.transitionTimeSeconds * 1000)

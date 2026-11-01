@@ -29,14 +29,10 @@ return {
     ['cannot_store'] = 'Ezt a járművet nem lehet eltárolni.',
     ['cannot_access_garage'] = 'Nem használhatod ezt a garázst.',
     ['store_error_already_stored'] = 'Ez a jármű már el van tárolva.',
-    ['store_error_model_mismatch'] = (
-        'A jármű modellje nem egyezik a nyilvántartott tulajdonosi ' .. 'adatokkal.'
-    ),
+    ['store_error_model_mismatch'] = ('A jármű modellje nem egyezik a nyilvántartott tulajdonosi ' .. 'adatokkal.'),
     ['store_error_no_location'] = 'Nem vagy érvényes garázshelyen.',
     ['store_error_plate_conflict'] = 'Ezt a rendszámot egy másik aktív jármű használja.',
-    ['store_error_plate_mismatch'] = (
-        'A jármű rendszáma nem egyezik a nyilvántartott saját jármű ' .. 'rendszámával.'
-    ),
+    ['store_error_plate_mismatch'] = ('A jármű rendszáma nem egyezik a nyilvántartott saját jármű ' .. 'rendszámával.'),
     ['store_error_too_far'] = 'Túl messze vagy a garázstól.',
     ['store_error_wrong_category'] = 'Ez a garázs nem fogad ilyen típusú járművet.',
     ['received_vehicle'] = 'Kaptál egy járművet (rendszám: %s).',

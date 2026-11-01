@@ -2,7 +2,8 @@
 -- Copyright (C) 2022-2026 ESX Framework
 
 Locales['sl'] = {
-  ['used_food'] = 'Vi ste pojedli 1x %s',
-  ['used_drink'] = 'Vi ste popili 1x %s',
-  ['got_healed'] = 'Vi ste bili Pozdravljeni.'
+    ['used_beer'] = 'Vi ste popili Laški pir 1x.',
+    ['used_food'] = 'Vi ste pojedli 1x %s',
+    ['used_drink'] = 'Vi ste popili 1x %s',
+    ['got_healed'] = 'Vi ste bili Pozdravljeni.',
 }

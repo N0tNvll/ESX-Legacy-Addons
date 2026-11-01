@@ -51,11 +51,8 @@ function CreateAddonAccount(name, owner, money)
             if rows == 0 and not verifiedZero then
                 verifiedZero = true
 
-                local lookup = owner == nil and 'SELECT money FROM addon_account_data WHERE account_name = ? AND owner IS NULL'
-                    or 'SELECT money FROM addon_account_data WHERE account_name = ? AND owner = ?'
-
+                local lookup = owner == nil and 'SELECT money FROM addon_account_data WHERE account_name = ? AND owner IS NULL' or 'SELECT money FROM addon_account_data WHERE account_name = ? AND owner = ?'
                 local values = owner == nil and { name } or { name, owner }
-
                 local ok = pcall(MySQL.query, lookup, values, function(result)
                     finish(type(result) == 'table' and #result == 1 and result[1].money == snapshot and 1 or nil)
                 end)

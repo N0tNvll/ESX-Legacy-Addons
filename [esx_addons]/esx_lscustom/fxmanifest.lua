@@ -12,47 +12,47 @@ version '1.0'
 legacyversion '1.16.3'
 
 shared_scripts {
-	'@esx_lib/imports.lua',
-	'@es_extended/imports.lua',
+    '@esx_lib/imports.lua',
+    '@es_extended/imports.lua',
     '@esx_paymentgateway/imports.lua',
 }
 
 server_scripts {
-	'@oxmysql/lib/MySQL.lua',
-	'@es_extended/locale.lua',
-	'locales/*.lua',
-	'config.lua',
-	'server/modules/workshop_pricing.lua',
-	'server/modules/workshop_validation.lua',
-	'server/main.lua'
+    '@oxmysql/lib/MySQL.lua',
+    '@es_extended/locale.lua',
+    'locales/*.lua',
+    'config.lua',
+    'server/modules/workshop_pricing.lua',
+    'server/modules/workshop_validation.lua',
+    'server/main.lua',
 }
 
 client_scripts {
-	'@es_extended/locale.lua',
-	'locales/*.lua',
-	'config.lua',
-	'client/modules/workshop_locale.lua',
-	'client/modules/workshop_stats.lua',
-	'client/modules/workshop_camera.lua',
-	'client/modules/workshop_vehicle.lua',
-	'client/modules/workshop_cart.lua',
-	'client/modules/workshop_nui_menu.lua',
-	'client/modules/workshop_legacy_menu.lua',
-	'client/main.lua'
+    '@es_extended/locale.lua',
+    'locales/*.lua',
+    'config.lua',
+    'client/modules/workshop_locale.lua',
+    'client/modules/workshop_stats.lua',
+    'client/modules/workshop_camera.lua',
+    'client/modules/workshop_vehicle.lua',
+    'client/modules/workshop_cart.lua',
+    'client/modules/workshop_nui_menu.lua',
+    'client/modules/workshop_legacy_menu.lua',
+    'client/main.lua',
 }
 
 ui_page 'html/index.html'
 
 files {
-	'html/index.html',
-	'html/css/style.css',
-	'html/js/*.js',
-	'html/vendor/lucide.min.js',
-	'html/vendor/LICENSE',
-	'html/assets/*'
+    'html/index.html',
+    'html/css/style.css',
+    'html/js/*.js',
+    'html/vendor/lucide.min.js',
+    'html/vendor/LICENSE',
+    'html/assets/*',
 }
 
 dependencies {
-	'esx_lib',
-	'esx_paymentgateway'
+    'esx_lib',
+    'esx_paymentgateway',
 }

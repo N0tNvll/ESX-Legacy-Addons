@@ -3,8 +3,8 @@
 
 local PETROLCAN <const> = `WEAPON_PETROLCAN`
 local CAN_MAX_AMMO <const> = 4500
-local POUR_DICT <const> = "weapon@w_sp_jerrycan"
-local POUR_ANIM <const> = "fire"
+local POUR_DICT <const> = 'weapon@w_sp_jerrycan'
+local POUR_ANIM <const> = 'fire'
 local INTERACT_KEY <const> = 38
 
 if not Config.JerryCan.Enabled then
@@ -17,7 +17,6 @@ local cancelPouring = false
 ---@return table
 local function getCanFuel()
     local metadata = ESX.PlayerData.metadata or {}
-
     return Fuel.getFuelType(metadata.fuelCan) or Config.FuelTypes[1]
 end
 
@@ -27,12 +26,12 @@ local function pour(vehicle)
 
     pouring = true
     cancelPouring = false
-    Fuel.setBusy("can", true)
+    Fuel.setBusy('can', true)
 
     if not Fuel.requestControl(vehicle) then
         pouring = false
-        Fuel.setBusy("can", false)
-        return ESX.ShowNotification(_U("error_vehicle"))
+        Fuel.setBusy('can', false)
+        return ESX.ShowNotification(_U('error_vehicle'))
     end
 
     Fuel.loadLevel(vehicle)
@@ -65,6 +64,7 @@ local function pour(vehicle)
 
         local now = GetGameTimer()
         local step = math.min(canLiters - poured, capacity - startLiters - poured, (now - lastTick) / 1000.0 * Config.JerryCan.PourLitersPerSecond)
+
         lastTick = now
         poured = poured + step
 
@@ -80,22 +80,22 @@ local function pour(vehicle)
         Fuel.setMix(vehicle, FuelMix.add(startMix, startLiters, poured, fuel))
     end
 
-    TriggerServerEvent("esx_fuel:syncCan", GetAmmoInPedWeapon(ped, PETROLCAN))
+    TriggerServerEvent('esx_fuel:syncCan', GetAmmoInPedWeapon(ped, PETROLCAN))
     pouring = false
-    Fuel.setBusy("can", false)
-    ESX.ShowNotification(_U("can_poured", math.floor(poured + 0.5)))
+    Fuel.setBusy('can', false)
+    ESX.ShowNotification(_U('can_poured', math.floor(poured + 0.5)))
 end
 
 CreateThread(function()
     while true do
         local sleep = 500
         local ped = PlayerPedId()
-        local pressed = Fuel.isShown("can") and IsControlJustReleased(0, INTERACT_KEY)
+        local pressed = Fuel.isShown('can') and IsControlJustReleased(0, INTERACT_KEY)
         local text
 
         if pouring then
             sleep = 0
-            text = _U("text_stop")
+            text = _U('text_stop')
 
             if pressed then
                 cancelPouring = true
@@ -103,13 +103,13 @@ CreateThread(function()
         elseif not IsPedInAnyVehicle(ped, false) and GetSelectedPedWeapon(ped) == PETROLCAN and GetAmmoInPedWeapon(ped, PETROLCAN) > 1 and not Fuel.isBusy() then
             local vehicle = Fuel.getVehicleAtTank(GetEntityCoords(ped))
 
-            if vehicle and Fuel.getKind(vehicle) ~= "electric" then
+            if vehicle and Fuel.getKind(vehicle) ~= 'electric' then
                 sleep = 0
-                text = _U("text_pour")
+                text = _U('text_pour')
 
                 if pressed then
                     pouring = true
-                    Fuel.hint("can", nil)
+                    Fuel.hint('can', nil)
                     CreateThread(function()
                         pour(vehicle)
                     end)
@@ -117,7 +117,7 @@ CreateThread(function()
             end
         end
 
-        Fuel.hint("can", text)
+        Fuel.hint('can', text)
         Wait(sleep)
     end
 end)

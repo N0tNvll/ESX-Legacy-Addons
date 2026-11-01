@@ -36,13 +36,11 @@ Locales['it'] = {
     ['error_society_no_money'] = 'Il proprietario della stazione non può pagare la consegna.',
     ['error_not_owner'] = 'Non gestisci questa stazione.',
     ['error_price_range'] = 'Il prezzo deve essere tra il 50 e il 200 %%.',
-
     ['fuel_regular'] = 'Normale',
     ['fuel_plus'] = 'Plus',
     ['fuel_premium'] = 'Premium',
     ['fuel_diesel'] = 'Diesel',
     ['fuel_electric'] = 'Elettrico',
-
     ['ui_price_per_liter'] = 'PREZZO UNITARIO',
     ['ui_quantity'] = 'QUANTITÀ',
     ['ui_vehicle_fuel'] = 'SERBATOIO',

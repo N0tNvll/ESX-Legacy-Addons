@@ -12,4 +12,4 @@ Locales['sv'] = {
     ['no_money'] = 'Du har inte tillräckligt med pengar för att betala fakturan',
     ['target_no_money'] = 'Spelaren ~r~har inte tillräckligt att betala fakturan!',
     ['keymap_showbills'] = 'Öppna faktura menyn',
-  }
+}

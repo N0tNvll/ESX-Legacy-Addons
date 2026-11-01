@@ -6,4 +6,4 @@ Locales['sv'] = {
     ['press_access'] = 'Tryck [E] för att öppna menyn.',
     ['barber_blip'] = 'Frisören',
     ['you_paid'] = 'Du betalade %skr',
-  }
+}

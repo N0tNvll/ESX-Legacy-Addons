@@ -28,10 +28,7 @@ local function showBillsMenu(afterId, history)
         for _, v in ipairs(bills) do
             elements[#elements + 1] = {
                 icon = 'fas fa-scroll',
-                title = ('%s - <span style="color:red;">%s</span>'):format(
-                    v.label,
-                    TranslateCap('invoices_item', ESX.Math.GroupDigits(v.amount))
-                ),
+                title = ('%s - <span style="color:red;">%s</span>'):format(v.label, TranslateCap('invoices_item', ESX.Math.GroupDigits(v.amount))),
                 billId = v.id,
                 amount = v.amount,
                 paymentTitle = v.label,
@@ -62,19 +59,25 @@ local function showBillsMenu(afterId, history)
                 return
             end
 
-            PaymentGateway.Pay({
-                amount = element.amount,
-                title = element.paymentTitle,
-            }, 'esx_billing:payBill', function(resp)
-                SetTimeout(1000, function()
-                    showBillsMenu(afterId, history)
-                end)
+            PaymentGateway.Pay(
+                {
+                    amount = element.amount,
+                    title = element.paymentTitle,
+                },
+                'esx_billing:payBill',
+                function(resp)
+                    SetTimeout(1000, function()
+                        showBillsMenu(afterId, history)
+                    end)
 
-                if not resp then
-                    return
-                end
-                TriggerEvent('esx_billing:paidBill', billId)
-            end, billId)
+                    if not resp then
+                        return
+                    end
+
+                    TriggerEvent('esx_billing:paidBill', billId)
+                end,
+                billId
+            )
         end)
     end, afterId)
 end
@@ -98,22 +101,14 @@ RegisterNetEvent('esx_billing:confirmHighBill', function(token, label, amount, s
         { icon = 'fas fa-times', title = 'Decline invoice', value = false },
     }
 
-    ESX.ShowNotification(
-        ('High invoice from %s requires confirmation'):format(senderName or 'unknown')
-    )
+    ESX.ShowNotification(('High invoice from %s requires confirmation'):format(senderName or 'unknown'))
 
     ESX.OpenContext('right', elements, function(menu, element)
         if element.value == nil then
             return
         end
 
-        xLib.callback(
-            'esx_billing:respondHighBill',
-            false,
-            function() end,
-            token,
-            element.value == true
-        )
+        xLib.callback('esx_billing:respondHighBill', false, function() end, token, element.value == true)
         ESX.CloseContext()
     end, function()
         xLib.callback('esx_billing:respondHighBill', false, function() end, token, false)
@@ -123,6 +118,7 @@ end)
 AddEventHandler('esx:onPlayerDeath', function()
     isDead = true
 end)
+
 AddEventHandler('esx:onPlayerSpawn', function()
     isDead = false
 end)

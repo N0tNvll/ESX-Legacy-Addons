@@ -3,271 +3,284 @@
 
 local activeRequests = {}
 local requestLimiter = xLib.rateLimiter({
-	capacity = 1,
-	refill = 1,
-	interval = math.max(1, tonumber(Config.PurchaseCooldown) or 750),
-	staleMs = math.max(60000, (tonumber(Config.PurchaseCooldown) or 750) * 4)
+    capacity = 1,
+    refill = 1,
+    interval = math.max(1, tonumber(Config.PurchaseCooldown) or 750),
+    staleMs = math.max(60000, (tonumber(Config.PurchaseCooldown) or 750) * 4),
 })
+
 local ammoStateRequests = {}
 local ammoStateRequestId = 0
 
 local function GetRequestKey(source, action)
-	return ('%s:%s'):format(source, action)
+    return ('%s:%s'):format(source, action)
 end
 
 local function BeginRequest(source, action)
-	local key = GetRequestKey(source, action)
+    local key = GetRequestKey(source, action)
 
-	if activeRequests[key] or not requestLimiter:consume(key) then
-		return nil
-	end
+    if activeRequests[key] or not requestLimiter:consume(key) then
+        return nil
+    end
 
-	activeRequests[key] = true
-	return key
+    activeRequests[key] = true
+    return key
 end
 
 local function EndRequest(key)
-	if key then
-		activeRequests[key] = nil
-	end
+    if key then
+        activeRequests[key] = nil
+    end
 end
 
 local function GetPlayerIdentifier(xPlayer)
-	if not xPlayer then
-		return nil
-	end
+    if not xPlayer then
+        return nil
+    end
 
-	if type(xPlayer.getIdentifier) == 'function' then
-		local ok, identifier = pcall(xPlayer.getIdentifier)
-		if ok and type(identifier) == 'string' then
-			return identifier
-		end
-	end
+    if type(xPlayer.getIdentifier) == 'function' then
+        local ok, identifier = pcall(xPlayer.getIdentifier)
 
-	return type(xPlayer.identifier) == 'string' and xPlayer.identifier or nil
+        if ok and type(identifier) == 'string' then
+            return identifier
+        end
+    end
+
+    return type(xPlayer.identifier) == 'string' and xPlayer.identifier or nil
 end
 
 local function ValidateSamePlayer(source, expectedIdentifier)
-	local xPlayer = ValidatePlayer(source)
+    local xPlayer = ValidatePlayer(source)
 
-	if not xPlayer or GetPlayerIdentifier(xPlayer) ~= expectedIdentifier then
-		return nil
-	end
+    if not xPlayer or GetPlayerIdentifier(xPlayer) ~= expectedIdentifier then
+        return nil
+    end
 
-	return xPlayer
+    return xPlayer
 end
 
 local function NormalizeUpgradePrice(price)
-	local value = tonumber(price)
+    local value = tonumber(price)
 
-	if not value or value ~= value or value == math.huge or value == -math.huge or value < 0 then
-		return nil
-	end
+    if not value or value ~= value or value == math.huge or value == -math.huge or value < 0 then
+        return nil
+    end
 
-	local integerValue = math.floor(value)
-	if integerValue ~= value then
-		return nil
-	end
+    local integerValue = math.floor(value)
 
-	return integerValue
+    if integerValue ~= value then
+        return nil
+    end
+
+    return integerValue
 end
 
 local function CanPayForUpgrade(xPlayer, isBlackMarket, price, account)
-	price = NormalizeUpgradePrice(price)
-	if not price then
-		return false
-	end
+    price = NormalizeUpgradePrice(price)
 
-	if price == 0 then
-		return true
-	end
+    if not price then
+        return false
+    end
 
-	return CanPayForWeapon(xPlayer, isBlackMarket, price, account)
+    if price == 0 then
+        return true
+    end
+
+    return CanPayForWeapon(xPlayer, isBlackMarket, price, account)
 end
 
 local function TakeUpgradePayment(xPlayer, isBlackMarket, price, account)
-	price = NormalizeUpgradePrice(price)
-	if not price then
-		return false
-	end
+    price = NormalizeUpgradePrice(price)
 
-	if price == 0 then
-		return true
-	end
+    if not price then
+        return false
+    end
 
-	return TakeWeaponPayment(xPlayer, isBlackMarket, price, nil, account)
+    if price == 0 then
+        return true
+    end
+
+    return TakeWeaponPayment(xPlayer, isBlackMarket, price, nil, account)
 end
 
 local function RefundUpgradePayment(xPlayer, isBlackMarket, price, account)
-	price = NormalizeUpgradePrice(price)
-	if not price or price == 0 then
-		return
-	end
+    price = NormalizeUpgradePrice(price)
 
-	RefundWeaponPayment(xPlayer, isBlackMarket, price, nil, account)
+    if not price or price == 0 then
+        return
+    end
+
+    RefundWeaponPayment(xPlayer, isBlackMarket, price, nil, account)
 end
 
 local function CompleteAmmoStateRequest(requestId, ammoState)
-	local request = ammoStateRequests[requestId]
-	if not request then
-		return
-	end
+    local request = ammoStateRequests[requestId]
 
-	ammoStateRequests[requestId] = nil
-	request.cb(ammoState)
+    if not request then
+        return
+    end
+
+    ammoStateRequests[requestId] = nil
+    request.cb(ammoState)
 end
 
 local function RequestClientWeaponAmmoState(source, weaponName, cb)
-	local timeout = tonumber(Config.ClientCallbackTimeout) or tonumber(Config.LicenseCallbackTimeout) or 5000
-	ammoStateRequestId = ammoStateRequestId + 1
+    local timeout = tonumber(Config.ClientCallbackTimeout) or tonumber(Config.LicenseCallbackTimeout) or 5000
 
-	if ammoStateRequestId > 1000000 then
-		ammoStateRequestId = 1
-	end
+    ammoStateRequestId = ammoStateRequestId + 1
 
-	local requestId = ('%s:%s:%s'):format(source, GetGameTimer(), ammoStateRequestId)
-	ammoStateRequests[requestId] = {
-		source = source,
-		cb = cb
-	}
+    if ammoStateRequestId > 1000000 then
+        ammoStateRequestId = 1
+    end
 
-	local triggered = pcall(function()
-		TriggerClientEvent('esx_weaponshop:requestWeaponAmmoState', source, requestId, weaponName)
-	end)
+    local requestId = ('%s:%s:%s'):format(source, GetGameTimer(), ammoStateRequestId)
 
-	if not triggered then
-		CompleteAmmoStateRequest(requestId, nil)
-		return
-	end
+    ammoStateRequests[requestId] = {
+        source = source,
+        cb = cb,
+    }
 
-	SetTimeout(timeout, function()
-		CompleteAmmoStateRequest(requestId, nil)
-	end)
+    local triggered = pcall(function()
+        TriggerClientEvent('esx_weaponshop:requestWeaponAmmoState', source, requestId, weaponName)
+    end)
+
+    if not triggered then
+        CompleteAmmoStateRequest(requestId, nil)
+        return
+    end
+
+    SetTimeout(timeout, function()
+        CompleteAmmoStateRequest(requestId, nil)
+    end)
 end
 
 AddEventHandler('playerDropped', function()
-	local prefix = tostring(source) .. ':'
+    local prefix = tostring(source) .. ':'
 
-	for key in pairs(activeRequests) do
-		if key:sub(1, #prefix) == prefix then
-			activeRequests[key] = nil
-		end
-	end
+    for key in pairs(activeRequests) do
+        if key:sub(1, #prefix) == prefix then
+            activeRequests[key] = nil
+        end
+    end
 
-	for key, request in pairs(ammoStateRequests) do
-		if request.source == source then
-			ammoStateRequests[key] = nil
-		end
-	end
+    for key, request in pairs(ammoStateRequests) do
+        if request.source == source then
+            ammoStateRequests[key] = nil
+        end
+    end
 end)
 
 RegisterNetEvent('esx_weaponshop:receiveWeaponAmmoState', function(requestId, ammoState)
-	local request = ammoStateRequests[requestId]
-	if not request or request.source ~= source then
-		return
-	end
+    local request = ammoStateRequests[requestId]
 
-	CompleteAmmoStateRequest(requestId, ammoState)
+    if not request or request.source ~= source then
+        return
+    end
+
+    CompleteAmmoStateRequest(requestId, ammoState)
 end)
 
 ---Handles weapon license purchase requests
 ---@param source number Player source
 ---@param cb function Callback function(success)
 function ProcessLicensePurchase(source, cb, account)
-	local requestKey = BeginRequest(source, 'license')
-	if not requestKey then
-		cb(false)
-		return
-	end
+    local requestKey = BeginRequest(source, 'license')
 
-	local function finish(success)
-		EndRequest(requestKey)
-		cb(success and true or false)
-	end
+    if not requestKey then
+        cb(false)
+        return
+    end
 
-	local xPlayer = ValidatePlayer(source)
-	local licensePrice = NormalizeMoneyAmount(Config.LicensePrice)
+    local function finish(success)
+        EndRequest(requestKey)
+        cb(success and true or false)
+    end
 
-	if not xPlayer then
-		finish(false)
-		return
-	end
+    local xPlayer = ValidatePlayer(source)
+    local licensePrice = NormalizeMoneyAmount(Config.LicensePrice)
 
-	local identifier = GetPlayerIdentifier(xPlayer)
-	if not identifier then
-		finish(false)
-		return
-	end
+    if not xPlayer then
+        finish(false)
+        return
+    end
 
-	if not Config.LicenseEnable then
-		finish(false)
-		return
-	end
+    local identifier = GetPlayerIdentifier(xPlayer)
 
-	if not ValidatePlayerNearLicenseShop(source) then
-		finish(false)
-		return
-	end
+    if not identifier then
+        finish(false)
+        return
+    end
 
-	if not IsLicenseResourceAvailable() then
-		finish(false)
-		return
-	end
+    if not Config.LicenseEnable then
+        finish(false)
+        return
+    end
 
-	if not licensePrice then
-		finish(false)
-		return
-	end
+    if not ValidatePlayerNearLicenseShop(source) then
+        finish(false)
+        return
+    end
 
-	if not CanPayForWeapon(xPlayer, false, licensePrice, account) then
-		finish(false)
-		return
-	end
+    if not IsLicenseResourceAvailable() then
+        finish(false)
+        return
+    end
 
-	CheckWeaponLicense(source, function(hasLicense)
-		if hasLicense ~= false then
-			finish(false)
-			return
-		end
+    if not licensePrice then
+        finish(false)
+        return
+    end
 
-		xPlayer = ValidateSamePlayer(source, identifier)
-		if not xPlayer then
-			finish(false)
-			return
-		end
+    if not CanPayForWeapon(xPlayer, false, licensePrice, account) then
+        finish(false)
+        return
+    end
 
-		if not ValidatePlayerNearLicenseShop(source) then
-			finish(false)
-			return
-		end
+    CheckWeaponLicense(source, function(hasLicense)
+        if hasLicense ~= false then
+            finish(false)
+            return
+        end
 
-		if not CanPayForWeapon(xPlayer, false, licensePrice, account) then
-			finish(false)
-			return
-		end
+        xPlayer = ValidateSamePlayer(source, identifier)
 
-		if not TakeWeaponPayment(xPlayer, false, licensePrice, 'Weapon License', account) then
-			finish(false)
-			return
-		end
+        if not xPlayer then
+            finish(false)
+            return
+        end
 
-		AddWeaponLicense(source, function(added, reason)
-			if added then
-				finish(true)
-				return
-			end
+        if not ValidatePlayerNearLicenseShop(source) then
+            finish(false)
+            return
+        end
 
-			if reason ~= 'timeout' then
-				xPlayer = ValidateSamePlayer(source, identifier)
-			end
+        if not CanPayForWeapon(xPlayer, false, licensePrice, account) then
+            finish(false)
+            return
+        end
 
-			if reason ~= 'timeout' and xPlayer then
-				RefundWeaponPayment(xPlayer, false, licensePrice, 'Weapon License Refund', account)
-			end
+        if not TakeWeaponPayment(xPlayer, false, licensePrice, 'Weapon License', account) then
+            finish(false)
+            return
+        end
 
-			finish(false)
-		end)
-	end)
+        AddWeaponLicense(source, function(added, reason)
+            if added then
+                finish(true)
+                return
+            end
+
+            if reason ~= 'timeout' then
+                xPlayer = ValidateSamePlayer(source, identifier)
+            end
+
+            if reason ~= 'timeout' and xPlayer then
+                RefundWeaponPayment(xPlayer, false, licensePrice, 'Weapon License Refund', account)
+            end
+
+            finish(false)
+        end)
+    end)
 end
 
 ---Handles weapon purchase requests from clients
@@ -276,257 +289,257 @@ end
 ---@param zone string Shop zone
 ---@param cb function Callback function(success)
 function ProcessWeaponPurchase(source, weaponName, zone, cb, account)
-	local requestKey = BeginRequest(source, 'weapon')
-	if not requestKey then
-		cb(false)
-		return
-	end
+    local requestKey = BeginRequest(source, 'weapon')
 
-	local function finish(success)
-		EndRequest(requestKey)
-		cb(success and true or false)
-	end
+    if not requestKey then
+        cb(false)
+        return
+    end
 
-	local xPlayer = ValidatePlayer(source)
+    local function finish(success)
+        EndRequest(requestKey)
+        cb(success and true or false)
+    end
 
-	if not xPlayer then
-		finish(false)
-		return
-	end
+    local xPlayer = ValidatePlayer(source)
 
-	local identifier = GetPlayerIdentifier(xPlayer)
-	if not identifier then
-		finish(false)
-		return
-	end
+    if not xPlayer then
+        finish(false)
+        return
+    end
 
-	if not ValidateZone(zone, source) or not ValidateWeaponName(weaponName, source) then
-		finish(false)
-		return
-	end
+    local identifier = GetPlayerIdentifier(xPlayer)
 
-	if not ValidatePlayerNearZone(source, zone) then
-		finish(false)
-		return
-	end
+    if not identifier then
+        finish(false)
+        return
+    end
 
-	local price = GetPrice(weaponName, zone)
+    if not ValidateZone(zone, source) or not ValidateWeaponName(weaponName, source) then
+        finish(false)
+        return
+    end
 
-	if price <= 0 then
-		print(('[^3WARNING^7] Player ^5%s^7 attempted to buy Invalid weapon - %s!'):format(
-			source,
-			tostring(weaponName)
-		))
-		finish(false)
-		return
-	end
+    if not ValidatePlayerNearZone(source, zone) then
+        finish(false)
+        return
+    end
 
-	local zoneConfig = Config.Zones[zone]
-	local isBlackMarket = zoneConfig and zoneConfig.Legal == false
+    local price = GetPrice(weaponName, zone)
 
-	CheckRequiredWeaponLicense(source, zone, function(hasRequiredLicense)
-		if not hasRequiredLicense then
-			finish(false)
-			return
-		end
+    if price <= 0 then
+        print(('[^3WARNING^7] Player ^5%s^7 attempted to buy Invalid weapon - %s!'):format(source, tostring(weaponName)))
+        finish(false)
+        return
+    end
 
-		xPlayer = ValidateSamePlayer(source, identifier)
-		if not xPlayer then
-			finish(false)
-			return
-		end
+    local zoneConfig = Config.Zones[zone]
+    local isBlackMarket = zoneConfig and zoneConfig.Legal == false
 
-		if not ValidatePlayerNearZone(source, zone) then
-			finish(false)
-			return
-		end
+    CheckRequiredWeaponLicense(source, zone, function(hasRequiredLicense)
+        if not hasRequiredLicense then
+            finish(false)
+            return
+        end
 
-		if not CanReceiveWeapon(source, xPlayer, weaponName) then
-			finish(false)
-			return
-		end
+        xPlayer = ValidateSamePlayer(source, identifier)
 
-		if not CanPayForWeapon(xPlayer, isBlackMarket, price, account) then
-			finish(false)
-			return
-		end
+        if not xPlayer then
+            finish(false)
+            return
+        end
 
-		if not TakeWeaponPayment(xPlayer, isBlackMarket, price, nil, account) then
-			finish(false)
-			return
-		end
+        if not ValidatePlayerNearZone(source, zone) then
+            finish(false)
+            return
+        end
 
-		if not AddWeapon(source, xPlayer, weaponName) then
-			xPlayer = ValidateSamePlayer(source, identifier)
-			if xPlayer then
-				RefundWeaponPayment(xPlayer, isBlackMarket, price, nil, account)
-			end
+        if not CanReceiveWeapon(source, xPlayer, weaponName) then
+            finish(false)
+            return
+        end
 
-			finish(false)
-			return
-		end
+        if not CanPayForWeapon(xPlayer, isBlackMarket, price, account) then
+            finish(false)
+            return
+        end
 
-		finish(true)
-	end)
+        if not TakeWeaponPayment(xPlayer, isBlackMarket, price, nil, account) then
+            finish(false)
+            return
+        end
+
+        if not AddWeapon(source, xPlayer, weaponName) then
+            xPlayer = ValidateSamePlayer(source, identifier)
+
+            if xPlayer then
+                RefundWeaponPayment(xPlayer, isBlackMarket, price, nil, account)
+            end
+
+            finish(false)
+            return
+        end
+
+        finish(true)
+    end)
 end
 
-local function ProcessAmmoPurchase(source, xPlayer, weaponName, isBlackMarket, data, zone, identifier, cb,
-    account
-)
-	local upgrades = BuildWeaponUpgrades(weaponName)
-	local ammo = upgrades.ammo
-	local amount = NormalizeAmmoAmount(data.amount)
+local function ProcessAmmoPurchase(source, xPlayer, weaponName, isBlackMarket, data, zone, identifier, cb, account)
+    local upgrades = BuildWeaponUpgrades(weaponName)
+    local ammo = upgrades.ammo
+    local amount = NormalizeAmmoAmount(data.amount)
 
-	if not ammo or not amount then
-		cb(false)
-		return
-	end
+    if not ammo or not amount then
+        cb(false)
+        return
+    end
 
-	local pricePerRound = NormalizeUpgradePrice(ammo.pricePerRound)
-	if not pricePerRound then
-		cb(false)
-		return
-	end
+    local pricePerRound = NormalizeUpgradePrice(ammo.pricePerRound)
 
-	local price = amount * pricePerRound
+    if not pricePerRound then
+        cb(false)
+        return
+    end
 
-	RequestClientWeaponAmmoState(source, weaponName, function(ammoState)
-		xPlayer = ValidateSamePlayer(source, identifier)
-		if not xPlayer then
-			cb(false)
-			return
-		end
+    local price = amount * pricePerRound
 
-		if not ValidatePlayerNearZone(source, zone) then
-			cb(false)
-			return
-		end
+    RequestClientWeaponAmmoState(source, weaponName, function(ammoState)
+        xPlayer = ValidateSamePlayer(source, identifier)
 
-		if not HasPlayerWeapon(source, xPlayer, weaponName) then
-			xPlayer.showNotification(TranslateCap('requires_weapon'))
-			cb(false)
-			return
-		end
+        if not xPlayer then
+            cb(false)
+            return
+        end
 
-		if not CanAddWeaponAmmo(source, xPlayer, weaponName, amount, ammoState) then
-			cb(false)
-			return
-		end
+        if not ValidatePlayerNearZone(source, zone) then
+            cb(false)
+            return
+        end
 
-		if not CanPayForUpgrade(xPlayer, isBlackMarket, price, account) then
-			cb(false)
-			return
-		end
+        if not HasPlayerWeapon(source, xPlayer, weaponName) then
+            xPlayer.showNotification(TranslateCap('requires_weapon'))
+            cb(false)
+            return
+        end
 
-		if not TakeUpgradePayment(xPlayer, isBlackMarket, price, account) then
-			cb(false)
-			return
-		end
+        if not CanAddWeaponAmmo(source, xPlayer, weaponName, amount, ammoState) then
+            cb(false)
+            return
+        end
 
-		if AddWeaponAmmo(source, xPlayer, weaponName, amount) then
-			cb(true)
-			return
-		end
+        if not CanPayForUpgrade(xPlayer, isBlackMarket, price, account) then
+            cb(false)
+            return
+        end
 
-		xPlayer = ValidatePlayer(source)
-		if xPlayer then
-			RefundUpgradePayment(xPlayer, isBlackMarket, price, account)
-		end
+        if not TakeUpgradePayment(xPlayer, isBlackMarket, price, account) then
+            cb(false)
+            return
+        end
 
-		cb(false)
-	end)
+        if AddWeaponAmmo(source, xPlayer, weaponName, amount) then
+            cb(true)
+            return
+        end
+
+        xPlayer = ValidatePlayer(source)
+
+        if xPlayer then
+            RefundUpgradePayment(xPlayer, isBlackMarket, price, account)
+        end
+
+        cb(false)
+    end)
 end
 
 local function ProcessComponentPurchase(source, xPlayer, weaponName, isBlackMarket, data, account)
-	if not ValidateUpgradeIdentifier(data.componentName, 'component', source) then
-		return false
-	end
+    if not ValidateUpgradeIdentifier(data.componentName, 'component', source) then
+        return false
+    end
 
-	local component = GetWeaponShopComponentUpgrade(weaponName, data.componentName)
-	if not component then
-		print(('[^3WARNING^7] Player ^5%s^7 attempted invalid weapon component purchase - %s:%s!'):format(
-			source,
-			tostring(weaponName),
-			tostring(data.componentName)
-		))
-		return false
-	end
+    local component = GetWeaponShopComponentUpgrade(weaponName, data.componentName)
 
-	if HasWeaponComponent(source, xPlayer, weaponName, component.name) then
-		xPlayer.showNotification(TranslateCap('already_owned'))
-		return false
-	end
+    if not component then
+        print(('[^3WARNING^7] Player ^5%s^7 attempted invalid weapon component purchase - %s:%s!'):format(source, tostring(weaponName), tostring(data.componentName)))
+        return false
+    end
 
-	local price = NormalizeUpgradePrice(component.price)
-	if not price then
-		return false
-	end
+    if HasWeaponComponent(source, xPlayer, weaponName, component.name) then
+        xPlayer.showNotification(TranslateCap('already_owned'))
+        return false
+    end
 
-	if not CanPayForUpgrade(xPlayer, isBlackMarket, price, account) then
-		return false
-	end
+    local price = NormalizeUpgradePrice(component.price)
 
-	if not TakeUpgradePayment(xPlayer, isBlackMarket, price, account) then
-		return false
-	end
+    if not price then
+        return false
+    end
 
-	if AddWeaponComponent(source, xPlayer, weaponName, component.name) and HasWeaponComponent(source, xPlayer, weaponName, component.name) then
-		return true
-	end
+    if not CanPayForUpgrade(xPlayer, isBlackMarket, price, account) then
+        return false
+    end
 
-	xPlayer = ValidatePlayer(source)
-	if xPlayer then
-		RefundUpgradePayment(xPlayer, isBlackMarket, price, account)
-	end
+    if not TakeUpgradePayment(xPlayer, isBlackMarket, price, account) then
+        return false
+    end
 
-	return false
+    if AddWeaponComponent(source, xPlayer, weaponName, component.name) and HasWeaponComponent(source, xPlayer, weaponName, component.name) then
+        return true
+    end
+
+    xPlayer = ValidatePlayer(source)
+
+    if xPlayer then
+        RefundUpgradePayment(xPlayer, isBlackMarket, price, account)
+    end
+
+    return false
 end
 
 local function ProcessTintPurchase(source, xPlayer, weaponName, isBlackMarket, data, account)
-	local tintIndex = tonumber(data.tintIndex)
+    local tintIndex = tonumber(data.tintIndex)
 
-	if not tintIndex or tintIndex ~= math.floor(tintIndex) then
-		return false
-	end
+    if not tintIndex or tintIndex ~= math.floor(tintIndex) then
+        return false
+    end
 
-	local tint = GetWeaponShopTintUpgrade(weaponName, tintIndex)
-	if not tint then
-		print(('[^3WARNING^7] Player ^5%s^7 attempted invalid weapon tint purchase - %s:%s!'):format(
-			source,
-			tostring(weaponName),
-			tostring(data.tintIndex)
-		))
-		return false
-	end
+    local tint = GetWeaponShopTintUpgrade(weaponName, tintIndex)
 
-	if GetWeaponTint(source, xPlayer, weaponName) == tint.index then
-		xPlayer.showNotification(TranslateCap('equipped'))
-		return false
-	end
+    if not tint then
+        print(('[^3WARNING^7] Player ^5%s^7 attempted invalid weapon tint purchase - %s:%s!'):format(source, tostring(weaponName), tostring(data.tintIndex)))
+        return false
+    end
 
-	local price = NormalizeUpgradePrice(tint.price)
-	if not price then
-		return false
-	end
+    if GetWeaponTint(source, xPlayer, weaponName) == tint.index then
+        xPlayer.showNotification(TranslateCap('equipped'))
+        return false
+    end
 
-	if not CanPayForUpgrade(xPlayer, isBlackMarket, price, account) then
-		return false
-	end
+    local price = NormalizeUpgradePrice(tint.price)
 
-	if not TakeUpgradePayment(xPlayer, isBlackMarket, price, account) then
-		return false
-	end
+    if not price then
+        return false
+    end
 
-	if SetWeaponTint(source, xPlayer, weaponName, tint.index) and GetWeaponTint(source, xPlayer, weaponName) == tint.index then
-		return true
-	end
+    if not CanPayForUpgrade(xPlayer, isBlackMarket, price, account) then
+        return false
+    end
 
-	xPlayer = ValidatePlayer(source)
-	if xPlayer then
-		RefundUpgradePayment(xPlayer, isBlackMarket, price, account)
-	end
+    if not TakeUpgradePayment(xPlayer, isBlackMarket, price, account) then
+        return false
+    end
 
-	return false
+    if SetWeaponTint(source, xPlayer, weaponName, tint.index) and GetWeaponTint(source, xPlayer, weaponName) == tint.index then
+        return true
+    end
+
+    xPlayer = ValidatePlayer(source)
+
+    if xPlayer then
+        RefundUpgradePayment(xPlayer, isBlackMarket, price, account)
+    end
+
+    return false
 end
 
 ---Handles weapon upgrade purchase requests from clients
@@ -535,115 +548,109 @@ end
 ---@param zone string Shop zone
 ---@param cb function Callback function(success)
 function ProcessWeaponUpgradePurchase(source, data, zone, cb, account)
-	local requestKey = BeginRequest(source, 'upgrade')
-	if not requestKey then
-		cb(false)
-		return
-	end
+    local requestKey = BeginRequest(source, 'upgrade')
 
-	local function finish(success)
-		EndRequest(requestKey)
-		cb(success and true or false)
-	end
+    if not requestKey then
+        cb(false)
+        return
+    end
 
-	if type(data) ~= 'table' then
-		finish(false)
-		return
-	end
+    local function finish(success)
+        EndRequest(requestKey)
+        cb(success and true or false)
+    end
 
-	local weaponName = data.weaponName
-	local action = data.action
-	local xPlayer = ValidatePlayer(source)
+    if type(data) ~= 'table' then
+        finish(false)
+        return
+    end
 
-	if not xPlayer then
-		finish(false)
-		return
-	end
+    local weaponName = data.weaponName
+    local action = data.action
+    local xPlayer = ValidatePlayer(source)
 
-	local identifier = GetPlayerIdentifier(xPlayer)
-	if not identifier then
-		finish(false)
-		return
-	end
+    if not xPlayer then
+        finish(false)
+        return
+    end
 
-	if not AreWeaponShopUpgradesSupported() then
-		xPlayer.showNotification(TranslateCap('unavailable'))
-		finish(false)
-		return
-	end
+    local identifier = GetPlayerIdentifier(xPlayer)
 
-	if not ValidateZone(zone, source) or not ValidateWeaponName(weaponName, source) then
-		finish(false)
-		return
-	end
+    if not identifier then
+        finish(false)
+        return
+    end
 
-	if not ValidateUpgradeIdentifier(action, 'upgrade action', source) then
-		finish(false)
-		return
-	end
+    if not AreWeaponShopUpgradesSupported() then
+        xPlayer.showNotification(TranslateCap('unavailable'))
+        finish(false)
+        return
+    end
 
-	if not GetZoneWeaponEntry(weaponName, zone) then
-		print(('[^3WARNING^7] Player ^5%s^7 attempted to upgrade weapon outside zone stock - %s:%s!'):format(
-			source,
-			tostring(zone),
-			tostring(weaponName)
-		))
-		finish(false)
-		return
-	end
+    if not ValidateZone(zone, source) or not ValidateWeaponName(weaponName, source) then
+        finish(false)
+        return
+    end
 
-	if not ValidatePlayerNearZone(source, zone) then
-		finish(false)
-		return
-	end
+    if not ValidateUpgradeIdentifier(action, 'upgrade action', source) then
+        finish(false)
+        return
+    end
 
-	local zoneConfig = Config.Zones[zone]
-	local isBlackMarket = zoneConfig and zoneConfig.Legal == false
+    if not GetZoneWeaponEntry(weaponName, zone) then
+        print(('[^3WARNING^7] Player ^5%s^7 attempted to upgrade weapon outside zone stock - %s:%s!'):format(source, tostring(zone), tostring(weaponName)))
+        finish(false)
+        return
+    end
 
-	CheckRequiredWeaponLicense(source, zone, function(hasRequiredLicense)
-		if not hasRequiredLicense then
-			finish(false)
-			return
-		end
+    if not ValidatePlayerNearZone(source, zone) then
+        finish(false)
+        return
+    end
 
-		xPlayer = ValidateSamePlayer(source, identifier)
-		if not xPlayer then
-			finish(false)
-			return
-		end
+    local zoneConfig = Config.Zones[zone]
+    local isBlackMarket = zoneConfig and zoneConfig.Legal == false
 
-		if not ValidatePlayerNearZone(source, zone) then
-			finish(false)
-			return
-		end
+    CheckRequiredWeaponLicense(source, zone, function(hasRequiredLicense)
+        if not hasRequiredLicense then
+            finish(false)
+            return
+        end
 
-		if not HasPlayerWeapon(source, xPlayer, weaponName) then
-			xPlayer.showNotification(TranslateCap('requires_weapon'))
-			finish(false)
-			return
-		end
+        xPlayer = ValidateSamePlayer(source, identifier)
 
-		if action == 'ammo' then
-			ProcessAmmoPurchase(source, xPlayer, weaponName, isBlackMarket, data, zone, identifier, finish,
-                account
-            )
-			return
-		end
+        if not xPlayer then
+            finish(false)
+            return
+        end
 
-		if action == 'component' then
-			finish(ProcessComponentPurchase(source, xPlayer, weaponName, isBlackMarket, data, account))
-			return
-		end
+        if not ValidatePlayerNearZone(source, zone) then
+            finish(false)
+            return
+        end
 
-		if action == 'tint' then
-			finish(ProcessTintPurchase(source, xPlayer, weaponName, isBlackMarket, data, account))
-			return
-		end
+        if not HasPlayerWeapon(source, xPlayer, weaponName) then
+            xPlayer.showNotification(TranslateCap('requires_weapon'))
+            finish(false)
+            return
+        end
 
-		print(('[^3WARNING^7] Player ^5%s^7 attempted invalid weaponshop upgrade action - %s!'):format(
-			source,
-			tostring(action)
-		))
-		finish(false)
-	end)
+        if action == 'ammo' then
+            ProcessAmmoPurchase(source, xPlayer, weaponName, isBlackMarket, data, zone, identifier, finish, account)
+            return
+        end
+
+        if action == 'component' then
+            finish(ProcessComponentPurchase(source, xPlayer, weaponName, isBlackMarket, data, account))
+            return
+        end
+
+        if action == 'tint' then
+            finish(ProcessTintPurchase(source, xPlayer, weaponName, isBlackMarket, data, account))
+            return
+        end
+
+        print(('[^3WARNING^7] Player ^5%s^7 attempted invalid weaponshop upgrade action - %s!'):format(source, tostring(action)))
+        finish(false)
+    end)
 end

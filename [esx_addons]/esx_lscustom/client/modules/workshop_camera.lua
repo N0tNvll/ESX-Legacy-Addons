@@ -6,14 +6,13 @@ WorkshopCamera = {}
 local workshopCam, workshopCamVehicle, workshopFreeCam = nil, nil, false
 local currentView = 'default'
 local orbit = { yaw = 0.0, pitch = 16.0, dist = 4.6, fwd = 0.4, right = 0.4, up = 0.4 }
-
 local CAMERA_VIEWS = {
     front = { yawOff = 0.0, pitch = 8.0, dist = 3.4, fwd = 1.7, right = 0.0, up = 0.40 },
     back = { yawOff = 180.0, pitch = 8.0, dist = 3.6, fwd = -1.9, right = 0.0, up = 0.55 },
     left = { yawOff = 90.0, pitch = 8.0, dist = 3.9, fwd = 0.0, right = -1.4, up = 0.35 },
     right = { yawOff = -90.0, pitch = 8.0, dist = 3.9, fwd = 0.0, right = 1.4, up = 0.35 },
     top = { yawOff = 0.0, pitch = 78.0, dist = 5.2, fwd = 0.0, right = 0.0, up = 0.45 },
-    default = { yawOff = -35.0, pitch = 16.0, dist = 4.6, fwd = 0.4, right = 0.4, up = 0.40 }
+    default = { yawOff = -35.0, pitch = 16.0, dist = 4.6, fwd = 0.4, right = 0.4, up = 0.40 },
 }
 
 local CAMERA_CATEGORY_VIEW = {
@@ -27,7 +26,7 @@ local CAMERA_CATEGORY_VIEW = {
     modFrontWheels = 'left',
     modBackWheels = 'left',
     windowTint = 'left',
-    modRoof = 'top'
+    modRoof = 'top',
 }
 
 local function shouldRefocusNui()
@@ -35,7 +34,9 @@ local function shouldRefocusNui()
 end
 
 function WorkshopCamera.Update()
-    if not workshopCam or not workshopCamVehicle or not DoesEntityExist(workshopCamVehicle) then return end
+    if not workshopCam or not workshopCamVehicle or not DoesEntityExist(workshopCamVehicle) then
+        return
+    end
 
     local heading = math.rad(GetEntityHeading(workshopCamVehicle))
     local forward = vector3(-math.sin(heading), math.cos(heading), 0.0)
@@ -45,20 +46,19 @@ function WorkshopCamera.Update()
     local yaw = math.rad(orbit.yaw)
     local pitch = math.rad(orbit.pitch)
     local horizontal = orbit.dist * math.cos(pitch)
-    local camPos = vector3(
-        focus.x + (-math.sin(yaw)) * horizontal,
-        focus.y + (math.cos(yaw)) * horizontal,
-        focus.z + orbit.dist * math.sin(pitch)
-    )
+    local camPos = vector3(focus.x + (-math.sin(yaw)) * horizontal, focus.y + (math.cos(yaw)) * horizontal, focus.z + orbit.dist * math.sin(pitch))
 
     SetCamCoord(workshopCam, camPos.x, camPos.y, camPos.z)
     PointCamAtCoord(workshopCam, focus.x, focus.y, focus.z)
 end
 
 function WorkshopCamera.SetView(name)
-    if not workshopCamVehicle then return end
+    if not workshopCamVehicle then
+        return
+    end
 
     local view = CAMERA_VIEWS[name] or CAMERA_VIEWS.default
+
     currentView = CAMERA_VIEWS[name] and name or 'default'
     orbit.yaw = (GetEntityHeading(workshopCamVehicle) + view.yawOff) % 360.0
     orbit.pitch = view.pitch
@@ -71,10 +71,15 @@ function WorkshopCamera.SetView(name)
 end
 
 function WorkshopCamera.Focus(modType)
-    if currentView == 'orbit' or workshopFreeCam then return end
+    if currentView == 'orbit' or workshopFreeCam then
+        return
+    end
 
     local viewName = CAMERA_CATEGORY_VIEW[modType] or 'default'
-    if viewName == currentView then return end
+
+    if viewName == currentView then
+        return
+    end
 
     WorkshopCamera.SetView(viewName)
 end
@@ -92,18 +97,23 @@ function WorkshopCamera.Zoom(dir)
 end
 
 function WorkshopCamera.ExitFree()
-    if not workshopFreeCam then return end
+    if not workshopFreeCam then
+        return
+    end
 
     workshopFreeCam = false
     SendNUIMessage({ action = 'controlGuide', visible = false })
     SendNUIMessage({ action = 'cameraState', view = currentView })
+
     if shouldRefocusNui() then
         SetNuiFocus(true, true)
     end
 end
 
 function WorkshopCamera.EnterFree()
-    if workshopFreeCam or not workshopCam then return end
+    if workshopFreeCam or not workshopCam then
+        return
+    end
 
     workshopFreeCam = true
     currentView = 'orbit'
@@ -123,6 +133,7 @@ function WorkshopCamera.EnterFree()
 
             local dx = GetDisabledControlNormal(0, 1)
             local dy = GetDisabledControlNormal(0, 2)
+
             orbit.yaw = (orbit.yaw + dx * 10.0) % 360.0
             orbit.pitch = math.max(-25.0, math.min(85.0, orbit.pitch - dy * 8.0))
 
@@ -154,9 +165,17 @@ function WorkshopCamera.ToggleFree()
 end
 
 function WorkshopCamera.Start(vehicle)
-    if not Config.Workshop or not Config.Workshop.EnableCamera then return end
-    if workshopCam then WorkshopCamera.Stop() end
-    if not vehicle or not DoesEntityExist(vehicle) then return end
+    if not Config.Workshop or not Config.Workshop.EnableCamera then
+        return
+    end
+
+    if workshopCam then
+        WorkshopCamera.Stop()
+    end
+
+    if not vehicle or not DoesEntityExist(vehicle) then
+        return
+    end
 
     workshopCamVehicle = vehicle
     workshopCam = CreateCamWithParams('DEFAULT_SCRIPTED_CAMERA', 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 55.0, false, 0)
@@ -169,9 +188,11 @@ function WorkshopCamera.Stop()
     workshopFreeCam = false
     SendNUIMessage({ action = 'controlGuide', visible = false })
     RenderScriptCams(false, false, 500, true, true)
+
     if workshopCam then
         DestroyCam(workshopCam, false)
         workshopCam = nil
     end
+
     workshopCamVehicle = nil
 end

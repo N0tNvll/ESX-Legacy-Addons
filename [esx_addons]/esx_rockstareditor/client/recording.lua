@@ -32,12 +32,8 @@ function Recorder.State()
     end
 
     return {
-        available = type(StartRecording) == 'function'
-            and type(StopRecordingAndSaveClip) == 'function'
-            and type(StopRecordingAndDiscardClip) == 'function'
-            and type(IsRecording) == 'function',
-        editorAvailable = type(ActivateRockstarEditor) == 'function'
-            and type(IsRecording) == 'function',
+        available = type(StartRecording) == 'function' and type(StopRecordingAndSaveClip) == 'function' and type(StopRecordingAndDiscardClip) == 'function' and type(IsRecording) == 'function',
+        editorAvailable = type(ActivateRockstarEditor) == 'function' and type(IsRecording) == 'function',
         recording = active,
         elapsed = active and startedAt and elapsed(startedAt) or false,
         external = active and not owned,
@@ -50,30 +46,14 @@ local function diagnosticValue(native)
     end
 
     local ok, value = pcall(native)
-
     return ok and tostring(value) or ('native_error: ' .. tostring(value))
 end
 
 function Recorder.Diagnostics(serverReplaysDisabled)
     local state = Recorder.State()
 
-    print(
-        ('[esx_rockstareditor] serverReplaysDisabled=%s available=%s recording=%s gameBuild=%s nativeRecording=%s'):format(
-            tostring(serverReplaysDisabled),
-            tostring(state.available),
-            tostring(state.recording),
-            diagnosticValue(GetGameBuildNumber),
-            diagnosticValue(IsRecording)
-        )
-    )
-    print(
-        ('[esx_rockstareditor] paused=%s nuiFocused=%s replayMode=%s replayMemLimit=%s'):format(
-            diagnosticValue(IsPauseMenuActive),
-            diagnosticValue(IsNuiFocused),
-            GetConvar('profile_replayMode', 'unknown'),
-            GetConvar('profile_replayMemLimit', 'unknown')
-        )
-    )
+    print(('[esx_rockstareditor] serverReplaysDisabled=%s available=%s recording=%s gameBuild=%s nativeRecording=%s'):format(tostring(serverReplaysDisabled), tostring(state.available), tostring(state.recording), diagnosticValue(GetGameBuildNumber), diagnosticValue(IsRecording)))
+    print(('[esx_rockstareditor] paused=%s nuiFocused=%s replayMode=%s replayMemLimit=%s'):format(diagnosticValue(IsPauseMenuActive), diagnosticValue(IsNuiFocused), GetConvar('profile_replayMode', 'unknown'), GetConvar('profile_replayMemLimit', 'unknown')))
     print('[esx_rockstareditor] lastStart=' .. lastStart)
 end
 
@@ -121,9 +101,7 @@ function Recorder.Run(action)
         end
 
         if not active then
-            lastStart = ok
-                    and 'StartRecording(1) returned, but IsRecording() stayed false for 2000 ms.'
-                or ('StartRecording(1) raised an error: ' .. tostring(nativeError))
+            lastStart = ok and 'StartRecording(1) returned, but IsRecording() stayed false for 2000 ms.' or ('StartRecording(1) raised an error: ' .. tostring(nativeError))
             Recorder.Diagnostics('unknown')
             return false, 'start_failed'
         end

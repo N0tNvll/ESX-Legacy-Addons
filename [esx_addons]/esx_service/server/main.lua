@@ -181,12 +181,7 @@ xLib.callback.registerCompat('esx_service:isPlayerInService', function(source, c
     local xPlayer = ESX.Player(source)
     local targetXPlayer = ESX.Player(target)
 
-    if
-        not xPlayer
-        or not targetXPlayer
-        or xPlayer.getJob().name ~= name
-        or targetXPlayer.getJob().name ~= name
-    then
+    if not xPlayer or not targetXPlayer or xPlayer.getJob().name ~= name or targetXPlayer.getJob().name ~= name then
         return cb(false)
     end
 

@@ -17,7 +17,6 @@ local function restoreSkin()
     end
 end
 
-
 function OpenShopMenu()
     if purchasePending then
         return
@@ -53,25 +52,25 @@ function OpenShopMenu()
 
         purchasePending = true
 
-        PaymentGateway.Pay({
-            quote = 'esx_clotheshop:quoteClothes',
-            title = TranslateCap('clothes'),
-        }, 'esx_clotheshop:buyClothes', function(bought, failure)
-            purchasePending = false
+        PaymentGateway.Pay(
+            {
+                quote = 'esx_clotheshop:quoteClothes',
+                title = TranslateCap('clothes'),
+            },
+            'esx_clotheshop:buyClothes',
+            function(bought, failure)
+                purchasePending = false
 
-            if bought then
-                hasPaid = true
-                TriggerEvent('esx_skin:setLastSkin', newSkin)
+                if bought then
+                    hasPaid = true
+                    TriggerEvent('esx_skin:setLastSkin', newSkin)
 
-                if not hasAlreadyEnteredMarker then
-                    ESX.CloseContext()
-                    return
-                end
+                    if not hasAlreadyEnteredMarker then
+                        ESX.CloseContext()
+                        return
+                    end
 
-                xLib.callback(
-                    'esx_clotheshop:checkPropertyDataStore',
-                    false,
-                    function(foundStore)
+                    xLib.callback('esx_clotheshop:checkPropertyDataStore', false, function(foundStore)
                         if not foundStore then
                             return
                         end
@@ -118,6 +117,7 @@ function OpenShopMenu()
                                 ESX.OpenContext('right', elements3, function(menu3, element3)
                                     TriggerEvent('skinchanger:getSkin', function(skin)
                                         local outfitName = menu3.eles[2].inputValue
+
                                         ESX.CloseContext()
                                         TriggerServerEvent('esx_clotheshop:saveOutfit', outfitName, skin)
 
@@ -132,27 +132,29 @@ function OpenShopMenu()
                         end, function()
                             hasAlreadyEnteredMarker = false
                         end)
+                    end)
+                else
+                    ESX.CloseContext()
+                    restoreSkin()
+
+                    local message = TranslateCap('not_enough_money')
+
+                    if failure ~= 'insufficient_funds' then
+                        local translations = Locales[Config.Locale] or Locales.en
+
+                        message = translations.save_failed or Locales.en.save_failed
                     end
-                )
-            else
-                ESX.CloseContext()
-                restoreSkin()
 
-                local message = TranslateCap('not_enough_money')
-
-                if failure ~= 'insufficient_funds' then
-                    local translations = Locales[Config.Locale] or Locales.en
-                    message = translations.save_failed or Locales.en.save_failed
+                    PaymentGateway.NotifyFailure(failure, message)
                 end
 
-                PaymentGateway.NotifyFailure(failure, message)
-            end
-
-            currentAction = 'shop_menu'
-            currentActionMsg = TranslateCap('press_menu')
-            currentActionData = {}
-        end, newSkin, oldSkin)
-
+                currentAction = 'shop_menu'
+                currentActionMsg = TranslateCap('press_menu')
+                currentActionData = {}
+            end,
+            newSkin,
+            oldSkin
+        )
     end, function(data, menu)
         menu.close()
         restoreSkin()
@@ -252,7 +254,6 @@ CreateThread(function()
         Wait(0)
 
         if currentAction then
-
             if IsControlJustReleased(0, 38) then
                 if currentAction == 'shop_menu' then
                     OpenShopMenu()

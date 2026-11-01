@@ -1,18 +1,21 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
-AddEventHandler("playerConnecting", function(name, _, deferrals)
+AddEventHandler('playerConnecting', function(name, _, deferrals)
     deferrals.defer()
 
     local src = source
+
     Wait(0)
-    deferrals.update(Helpers.getTranslation("finalizing_connection"))
+    deferrals.update(Helpers.getTranslation('finalizing_connection'))
 
     local ok, ban = pcall(function()
         -- Match on ANY of the connecting player's identifiers, not just license.
         local identifiers = GetPlayerIdentifiers(src) or {}
+
         for i = 1, #identifiers do
             local hit = Helpers.isBanned(identifiers[i])
+
             if hit then
                 return hit
             end
@@ -22,20 +25,20 @@ AddEventHandler("playerConnecting", function(name, _, deferrals)
 
     if not ok then
         -- Fail-open: a ban-cache/DB hiccup must resolve the deferral, never hang the join.
-        print(("[esx-adminmenu] Ban check failed for %s: %s"):format(tostring(GetPlayerName(src) or src), tostring(ban)))
+        print(('[esx-adminmenu] Ban check failed for %s: %s'):format(tostring(GetPlayerName(src) or src), tostring(ban)))
         deferrals.done()
         return
     end
 
     if ban then
-        local message = Helpers.getTranslation("default_ban")
+        local message = Helpers.getTranslation('default_ban')
 
         if ban.reason then
-            message = message .. "\n" .. Helpers.getTranslation("reason") .. " " .. ban.reason
+            message = message .. '\n' .. Helpers.getTranslation('reason') .. ' ' .. ban.reason
         end
 
         if ban.remaining_formatted then
-            message = message .. "\n" .. Helpers.getTranslation("duration") .. " " .. ban.remaining_formatted
+            message = message .. '\n' .. Helpers.getTranslation('duration') .. ' ' .. ban.remaining_formatted
         end
 
         deferrals.done(message)
@@ -45,12 +48,12 @@ AddEventHandler("playerConnecting", function(name, _, deferrals)
     deferrals.done()
 end)
 
-AddEventHandler("playerDropped", function()
-	Helpers.addRecentPlayer(source)
+AddEventHandler('playerDropped', function()
+    Helpers.addRecentPlayer(source)
 end)
 
-AddEventHandler("onResourceStop", function(resource)
+AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() then
-        GlobalState["esx:populationDensity"] = false
+        GlobalState['esx:populationDensity'] = false
     end
 end)

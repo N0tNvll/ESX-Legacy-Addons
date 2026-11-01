@@ -7,17 +7,16 @@ Modules.Time = {}
 ---@param src integer?
 ---@param time Time?
 function Modules.Time.broadcast(src, time)
-    TriggerClientEvent("esx_weather:client:time:setTime", (src or -1), time or Modules.Time.get())
+    TriggerClientEvent('esx_weather:client:time:setTime', (src or -1), time or Modules.Time.get())
 end
 
 ---@return SerializedTime
 function Modules.Time.get()
-    local t = os.date("*t")
-
+    local t = os.date('*t')
     return {
         hours = tonumber(t.hour) or 0,
         minutes = tonumber(t.min) or 0,
-        seconds = tonumber(t.sec) or 0
+        seconds = tonumber(t.sec) or 0,
     } --[[@as SerializedTime]]
 end
 

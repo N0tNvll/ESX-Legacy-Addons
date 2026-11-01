@@ -1,20 +1,20 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
-Locales ['sl'] = {
-  ['helmet'] = 'Kapa / Klobuk',
-  ['glasses'] = 'očala',
-  ['mask'] = 'maska',
-  ['ears'] = 'usesa',
-  ['shop'] = '%s trgovina',
-  ['set_unset'] = 'nadeni / snemi',
-  ['not_enough_money'] = 'Vi nimate dovolj denarja!',
-  ['press_access'] = 'Pritisnite [E] Da odprete menu!',
-  ['accessories_blip'] = 'Dodatki',
-  ['no_ears'] = 'Vi nimate ušesnih dodatkov',
-  ['no_glasses'] = 'Vi nimate očal!',
-  ['no_helmet'] = 'Vi nimate kape/klobuka',
-  ['no_mask'] = 'Vi nimate maske!',
-  ['you_paid'] = 'Vi ste plačali $%s',
-  ['keymap'] = 'Open Accessory Menu', --not translated
+Locales['sl'] = {
+    ['helmet'] = 'Kapa / Klobuk',
+    ['glasses'] = 'očala',
+    ['mask'] = 'maska',
+    ['ears'] = 'usesa',
+    ['shop'] = '%s trgovina',
+    ['set_unset'] = 'nadeni / snemi',
+    ['not_enough_money'] = 'Vi nimate dovolj denarja!',
+    ['press_access'] = 'Pritisnite [E] Da odprete menu!',
+    ['accessories_blip'] = 'Dodatki',
+    ['no_ears'] = 'Vi nimate ušesnih dodatkov',
+    ['no_glasses'] = 'Vi nimate očal!',
+    ['no_helmet'] = 'Vi nimate kape/klobuka',
+    ['no_mask'] = 'Vi nimate maske!',
+    ['you_paid'] = 'Vi ste plačali $%s',
+    ['keymap'] = 'Open Accessory Menu', --not translated
 }

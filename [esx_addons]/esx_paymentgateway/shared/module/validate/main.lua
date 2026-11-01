@@ -14,7 +14,7 @@ local MAX_CLOSE_DELAY <const> = 30000
 
 ---@param message string
 local function warn(message)
-    print(("[^3WARNING^7] esx_paymentgateway: %s"):format(message))
+    print(('[^3WARNING^7] esx_paymentgateway: %s'):format(message))
 end
 
 ---A finite number within bounds; a string that reads as one does not count.
@@ -23,7 +23,7 @@ end
 ---@param max? number
 ---@return boolean
 local function isNumber(value, min, max)
-    return type(value) == "number" and xLib.validation.number(value, min, max) ~= nil
+    return type(value) == 'number' and xLib.validation.number(value, min, max) ~= nil
 end
 
 ---Non-blank UTF-8 text of at most maxLength bytes.
@@ -31,7 +31,7 @@ end
 ---@param maxLength integer
 ---@return boolean
 function Validate.isText(value, maxLength)
-    return type(value) == "string" and #value <= maxLength and value:find("%S") ~= nil and utf8.len(value) ~= nil
+    return type(value) == 'string' and #value <= maxLength and value:find('%S') ~= nil and utf8.len(value) ~= nil
 end
 
 ---A price: a whole number from 1 up, as xPlayer.chargeAccount takes it. validation.money rounds,
@@ -54,57 +54,67 @@ end
 ---Checks the config once at start and puts back defaults for anything that would break a
 ---payment at runtime, with a warning for each.
 function Validate.config()
-    if type(Config.Accounts) ~= "table" then
-        warn("Config.Accounts must be a table, using cash = money and card = bank")
-        Config.Accounts = { cash = "money", card = "bank" }
+    if type(Config.Accounts) ~= 'table' then
+        warn('Config.Accounts must be a table, using cash = money and card = bank')
+        Config.Accounts = { cash = 'money', card = 'bank' }
     end
+
     for method, account in pairs(Config.Accounts) do
-        if (method ~= "cash" and method ~= "card") or not Validate.isText(account, 64) then
-            warn(("Config.Accounts.%s is not a known method with an account name, ignored"):format(method))
+        if (method ~= 'cash' and method ~= 'card') or not Validate.isText(account, 64) then
+            warn(('Config.Accounts.%s is not a known method with an account name, ignored'):format(method))
             Config.Accounts[method] = nil
         end
     end
 
     -- Requests and answers name a method by its account, so no two methods may share one.
     local methods, taken = {}, {}
-    for _, method in ipairs(type(Config.Methods) == "table" and Config.Methods or {}) do
+
+    for _, method in ipairs(type(Config.Methods) == 'table' and Config.Methods or {}) do
         local account = Config.Accounts[method]
+
         if not account then
-            warn(("Config.Methods lists %s, which has no account in Config.Accounts; ignored"):format(method))
+            warn(('Config.Methods lists %s, which has no account in Config.Accounts; ignored'):format(method))
         elseif taken[account] then
-            warn(("Config.Methods lists %s, but %s already takes the account %s; ignored"):format(method, taken[account], account))
+            warn(('Config.Methods lists %s, but %s already takes the account %s; ignored'):format(method, taken[account], account))
         else
             taken[account] = method
             methods[#methods + 1] = method
         end
     end
+
     if #methods == 0 then
-        warn("Config.Methods names no method with an account; payments cannot open")
+        warn('Config.Methods names no method with an account; payments cannot open')
     end
+
     Config.Methods = methods
 
     if not Validate.isText(Config.Currency, 4) then
-        warn("Config.Currency must be a short symbol, using $")
-        Config.Currency = "$"
+        warn('Config.Currency must be a short symbol, using $')
+        Config.Currency = '$'
     end
+
     if not isNumber(Config.HoldAmount, 0) then
-        warn("Config.HoldAmount must be 0 or more, turning holding off")
+        warn('Config.HoldAmount must be 0 or more, turning holding off')
         Config.HoldAmount = 0
     end
+
     if not isNumber(Config.PayTimeout, MIN_PAY_TIMEOUT, MAX_PAY_TIMEOUT) then
-        warn(("Config.PayTimeout must be %s to %s seconds, using 20"):format(MIN_PAY_TIMEOUT, MAX_PAY_TIMEOUT))
+        warn(('Config.PayTimeout must be %s to %s seconds, using 20'):format(MIN_PAY_TIMEOUT, MAX_PAY_TIMEOUT))
         Config.PayTimeout = 20
     end
+
     if not isNumber(Config.CloseDelay, 0, MAX_CLOSE_DELAY) then
-        warn(("Config.CloseDelay must be 0 to %s milliseconds, using 2600"):format(MAX_CLOSE_DELAY))
+        warn(('Config.CloseDelay must be 0 to %s milliseconds, using 2600'):format(MAX_CLOSE_DELAY))
         Config.CloseDelay = 2600
     end
+
     if not isNumber(Config.Volume, 0, 1) then
-        warn("Config.Volume must be 0 to 1, using 0.5")
+        warn('Config.Volume must be 0 to 1, using 0.5')
         Config.Volume = 0.5
     end
-    if type(Config.TestCommand) ~= "boolean" then
-        warn("Config.TestCommand must be true or false, turning it off")
+
+    if type(Config.TestCommand) ~= 'boolean' then
+        warn('Config.TestCommand must be true or false, turning it off')
         Config.TestCommand = false
     end
 end

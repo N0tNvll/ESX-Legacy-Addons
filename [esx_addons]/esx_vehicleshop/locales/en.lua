@@ -2,6 +2,11 @@
 -- Copyright (C) 2022-2026 ESX Framework
 
 Locales['en'] = {
+    dealership_loading = 'The dealership is preparing.',
+    dealership_access_denied = 'You cannot access this dealership.',
+    dealership_interact = 'Open dealership',
+    dealership_vehicle_required = 'Bring the vehicle you want to return or sell.',
+    dealership_end_test = 'End vehicle test drive',
     -- global menus
     ['not_enough_in_society'] = "there's not enough of ~r~that item in the society!",
     ['player_cannot_hold'] = 'you do ~r~not have enough free space in your inventory!',
@@ -28,9 +33,7 @@ Locales['en'] = {
     ['not_rental'] = 'this is not a ~r~rental vehicle',
     ['not_yours'] = 'this vehicle does not belong to you',
     ['paid_rental'] = 'you have paid $%s for renting a vehicle with plate %s',
-    ['paid_rental_evicted'] = 'you could not afford to pay $%s for your rented ve'
-        .. 'hicle with plate %s, it has been returned to the d'
-        .. 'ealership',
+    ['paid_rental_evicted'] = 'you could not afford to pay $%s for your rented ve' .. 'hicle with plate %s, it has been returned to the d' .. 'ealership',
     ['pop_vehicle'] = 'put out vehicle for sale',
     ['rent_vehicle'] = 'car Dealer - Vehicles for rent',
     ['return_provider_menu'] = 'car Dealer - Return vehicle to provider',
@@ -59,7 +62,6 @@ Locales['en'] = {
     ['have_deposited'] = 'you have deposited x%s %s',
     ['boss_actions'] = 'boss actions',
     ['invalid_vehicle'] = 'Invalid vehicle',
-
     -- sold vehicles
     ['boss_sold'] = 'list of sold vehicles',
     ['customer_client'] = 'customer name',
@@ -74,9 +76,7 @@ Locales['en'] = {
     timed_rental_rental_returned = 'Vehicle returned. Your rental contract has ended.',
     timed_rental_rental_warning = 'Your vehicle rental expires soon. Find a safe place to stop.',
     timed_rental_rental_expired = 'Your vehicle rental has expired.',
-    timed_rental_rental_delivery_failed = 'Automatic delivery could not finish. Your rental i'
-        .. 's waiting in t'
-        .. 'he collection bay.',
+    timed_rental_rental_delivery_failed = 'Automatic delivery could not finish. Your rental i' .. 's waiting in t' .. 'he collection bay.',
     timed_rental_unavailable = 'The rental service is temporarily unavailable.',
     timed_rental_invalid_request = 'Invalid rental selection.',
     timed_rental_too_far = 'You must be at the rental branch.',
@@ -88,8 +88,7 @@ Locales['en'] = {
     timed_rental_spawn_blocked = 'All collection spaces are occupied. Please try again shortly.',
     timed_rental_spawn_failed = 'The vehicle could not be prepared. You have not been charged.',
     timed_rental_save_failed = 'The contract could not be saved. Your payment has been refunded.',
-    timed_rental_refund_failed = 'Your payment could not be refunded automatically. Please contact'
-        .. ' an administrator.',
+    timed_rental_refund_failed = 'Your payment could not be refunded automatically. Please contact' .. ' an administrator.',
     timed_rental_internal_error = 'The operation could not be completed. Please try again.',
     timed_rental_no_rental = 'You do not have an active rental.',
     timed_rental_wrong_branch = 'Collect or return your vehicle at the original rental branch.',
@@ -113,8 +112,7 @@ Locales['en'] = {
     timed_rental_ui_total = 'Total rental price',
     timed_rental_ui_rent = 'Confirm rental',
     timed_rental_ui_pending = 'Preparing your vehicle...',
-    timed_rental_ui_terms = 'Pay once for the selected time. Early returns are not refunded. '
-        .. 'Time keeps running while you are offline.',
+    timed_rental_ui_terms = 'Pay once for the selected time. Early returns are not refunded. ' .. 'Time keeps running while you are offline.',
     timed_rental_ui_seats = 'seats',
     timed_rental_ui_choose = 'Choose a vehicle to continue',
     timed_rental_ui_empty = 'No vehicles match your search.',
@@ -122,8 +120,7 @@ Locales['en'] = {
     timed_rental_ui_remaining = 'Time remaining',
     timed_rental_ui_collect = 'Retrieve vehicle',
     timed_rental_ui_in_use = 'Vehicle already collected',
-    timed_rental_ui_return_hint = 'Drive into the return bay at this branch and press E to end your'
-        .. ' rental.',
+    timed_rental_ui_return_hint = 'Drive into the return bay at this branch and press E to end your' .. ' rental.',
     timed_rental_ui_close = 'Close',
     timed_rental_ui_expired = 'Rental expired',
 }

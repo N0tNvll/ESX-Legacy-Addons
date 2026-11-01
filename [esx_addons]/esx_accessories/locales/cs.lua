@@ -1,20 +1,20 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
-Locales ['cs'] = {
-  ['helmet'] = 'helma / Čepice',
-  ['glasses'] = 'brýle',
-  ['mask'] = 'maska',
-  ['ears'] = 'doplňky na uši',
-  ['shop'] = '%s obchod',
-  ['set_unset'] = 'nasadit / Sundat',
-  ['not_enough_money'] = 'nemáte dostatek peněz',
-  ['press_access'] = 'zmáčkněte [E] pro otevření menu',
-  ['accessories_blip'] = 'doplňky',
-  ['no_ears'] = 'nemáte doplňky na uši',
-  ['no_glasses'] = 'nemáte brýle',
-  ['no_helmet'] = 'nemáte helmu',
-  ['no_mask'] = 'nemáte masku',
-  ['you_paid'] = 'zaplatili jste $%s',
-  ['keymap'] = 'Open Accessory Menu', --not translated
+Locales['cs'] = {
+    ['helmet'] = 'helma / Čepice',
+    ['glasses'] = 'brýle',
+    ['mask'] = 'maska',
+    ['ears'] = 'doplňky na uši',
+    ['shop'] = '%s obchod',
+    ['set_unset'] = 'nasadit / Sundat',
+    ['not_enough_money'] = 'nemáte dostatek peněz',
+    ['press_access'] = 'zmáčkněte [E] pro otevření menu',
+    ['accessories_blip'] = 'doplňky',
+    ['no_ears'] = 'nemáte doplňky na uši',
+    ['no_glasses'] = 'nemáte brýle',
+    ['no_helmet'] = 'nemáte helmu',
+    ['no_mask'] = 'nemáte masku',
+    ['you_paid'] = 'zaplatili jste $%s',
+    ['keymap'] = 'Open Accessory Menu', --not translated
 }

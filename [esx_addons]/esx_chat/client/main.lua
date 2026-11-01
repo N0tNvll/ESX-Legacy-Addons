@@ -4,7 +4,6 @@
 local DISPLAY_MODES = { always = true, onMessage = true, hidden = true }
 local DISPLAY_ORDER = { 'always', 'onMessage', 'hidden' }
 local DISPLAY_KVP = 'esx_chat:displayMode'
-
 local chatOpen = false
 local nuiReady = false
 local suggestions = {}
@@ -58,7 +57,7 @@ local function normalizeLegacyMessage(message)
             type = 'system',
             title = TranslateCap('title_system'),
             text = message,
-            icon = 'system'
+            icon = 'system',
         }
     end
 
@@ -76,9 +75,11 @@ local function normalizeLegacyMessage(message)
 
     if #args >= 2 then
         local parts = {}
+
         for index = 2, #args do
             parts[#parts + 1] = tostring(args[index] or '')
         end
+
         text = table.concat(parts, ' ')
     elseif #args == 1 then
         text = title
@@ -87,11 +88,13 @@ local function normalizeLegacyMessage(message)
 
     if message.template and templates[message.template] then
         local rendered = templates[message.template]
+
         for index, value in ipairs(args) do
             rendered = rendered:gsub('{' .. (index - 1) .. '}', function()
                 return tostring(value)
             end)
         end
+
         text = rendered:gsub('<.->', '')
         title = title ~= '' and title or TranslateCap('title_system')
     end
@@ -102,7 +105,7 @@ local function normalizeLegacyMessage(message)
         text = text,
         color = message.color,
         multiline = message.multiline,
-        icon = message.icon
+        icon = message.icon,
     }
 end
 
@@ -121,7 +124,7 @@ local function pushMessage(message)
 
     SendNUIMessage({
         action = 'message',
-        message = message
+        message = message,
     })
 end
 
@@ -131,7 +134,7 @@ local function setFocus(value)
     SetNuiFocusKeepInput(false)
 
     SendNUIMessage({
-        action = value and 'open' or 'close'
+        action = value and 'open' or 'close',
     })
 end
 
@@ -148,8 +151,8 @@ local function setDisplayMode(mode, notify)
         pushMessage({
             type = 'system',
             title = TranslateCap('title_system'),
-            text = _U('display_mode_set', _(('ui_display_%s'):format(mode))),
-            icon = 'system'
+            text = _U('display_mode_set', _U(('ui_display_%s'):format(mode))),
+            icon = 'system',
         })
     end
 
@@ -173,7 +176,7 @@ local function getRPCommands()
         if command.enabled ~= false and command.rp then
             commands[#commands + 1] = {
                 name = ('/%s'):format(command.name),
-                description = command.description or _(('command_%s'):format(command.name))
+                description = command.description or _U(('command_%s'):format(command.name)),
             }
         end
     end
@@ -182,17 +185,29 @@ local function getRPCommands()
 end
 
 local LOCALE_KEYS = {
-    'ui_tab_ooc', 'ui_tab_rp', 'ui_tab_job', 'ui_tab_pm',
-    'ui_placeholder_ooc', 'ui_placeholder_rp', 'ui_placeholder_job', 'ui_placeholder_pm',
-    'ui_rp_commands', 'ui_suggestions', 'ui_emojis', 'ui_emoji_hint', 'ui_send',
-    'ui_display_always', 'ui_display_onMessage', 'ui_display_hidden'
+    'ui_tab_ooc',
+    'ui_tab_rp',
+    'ui_tab_job',
+    'ui_tab_pm',
+    'ui_placeholder_ooc',
+    'ui_placeholder_rp',
+    'ui_placeholder_job',
+    'ui_placeholder_pm',
+    'ui_rp_commands',
+    'ui_suggestions',
+    'ui_emojis',
+    'ui_emoji_hint',
+    'ui_send',
+    'ui_display_always',
+    'ui_display_onMessage',
+    'ui_display_hidden',
 }
 
 local function getUILocale()
     local strings = {}
 
     for _, key in ipairs(LOCALE_KEYS) do
-        strings[key] = _(key)
+        strings[key] = _U(key)
     end
 
     return strings
@@ -209,8 +224,8 @@ local function sendInit()
             displayMode = displayMode,
             rpCommands = getRPCommands(),
             locale = getUILocale(),
-            theme = xLib.colors.getESXTheme()
-        }
+            theme = xLib.colors.getESXTheme(),
+        },
     })
 
     for _, suggestion in pairs(suggestions) do
@@ -226,13 +241,13 @@ local function addSuggestion(name, help, params)
     suggestions[name] = {
         name = name,
         description = help or '',
-        params = params or {}
+        params = params or {},
     }
 
     if nuiReady then
         SendNUIMessage({
             action = 'suggestion:add',
-            suggestion = suggestions[name]
+            suggestion = suggestions[name],
         })
     end
 end
@@ -243,6 +258,7 @@ end)
 
 RegisterNetEvent('chat:addMessage', function(message)
     local normalized = normalizeLegacyMessage(message)
+
     if normalized then
         pushMessage(normalized)
     end
@@ -253,8 +269,25 @@ RegisterNetEvent('chatMessage', function(author, color, text)
         type = inferType(author),
         title = tostring(author or ''),
         text = tostring(text or ''),
-        color = color
+        color = color,
     })
+end)
+
+RegisterNetEvent('esx_rpchat:sendProximityMessage', function(playerId, title, message, color)
+    if color == nil then
+        pushMessage({ args = { playerId, title }, color = message })
+        return
+    end
+
+    local target = GetPlayerFromServerId(playerId)
+
+    if target == -1 then
+        return
+    end
+
+    if target == PlayerId() or #(GetEntityCoords(PlayerPedId()) - GetEntityCoords(GetPlayerPed(target))) < Config.ProximityDistance then
+        pushMessage({ args = { title, message }, color = color })
+    end
 end)
 
 RegisterNetEvent('chat:addTemplate', function(id, html)
@@ -294,10 +327,8 @@ RegisterCommand('+esxchat', function()
     setFocus(true)
 end, false)
 
-RegisterCommand('-esxchat', function()
-end, false)
-
-RegisterKeyMapping('+esxchat', _('key_open'), 'keyboard', Config.OpenKey)
+RegisterCommand('-esxchat', function() end, false)
+RegisterKeyMapping('+esxchat', _U('key_open'), 'keyboard', Config.OpenKey)
 
 RegisterCommand('clear', function()
     SendNUIMessage({ action = 'clear' })
@@ -305,7 +336,7 @@ RegisterCommand('clear', function()
         type = 'system',
         title = TranslateCap('title_system'),
         text = _U('chat_cleared'),
-        icon = 'system'
+        icon = 'system',
     })
 end, false)
 
@@ -326,7 +357,7 @@ RegisterCommand('chatmode', function(_, args)
         type = 'system',
         title = TranslateCap('title_system'),
         text = _U('display_mode_usage'),
-        icon = 'system'
+        icon = 'system',
     })
 end, false)
 
@@ -377,8 +408,8 @@ AddEventHandler('onResourceStop', function(resource)
 end)
 
 CreateThread(function()
-    TriggerEvent('chat:addSuggestion', '/chatmode', _('command_chatmode'), { { name = 'mode', help = 'always | onMessage | hidden' } })
-    TriggerEvent('chat:addSuggestion', '/clear', _('command_clear'), {})
+    TriggerEvent('chat:addSuggestion', '/chatmode', _U('command_chatmode'), { { name = 'mode', help = 'always | onMessage | hidden' } })
+    TriggerEvent('chat:addSuggestion', '/clear', _U('command_clear'), {})
 end)
 
 exports('addMessage', function(message)
@@ -387,4 +418,12 @@ end)
 
 exports('addSuggestion', function(name, help, params)
     addSuggestion(name, help, params)
+end)
+
+AddEventHandler('__cfx_export_chat_addMessage', function(setCallback)
+    setCallback(pushMessage)
+end)
+
+AddEventHandler('__cfx_export_chat_addSuggestion', function(setCallback)
+    setCallback(addSuggestion)
 end)

@@ -86,4 +86,4 @@ Locales['sv'] = {
     -- Blips
     ['blip_hospital'] = 'Sjukhus',
     ['blip_dead'] = 'Döende spelare',
-  }
+}

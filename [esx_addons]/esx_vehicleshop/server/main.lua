@@ -15,24 +15,13 @@ function D.registerSocieties()
     for _, id in ipairs(ids) do
         local shop = D.shops[id]
 
-        if
-            shop.enabled ~= false
-            and shop.mode == 'managed'
-            and shop.management
-            and shop.societyAccount
-        then
+        if shop.enabled ~= false and shop.mode == 'managed' and shop.management and shop.societyAccount then
             if GetResourceState('esx_addonaccount') == 'started' then
-                MySQL.insert.await(
-                    'INSERT IGNORE INTO addon_account (name, label, shared) VALUES (?, ?, 1)',
-                    { shop.societyAccount, shop.label }
-                )
+                MySQL.insert.await('INSERT IGNORE INTO addon_account (name, label, shared) VALUES (?, ?, 1)', { shop.societyAccount, shop.label })
             end
 
             if shop.societyInventory and GetResourceState('esx_addoninventory') == 'started' then
-                MySQL.insert.await(
-                    'INSERT IGNORE INTO addon_inventory (name, label, shared) VALUES (?, ?, 1)',
-                    { shop.societyInventory, shop.label }
-                )
+                MySQL.insert.await('INSERT IGNORE INTO addon_inventory (name, label, shared) VALUES (?, ?, 1)', { shop.societyInventory, shop.label })
             end
 
             local job = shop.management.job
@@ -41,14 +30,7 @@ function D.registerSocieties()
                 local existing = exports['esx_society']:GetSociety(job)
 
                 if not existing then
-                    exports['esx_society']:registerSociety(
-                        job,
-                        shop.label,
-                        shop.societyAccount,
-                        shop.societyInventory,
-                        shop.societyInventory,
-                        { type = 'private' }
-                    )
+                    exports['esx_society']:registerSociety(job, shop.label, shop.societyAccount, shop.societyInventory, shop.societyInventory, { type = 'private' })
                     existing = exports['esx_society']:GetSociety(job)
                 end
 
@@ -75,10 +57,7 @@ MySQL.ready(function()
     end)
 
     if not ok then
-        print(
-            '[esx_vehicleshop] Dealership initialization FAILED; transactions remain closed: '
-                .. tostring(err)
-        )
+        print('[esx_vehicleshop] Dealership initialization FAILED; transactions remain closed: ' .. tostring(err))
         return
     end
 
@@ -100,14 +79,7 @@ MySQL.ready(function()
 end)
 
 AddEventHandler('onResourceStart', function(resource)
-    if
-        D.ready
-        and (
-            resource == 'esx_society'
-            or resource == 'esx_addonaccount'
-            or resource == 'esx_addoninventory'
-        )
-    then
+    if D.ready and (resource == 'esx_society' or resource == 'esx_addonaccount' or resource == 'esx_addoninventory') then
         D.registerSocieties()
     end
 end)

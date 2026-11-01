@@ -84,8 +84,8 @@ local function openMenu(branchId)
     pending = true
 
     local epoch = generation
-    local ok, response =
-        pcall(xLib.callback.await, 'esx_vehicleshop:timedRental:catalog', false, branchId)
+    local ok, response = pcall(xLib.callback.await, 'esx_vehicleshop:timedRental:catalog', false, branchId)
+
     pending = false
 
     if epoch ~= generation then
@@ -99,10 +99,7 @@ local function openMenu(branchId)
 
     local branch = Config.Branches[branchId]
 
-    if
-        not branch
-        or #(GetEntityCoords(PlayerPedId()) - branch.coords) > Config.InteractDistance
-    then
+    if not branch or #(GetEntityCoords(PlayerPedId()) - branch.coords) > Config.InteractDistance then
         return
     end
 
@@ -136,15 +133,7 @@ local function receiveVehicle(response)
         Wait(50)
     end
 
-    if
-        epoch ~= generation
-        or not ESX.PlayerLoaded
-        or vehicle == 0
-        or not DoesEntityExist(vehicle)
-        or GetEntityModel(vehicle) ~= joaat(response.model)
-        or not activeLease
-        or activeLease.plate ~= response.plate
-    then
+    if epoch ~= generation or not ESX.PlayerLoaded or vehicle == 0 or not DoesEntityExist(vehicle) or GetEntityModel(vehicle) ~= joaat(response.model) or not activeLease or activeLease.plate ~= response.plate then
         ESX.ShowNotification(translate('rental_delivery_failed'))
         return
     end
@@ -314,9 +303,7 @@ CreateThread(function()
                 return activeLease and activeLease.branch == branchId
             end,
             canInteract = function()
-                return activeLease
-                    and activeLease.branch == branchId
-                    and IsPedInAnyVehicle(PlayerPedId(), false)
+                return activeLease and activeLease.branch == branchId and IsPedInAnyVehicle(PlayerPedId(), false)
             end,
             onInside = function()
                 ESX.ShowHelpNotification(translate('rental_return_interact'))

@@ -30,6 +30,7 @@ server_scripts {
     'server/modules/orders.lua',
     'server/modules/payments.lua',
     'server/modules/management.lua',
+    'server/modules/test_drive.lua',
     'server/modules/compatibility.lua',
     'server/timed_rentals/state.lua',
     'server/timed_rentals/database.lua',
@@ -43,6 +44,7 @@ client_scripts {
     'client/utils.lua',
     'client/state.lua',
     'client/preview.lua',
+    'client/test_drive.lua',
     'client/timed_rentals.lua',
     'client/compatibility.lua',
     'client/main.lua',
@@ -60,6 +62,7 @@ files {
     'web/index.html',
     'web/style.css',
     'web/app.js',
+    'web/assets/*',
     'web/rentals/**/*',
 }
 

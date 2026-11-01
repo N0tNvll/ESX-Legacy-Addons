@@ -2,6 +2,11 @@
 -- Copyright (C) 2022-2026 ESX Framework
 
 Locales['es'] = {
+    dealership_loading = 'El concesionario se está preparando.',
+    dealership_access_denied = 'No puedes acceder a este concesionario.',
+    dealership_interact = 'Abrir concesionario',
+    dealership_vehicle_required = 'Acércate con el vehículo que quieres devolver o vender.',
+    dealership_end_test = 'Finalizar prueba de vehículo',
     -- global menus
     ['not_enough_in_society'] = 'No hay mas de ese item en la sociedad!',
     ['player_cannot_hold'] = '~r~no tienes suficiente espacio en tu inventario!',
@@ -28,8 +33,7 @@ Locales['es'] = {
     ['not_rental'] = 'este no es un ~r~vehiculo rentado',
     ['not_yours'] = 'este vehiculo no te pertenece',
     ['paid_rental'] = 'pagaste $%s para rentar el vehiculo con matricula %s',
-    ['paid_rental_evicted'] = 'no pudiste pagar $%s de la renta del vehiculo con '
-        .. 'matricula %s, Este fue devuelto al vendedor',
+    ['paid_rental_evicted'] = 'no pudiste pagar $%s de la renta del vehiculo con ' .. 'matricula %s, Este fue devuelto al vendedor',
     ['pop_vehicle'] = 'Poner vehiculo a la venta',
     ['rent_vehicle'] = 'Vendedor de autos - Vehiculos para rentar',
     ['return_provider_menu'] = 'Vendedor de autos - Devolver a proveedor',
@@ -58,7 +62,6 @@ Locales['es'] = {
     ['have_deposited'] = 'Has depositado x%s %s',
     ['boss_actions'] = 'Acciones de jefe',
     ['invalid_vehicle'] = 'Vehiculo invalido',
-
     -- sold vehicles
     ['boss_sold'] = 'Lista de vehiculos vendidos',
     ['customer_client'] = 'Comprador',
@@ -71,12 +74,9 @@ Locales['es'] = {
     timed_rental_rental_return_interact = 'Pulsa ~INPUT_CONTEXT~ para devolver tu alquiler',
     timed_rental_rental_success = 'Tu vehículo está listo. ¡Buen viaje!',
     timed_rental_rental_returned = 'Vehículo devuelto. El contrato de alquiler ha terminado.',
-    timed_rental_rental_warning = 'Tu alquiler termina pronto. Busca un lugar seguro para detenerte'
-        .. '.',
+    timed_rental_rental_warning = 'Tu alquiler termina pronto. Busca un lugar seguro para detenerte' .. '.',
     timed_rental_rental_expired = 'Tu alquiler de vehículo ha terminado.',
-    timed_rental_rental_delivery_failed = 'No se pudo completar la entrega automática. Tu veh'
-        .. 'ículo te esper'
-        .. 'a en la plaza de recogida.',
+    timed_rental_rental_delivery_failed = 'No se pudo completar la entrega automática. Tu veh' .. 'ículo te esper' .. 'a en la plaza de recogida.',
     timed_rental_unavailable = 'El servicio de alquiler no está disponible temporalmente.',
     timed_rental_invalid_request = 'La selección de alquiler no es válida.',
     timed_rental_too_far = 'Debes estar en la oficina de alquiler.',
@@ -85,18 +85,15 @@ Locales['es'] = {
     timed_rental_active_rental = 'Ya tienes un alquiler activo.',
     timed_rental_insufficient_funds = 'No tienes suficiente dinero en la cuenta seleccionada.',
     timed_rental_license_required = 'Necesitas una licencia de conducir válida.',
-    timed_rental_spawn_blocked = 'Todas las plazas de entrega están ocupadas. Inténtalo en unos mo'
-        .. 'mentos.',
+    timed_rental_spawn_blocked = 'Todas las plazas de entrega están ocupadas. Inténtalo en unos mo' .. 'mentos.',
     timed_rental_spawn_failed = 'No se pudo preparar el vehículo. No se ha realizado ningún cobro.',
     timed_rental_save_failed = 'No se pudo guardar el contrato. Se ha devuelto tu pago.',
-    timed_rental_refund_failed = 'No se pudo devolver el pago automáticamente. Contacta con un adm'
-        .. 'inistrador.',
+    timed_rental_refund_failed = 'No se pudo devolver el pago automáticamente. Contacta con un adm' .. 'inistrador.',
     timed_rental_internal_error = 'No se pudo completar la operación. Inténtalo de nuevo.',
     timed_rental_no_rental = 'No tienes un alquiler activo.',
     timed_rental_wrong_branch = 'Recoge o devuelve el vehículo en la oficina donde lo alquilaste.',
     timed_rental_vehicle_in_use = 'Tu vehículo de alquiler ya está disponible en el mundo.',
-    timed_rental_return_vehicle = 'Entra como conductor con tu vehículo de alquiler en la zona de d'
-        .. 'evolución.',
+    timed_rental_return_vehicle = 'Entra como conductor con tu vehículo de alquiler en la zona de d' .. 'evolución.',
     timed_rental_expired_contract = 'Este alquiler ha caducado.',
     timed_rental_ui_contract_section = 'TU CONTRATO',
     timed_rental_ui_rental_title = 'Alquiler de vehículos',
@@ -115,9 +112,7 @@ Locales['es'] = {
     timed_rental_ui_total = 'Precio total del alquiler',
     timed_rental_ui_rent = 'Confirmar alquiler',
     timed_rental_ui_pending = 'Preparando tu vehículo...',
-    timed_rental_ui_terms = 'Paga una vez por el tiempo elegido. La devolución anticipada no '
-        .. 'tiene reembolso. El tiempo sigue corriendo mientras estás descon'
-        .. 'ectado.',
+    timed_rental_ui_terms = 'Paga una vez por el tiempo elegido. La devolución anticipada no ' .. 'tiene reembolso. El tiempo sigue corriendo mientras estás descon' .. 'ectado.',
     timed_rental_ui_seats = 'plazas',
     timed_rental_ui_choose = 'Elige un vehículo para continuar',
     timed_rental_ui_empty = 'No hay vehículos que coincidan con tu búsqueda.',
@@ -125,8 +120,7 @@ Locales['es'] = {
     timed_rental_ui_remaining = 'Tiempo restante',
     timed_rental_ui_collect = 'Recuperar vehículo',
     timed_rental_ui_in_use = 'Vehículo ya recogido',
-    timed_rental_ui_return_hint = 'Entra con el vehículo en la zona de devolución de esta oficina y'
-        .. ' pulsa E para terminar el alquiler.',
+    timed_rental_ui_return_hint = 'Entra con el vehículo en la zona de devolución de esta oficina y' .. ' pulsa E para terminar el alquiler.',
     timed_rental_ui_close = 'Cerrar',
     timed_rental_ui_expired = 'Alquiler finalizado',
 }

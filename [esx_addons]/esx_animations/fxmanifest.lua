@@ -11,29 +11,29 @@ version '1.1'
 legacyversion '1.16.3'
 
 shared_scripts {
-	'@esx_lib/imports.lua',
-	'@es_extended/imports.lua'
+    '@esx_lib/imports.lua',
+    '@es_extended/imports.lua',
 }
 dependencies {
-	'esx_lib',
-	'es_extended'
+    'esx_lib',
+    'es_extended',
 }
 
 client_scripts {
-	'@es_extended/locale.lua',
-	'locales/*.lua',
-	'config.lua',
-	'client/modules/nui.lua',
-	'client/main.lua'
+    '@es_extended/locale.lua',
+    'locales/*.lua',
+    'config.lua',
+    'client/modules/nui.lua',
+    'client/main.lua',
 }
 
 ui_page 'html/index.html'
 
 files {
-	'html/index.html',
-	'html/css/style.css',
-	'html/js/*.js',
-	'html/vendor/lucide.min.js',
-	'html/vendor/LICENSE',
-	'html/assets/*'
+    'html/index.html',
+    'html/css/style.css',
+    'html/js/*.js',
+    'html/vendor/lucide.min.js',
+    'html/vendor/LICENSE',
+    'html/assets/*',
 }

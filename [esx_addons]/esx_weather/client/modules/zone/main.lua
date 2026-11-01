@@ -25,16 +25,18 @@ function Modules.Zone.getClosest()
     end
 
     local playerPed = PlayerPedId()
+
     if not playerPed or playerPed == 0 or not DoesEntityExist(playerPed) then
         return getFallbackZone()
     end
 
     local playerCoords = GetEntityCoords(playerPed).xy
-
     local closestZone, closestZoneDistance = nil, nil
+
     for zone, zoneCoords in pairs(Config.Zones) do
         local currentDistance = #(playerCoords - zoneCoords)
-        if (not closestZone or currentDistance < closestZoneDistance) then
+
+        if not closestZone or currentDistance < closestZoneDistance then
             closestZone = zone
             closestZoneDistance = currentDistance
         end

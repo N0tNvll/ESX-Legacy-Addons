@@ -11,17 +11,9 @@ if Config.MaxInService ~= -1 then
 end
 
 TriggerEvent('esx_phone:registerNumber', 'taxi', TranslateCap('taxi_client'), true, true)
-TriggerEvent(
-    'esx_society:registerSociety',
-    'taxi',
-    'Taxi',
-    'society_taxi',
-    'society_taxi',
-    'society_taxi',
-    {
-        type = 'public',
-    }
-)
+TriggerEvent('esx_society:registerSociety', 'taxi', 'Taxi', 'society_taxi', 'society_taxi', 'society_taxi', {
+    type = 'public',
+})
 
 local function toVector3(coords)
     if not coords or not coords.x or not coords.y or not coords.z then
@@ -33,7 +25,6 @@ end
 
 local function isNear(source, coords, distance)
     local nearby = xLib.player.isNearCoords(source, coords, distance)
-
     return nearby
 end
 
@@ -90,26 +81,14 @@ end
 local getValidCount = xLib.validation.count
 
 local function isNearTaxiActions(source)
-    return isNear(
-        source,
-        vector3(
-            Config.Zones.TaxiActions.Pos.x,
-            Config.Zones.TaxiActions.Pos.y,
-            Config.Zones.TaxiActions.Pos.z
-        ),
-        8.0
-    )
+    return isNear(source, vector3(Config.Zones.TaxiActions.Pos.x, Config.Zones.TaxiActions.Pos.y, Config.Zones.TaxiActions.Pos.z), 8.0)
 end
 
 RegisterNetEvent('esx_taxijob:startMission', function(pickupCoords, dropoffCoords)
     local source = source
     local xPlayer = ESX.Player(source)
 
-    if
-        not xPlayer
-        or xPlayer.getJob().name ~= 'taxi'
-        or not isAuthorizedTaxiVehicle(source, xPlayer)
-    then
+    if not xPlayer or xPlayer.getJob().name ~= 'taxi' or not isAuthorizedTaxiVehicle(source, xPlayer) then
         return
     end
 
@@ -136,21 +115,13 @@ RegisterNetEvent('esx_taxijob:success', function()
     local job = xPlayer and xPlayer.getJob()
 
     if not job or job.name ~= 'taxi' then
-        print(
-            ('[^3WARNING^7] Player ^5%s^7 attempted to ^5esx_taxijob:success^7 (cheating)'):format(
-                source
-            )
-        )
+        print(('[^3WARNING^7] Player ^5%s^7 attempted to ^5esx_taxijob:success^7 (cheating)'):format(source))
         return
     end
 
     local mission = activeMissions[source]
 
-    if
-        not mission
-        or not isAuthorizedTaxiVehicle(source, xPlayer)
-        or not isNear(source, mission.dropoff, 18.0)
-    then
+    if not mission or not isAuthorizedTaxiVehicle(source, xPlayer) or not isNear(source, mission.dropoff, 18.0) then
         print(('[^3WARNING^7] Player ^5%s^7 attempted invalid taxi payout!'):format(source))
         return
     end
@@ -192,21 +163,8 @@ RegisterNetEvent('esx_taxijob:getStockItem', function(itemName, count)
 
     count = getValidCount(count)
 
-    if
-        not xPlayer
-        or xPlayer.getJob().name ~= 'taxi'
-        or not count
-        or not isNearTaxiActions(source)
-    then
-        print(
-            (
-                (
-                    '[^3WARNING^7] Player ^5%s^7 attempted '
-                    .. '^5esx_taxijob:getStockItem^7 '
-                    .. '(cheating)'
-                )
-            ):format(source)
-        )
+    if not xPlayer or xPlayer.getJob().name ~= 'taxi' or not count or not isNearTaxiActions(source) then
+        print((('[^3WARNING^7] Player ^5%s^7 attempted ' .. '^5esx_taxijob:getStockItem^7 ' .. '(cheating)')):format(source))
         return
     end
 
@@ -246,21 +204,8 @@ RegisterNetEvent('esx_taxijob:putStockItems', function(itemName, count)
 
     count = getValidCount(count)
 
-    if
-        not xPlayer
-        or xPlayer.getJob().name ~= 'taxi'
-        or not count
-        or not isNearTaxiActions(source)
-    then
-        print(
-            (
-                (
-                    '[^3WARNING^7] Player ^5%s^7 attempted '
-                    .. '^5esx_taxijob:putStockItems^7 '
-                    .. '(cheating)'
-                )
-            ):format(source)
-        )
+    if not xPlayer or xPlayer.getJob().name ~= 'taxi' or not count or not isNearTaxiActions(source) then
+        print((('[^3WARNING^7] Player ^5%s^7 attempted ' .. '^5esx_taxijob:putStockItems^7 ' .. '(cheating)')):format(source))
         return
     end
 

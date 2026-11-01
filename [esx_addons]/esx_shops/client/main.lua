@@ -2,5 +2,5 @@
 -- Copyright (C) 2022-2026 ESX Framework
 
 CreateThread(function()
-	RegisterShopMarkers()
+    RegisterShopMarkers()
 end)

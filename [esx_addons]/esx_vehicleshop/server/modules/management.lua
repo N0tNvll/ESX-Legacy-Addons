@@ -6,10 +6,7 @@ function D.cleanupTrade(order)
     local clear = true
 
     for _, entity in ipairs(GetAllVehicles()) do
-        if
-            DoesEntityExist(entity)
-            and xLib.vehiclePlate.normalize(GetVehicleNumberPlateText(entity)) == order.plate
-        then
+        if DoesEntityExist(entity) and xLib.vehiclePlate.normalize(GetVehicleNumberPlateText(entity)) == order.plate then
             local managed = ESX.GetExtendedVehicleFromPlate(order.plate)
 
             if managed then
@@ -36,34 +33,13 @@ function D.cleanupTrade(order)
         return false
     end
 
-    MySQL.update.await(
-        (
-            'UPDATE cardealer_vehicles SET available = 1, return_plate = NULL '
-            .. 'WHERE source_order = ? AND available = '
-            .. '0'
-        ),
-        { order.id }
-    )
-    MySQL.update.await(
-        (
-            "UPDATE esx_vehicle_orders SET delivery_state = 'complete' WHERE "
-            .. 'id = ? AND state = '
-            .. "'complete'"
-        ),
-        { order.id }
-    )
+    MySQL.update.await(('UPDATE cardealer_vehicles SET available = 1, return_plate = NULL ' .. 'WHERE source_order = ? AND available = ' .. '0'), { order.id })
+    MySQL.update.await(("UPDATE esx_vehicle_orders SET delivery_state = 'complete' WHERE " .. 'id = ? AND state = ' .. "'complete'"), { order.id })
     return true
 end
 
 function D.recoverTradeEntities()
-    local rows = MySQL.query.await(
-        (
-            'SELECT id, plate FROM esx_vehicle_orders\n        WHERE state = '
-            .. "'complete' AND kind IN ('return', 'resale') AND "
-            .. "delivery_state = 'pending' LIMIT "
-            .. '100'
-        )
-    ) or {}
+    local rows = MySQL.query.await(('SELECT id, plate FROM esx_vehicle_orders\n        WHERE state = ' .. "'complete' AND kind IN ('return', 'resale') AND " .. "delivery_state = 'pending' LIMIT " .. '100')) or {}
 
     for _, row in ipairs(rows) do
         local ok, result = pcall(D.cleanupTrade, row)
@@ -73,25 +49,11 @@ function D.recoverTradeEntities()
         end
     end
 
-    for _, row in
-        ipairs(
-            MySQL.query.await(
-                (
-                    'SELECT id, return_plate FROM cardealer_vehicles WHERE '
-                    .. 'available = 0 AND return_plate IS NOT NULL LIMIT '
-                    .. '100'
-                )
-            ) or {}
-        )
-    do
+    for _, row in ipairs(MySQL.query.await(('SELECT id, return_plate FROM cardealer_vehicles WHERE ' .. 'available = 0 AND return_plate IS NOT NULL LIMIT ' .. '100')) or {}) do
         local clear = true
 
         for _, entity in ipairs(GetAllVehicles()) do
-            if
-                DoesEntityExist(entity)
-                and xLib.vehiclePlate.normalize(GetVehicleNumberPlateText(entity))
-                    == row.return_plate
-            then
+            if DoesEntityExist(entity) and xLib.vehiclePlate.normalize(GetVehicleNumberPlateText(entity)) == row.return_plate then
                 local managed = ESX.GetExtendedVehicleFromPlate(row.return_plate)
 
                 if managed then
@@ -109,14 +71,7 @@ function D.recoverTradeEntities()
         end
 
         if clear then
-            MySQL.update.await(
-                (
-                    'UPDATE cardealer_vehicles SET available = 1, return_plate '
-                    .. '= NULL WHERE id = ? AND available = '
-                    .. '0'
-                ),
-                { row.id }
-            )
+            MySQL.update.await(('UPDATE cardealer_vehicles SET available = 1, return_plate ' .. '= NULL WHERE id = ? AND available = ' .. '0'), { row.id })
         end
     end
 end
@@ -142,48 +97,17 @@ D.register('getDealership', function(source, id, page)
 
     local result = { shop = D.shopPayload(shop, player), vehicles = vehicles }
 
-    result.orders = MySQL.query.await(
-        (
-            'SELECT id, kind, model, plate, amount, state FROM '
-            .. 'esx_vehicle_orders WHERE owner = ? AND shop_id = ? ORDER BY '
-            .. 'created_at DESC LIMIT '
-            .. '10'
-        ),
-        { player.getIdentifier(), id }
-    ) or {}
+    result.orders = MySQL.query.await(('SELECT id, kind, model, plate, amount, state FROM ' .. 'esx_vehicle_orders WHERE owner = ? AND shop_id = ? ORDER BY ' .. 'created_at DESC LIMIT ' .. '10'), { player.getIdentifier(), id }) or {}
 
     if D.employee(player, shop) then
         page = math.max(1, math.min(10000, math.floor(tonumber(page) or 1)))
-        result.stock = MySQL.query.await(
-            (
-                'SELECT id, vehicle, price, available FROM cardealer_vehicles '
-                .. 'WHERE shop_id = ? ORDER BY vehicle, id LIMIT 51 OFFSET '
-                .. '?'
-            ),
-            { id, (page - 1) * 50 }
-        ) or {}
-        result.rentals = MySQL.query.await(
-            (
-                'SELECT vehicle, plate, player_name, rent_price FROM '
-                .. 'rented_vehicles WHERE shop_id = ? ORDER BY player_name, plate '
-                .. 'LIMIT 51 OFFSET '
-                .. '?'
-            ),
-            { id, (page - 1) * 50 }
-        ) or {}
+        result.stock = MySQL.query.await(('SELECT id, vehicle, price, available FROM cardealer_vehicles ' .. 'WHERE shop_id = ? ORDER BY vehicle, id LIMIT 51 OFFSET ' .. '?'), { id, (page - 1) * 50 }) or {}
+        result.rentals = MySQL.query.await(('SELECT vehicle, plate, player_name, rent_price FROM ' .. 'rented_vehicles WHERE shop_id = ? ORDER BY player_name, plate ' .. 'LIMIT 51 OFFSET ' .. '?'), { id, (page - 1) * 50 }) or {}
         result.stockMore = #result.stock > 50
         result.stock[51] = nil
         result.rentalsMore = #result.rentals > 50
         result.rentals[51] = nil
-        result.sales = MySQL.query.await(
-            (
-                'SELECT client, model, plate, soldby, date FROM vehicle_sold '
-                .. 'WHERE shop_id = ? ORDER BY date DESC, plate DESC LIMIT 51 '
-                .. 'OFFSET '
-                .. '?'
-            ),
-            { id, (page - 1) * 50 }
-        ) or {}
+        result.sales = MySQL.query.await(('SELECT client, model, plate, soldby, date FROM vehicle_sold ' .. 'WHERE shop_id = ? ORDER BY date DESC, plate DESC LIMIT 51 ' .. 'OFFSET ' .. '?'), { id, (page - 1) * 50 }) or {}
         result.salesMore = #result.sales > 50
         result.sales[51] = nil
         result.salesPage = page
@@ -194,10 +118,7 @@ D.register('getDealership', function(source, id, page)
             end)
         end
 
-        D.assert(
-            D.current(player) and D.employee(player, shop) and D.location(source, shop),
-            'purchase_invalidated'
-        )
+        D.assert(D.current(player) and D.employee(player, shop) and D.location(source, shop), 'purchase_invalidated')
     end
 
     D.assert(D.canAccess(player, shop) and D.location(source, shop), 'purchase_invalidated')
@@ -208,26 +129,12 @@ D.register('quote', D.quote)
 D.register('executeOrder', D.execute)
 D.register('orderStatus', function(source, id)
     local player = D.assert(ESX.GetPlayerFromId(source), 'player')
-    local order = D.assert(
-        MySQL.single.await(
-            'SELECT * FROM esx_vehicle_orders WHERE id = ? AND owner = ?',
-            { id, player.getIdentifier() }
-        ),
-        'invalid_order'
-    )
-
-    local movement =
-        MySQL.single.await('SELECT * FROM esx_vehicle_movements WHERE order_id = ?', { id })
+    local order = D.assert(MySQL.single.await('SELECT * FROM esx_vehicle_orders WHERE id = ? AND owner = ?', { id, player.getIdentifier() }), 'invalid_order')
+    local movement = MySQL.single.await('SELECT * FROM esx_vehicle_movements WHERE order_id = ?', { id })
 
     if not movement and order.state == 'processing' and not D.locks['buyer:' .. order.owner] then
         movement = D.reconcileOrder(id)
-        order = D.assert(
-            MySQL.single.await(
-                'SELECT * FROM esx_vehicle_orders WHERE id = ? AND owner = ?',
-                { id, player.getIdentifier() }
-            ),
-            'invalid_order'
-        )
+        order = D.assert(MySQL.single.await('SELECT * FROM esx_vehicle_orders WHERE id = ? AND owner = ?', { id, player.getIdentifier() }), 'invalid_order')
     end
 
     D.assert(D.current(player), 'session_closing')
@@ -246,20 +153,9 @@ end)
 
 D.register('getOffer', function(source, id)
     local player = D.assert(ESX.GetPlayerFromId(source), 'player')
-    local order = D.assert(
-        MySQL.single.await(
-            (
-                'SELECT * FROM esx_vehicle_orders WHERE id = ? AND owner = ? '
-                .. "AND state = 'quoted' AND expires_at >= "
-                .. '?'
-            ),
-            { id, player.getIdentifier(), os.time() }
-        ),
-        'order_expired'
-    )
+    local order = D.assert(MySQL.single.await(('SELECT * FROM esx_vehicle_orders WHERE id = ? AND owner = ? ' .. "AND state = 'quoted' AND expires_at >= " .. '?'), { id, player.getIdentifier(), os.time() }), 'order_expired')
+    local payload, shop = json.decode(order.payload), D.assert(D.shops[order.shop_id], 'invalid_shop')
 
-    local payload, shop =
-        json.decode(order.payload), D.assert(D.shops[order.shop_id], 'invalid_shop')
     D.validateOrder(player, shop, order, payload)
     return {
         id = id,
@@ -268,6 +164,7 @@ D.register('getOffer', function(source, id)
         name = order.model,
         amount = order.amount,
         rentPrice = payload.rentPrice,
+        color = payload.color,
         paymentMethods = D.orderMethods(shop, order.kind),
         plate = order.plate,
     }
@@ -294,10 +191,7 @@ D.register('moveInventory', function(source, id, item, count, deposit)
     local player, shop = D.playerShop(source, id, 'inventory', true)
 
     count = xLib.validation.count(count)
-    D.assert(
-        type(item) == 'string' and count and type(deposit) == 'boolean' and not Config.OxInventory,
-        'invalid_item'
-    )
+    D.assert(type(item) == 'string' and count and type(deposit) == 'boolean' and not Config.OxInventory, 'invalid_item')
 
     local inventory
 
@@ -315,10 +209,7 @@ D.register('moveInventory', function(source, id, item, count, deposit)
         D.assert(player.canCarryItem(item, count), 'inventory_full')
     end
 
-    D.assert(
-        D.current(player) and D.employee(player, shop) and D.location(source, shop),
-        'purchase_invalidated'
-    )
+    D.assert(D.current(player) and D.employee(player, shop) and D.location(source, shop), 'purchase_invalidated')
 
     if deposit then
         D.assert(player.removeInventoryItem(item, count) ~= false, 'inventory_failed')

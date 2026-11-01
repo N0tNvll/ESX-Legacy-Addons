@@ -28,15 +28,10 @@ function Rental.DB.initialize()
         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'esx_vehicle_rentals']])
     assert(engine and engine:upper() == 'INNODB', 'esx_vehicle_rentals must use InnoDB')
 
-    MySQL.update.await(
-        "DELETE FROM esx_vehicle_rentals WHERE status = 'pending' OR expires_at <= ?",
-        { os.time() }
-    )
+    MySQL.update.await("DELETE FROM esx_vehicle_rentals WHERE status = 'pending' OR expires_at <= ?", { os.time() })
 
-    local rows = MySQL.query.await(
-        'SELECT identifier, branch, model, plate, plan, account, price, expires_at '
-            .. "FROM esx_vehicle_rentals WHERE status = 'active'"
-    )
+    local rows = MySQL.query.await('SELECT identifier, branch, model, plate, plan, account, price, expires_at ' .. "FROM esx_vehicle_rentals WHERE status = 'active'")
+
     assert(type(rows) == 'table', 'Unable to load rental contracts')
 
     for _, row in ipairs(rows) do
@@ -54,11 +49,7 @@ function Rental.DB.initialize()
 end
 
 function Rental.DB.activate(lease)
-    local rows = MySQL.update.await(
-        "UPDATE esx_vehicle_rentals SET status = 'active' "
-            .. "WHERE identifier = ? AND plate = ? AND status = 'pending'",
-        { lease.identifier, lease.plate }
-    )
+    local rows = MySQL.update.await("UPDATE esx_vehicle_rentals SET status = 'active' " .. "WHERE identifier = ? AND plate = ? AND status = 'pending'", { lease.identifier, lease.plate })
 
     assert(rows == 1, 'Unable to activate rental contract')
 end
@@ -87,34 +78,17 @@ function Rental.DB.insert(lease)
 end
 
 function Rental.DB.delete(lease)
-    local result = MySQL.update.await(
-        'DELETE FROM esx_vehicle_rentals WHERE identifier = ? AND plate = ?',
-        { lease.identifier, lease.plate }
-    )
+    local result = MySQL.update.await('DELETE FROM esx_vehicle_rentals WHERE identifier = ? AND plate = ?', { lease.identifier, lease.plate })
 
     assert(type(result) == 'number', 'Unable to close rental contract')
 end
 
 function Rental.DB.plateExists(plate)
-    if
-        MySQL.scalar.await(
-            'SELECT plate FROM esx_vehicle_rentals WHERE plate = ? LIMIT 1',
-            { plate }
-        )
-    then
+    if MySQL.scalar.await('SELECT plate FROM esx_vehicle_rentals WHERE plate = ? LIMIT 1', { plate }) then
         return true
     end
 
-    if
-        MySQL.scalar.await(
-            'SELECT plate FROM owned_vehicles WHERE plate = ? '
-                .. 'UNION SELECT plate FROM rented_vehicles WHERE plate = ? '
-                .. 'UNION SELECT plate FROM vehicle_sold WHERE plate = ? '
-                .. 'UNION SELECT reserved_plate FROM esx_vehicle_orders '
-                .. 'WHERE reserved_plate = ? LIMIT 1',
-            { plate, plate, plate, plate }
-        )
-    then
+    if MySQL.scalar.await('SELECT plate FROM owned_vehicles WHERE plate = ? ' .. 'UNION SELECT plate FROM rented_vehicles WHERE plate = ? ' .. 'UNION SELECT plate FROM vehicle_sold WHERE plate = ? ' .. 'UNION SELECT reserved_plate FROM esx_vehicle_orders ' .. 'WHERE reserved_plate = ? LIMIT 1', { plate, plate, plate, plate }) then
         return true
     end
 

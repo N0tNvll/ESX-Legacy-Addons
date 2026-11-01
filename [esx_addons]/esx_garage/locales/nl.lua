@@ -2,12 +2,12 @@
 -- Copyright (C) 2022-2026 ESX Framework
 
 return {
-    ["parking_blip_name"] = 'Garage',
-    ["Impound_blip_name"] = 'In beslag genomen',
-    ["access_parking"] = 'klik op [E] om je garage te gebruiken.',
-    ["access_Impound"] = 'klik op [E] om je in beslag genomen voertuigen te krijgen.',
-    ["park_veh"] = 'klik op [E] om je voertuig te parkeren.',
-    ["not_owning_veh"] = 'Dit is niet jouw voertuig!',
+    ['parking_blip_name'] = 'Garage',
+    ['Impound_blip_name'] = 'In beslag genomen',
+    ['access_parking'] = 'klik op [E] om je garage te gebruiken.',
+    ['access_Impound'] = 'klik op [E] om je in beslag genomen voertuigen te krijgen.',
+    ['park_veh'] = 'klik op [E] om je voertuig te parkeren.',
+    ['not_owning_veh'] = 'Dit is niet jouw voertuig!',
     ['veh_released'] = 'Succesvol je voertuig opgehaald.',
     ['veh_Impound_released'] = 'Succesvol je voertuig terug gekregen van de politie.',
     ['veh_stored'] = 'Succesvol je voertuig geparkeerd',
@@ -28,5 +28,5 @@ return {
     ['not_in_vehicle'] = 'je zit niet in een voertuig.',
     ['cannot_store'] = 'dit voertuig kan niet worden gestald.',
     ['cannot_access_garage'] = 'je hebt geen toegang tot deze garage.',
-    ['received_vehicle'] = 'je hebt een voertuig ontvangen (kenteken: %s).'
+    ['received_vehicle'] = 'je hebt een voertuig ontvangen (kenteken: %s).',
 }

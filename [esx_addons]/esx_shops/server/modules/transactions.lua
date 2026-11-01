@@ -61,6 +61,7 @@ local function processPurchase(source, purchaseData, zone, cb)
 
     if not ValidateInventorySpace(source, validatedItems) then
         local message = _U('inventory_full')
+
         xPlayer.showNotification(message)
         cb(false, message)
         return
@@ -71,6 +72,7 @@ local function processPurchase(source, purchaseData, zone, cb)
 
     if not hasEnough then
         local message = _U('not_enough_money', ESX.Math.GroupDigits(missingAmount))
+
         xPlayer.showNotification(message)
         cb(false, message)
         return
@@ -78,13 +80,13 @@ local function processPurchase(source, purchaseData, zone, cb)
 
     if not ValidateInventorySpaceFinal(source, validatedItems) then
         local message = _U('inventory_full')
+
         xPlayer.showNotification(message)
         cb(false, message)
         return
     end
 
-    if xPlayer.isCurrent() ~= true
-        or not ValidatePlayerDistance(source, zone) then
+    if xPlayer.isCurrent() ~= true or not ValidatePlayerDistance(source, zone) then
         return cb(false, _U('transaction_error'))
     end
 
@@ -102,9 +104,7 @@ local function processPurchase(source, purchaseData, zone, cb)
         if recovered == true then
             RefundMoney(xPlayer, paymentMethod, actualTotal)
         else
-            print(('[esx_shops] Purchase requires review: %s, account=%s, total=%s, items=%s')
-                :format(xPlayer.getIdentifier(), paymentMethod, actualTotal,
-                    json.encode(validatedItems)))
+            print(('[esx_shops] Purchase requires review: %s, account=%s, total=%s, items=%s'):format(xPlayer.getIdentifier(), paymentMethod, actualTotal, json.encode(validatedItems)))
         end
 
         cb(false, _U('transaction_error'))
@@ -153,8 +153,7 @@ function ProcessPurchase(source, purchaseData, zone, cb)
     player.endAccountOperation()
 
     if not ok or not response then
-        print(('[esx_shops] Purchase requires review: %s, error=%s')
-            :format(identifier, tostring(failure)))
+        print(('[esx_shops] Purchase requires review: %s, error=%s'):format(identifier, tostring(failure)))
         return cb(false, _U('transaction_error'))
     end
 

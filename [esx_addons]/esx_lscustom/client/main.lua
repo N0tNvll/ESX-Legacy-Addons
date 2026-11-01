@@ -16,7 +16,7 @@ function IsLSCustomNuiOpen()
 end
 
 local function FormatMoney(amount)
-    return ("%s%s"):format(Config.Currency or "$", ESX.Math.GroupDigits(ESX.Math.Round(amount or 0)))
+    return ('%s%s'):format(Config.Currency or '$', ESX.Math.GroupDigits(ESX.Math.Round(amount or 0)))
 end
 
 local function GetVehiclePrice(vehicle)
@@ -40,20 +40,20 @@ local function FindWheelMenu(current)
 end
 
 local function IsDefaultOrInstalled(label)
-    if type(label) ~= 'string' then return false end
+    if type(label) ~= 'string' then
+        return false
+    end
 
     local cleanLabel = label:gsub('<.->', ''):gsub('^%s*(.-)%s*$', '%1')
-
     return cleanLabel == TranslateCap('by_default') or cleanLabel == TranslateCap('no_turbo') or cleanLabel:find(TranslateCap('installed'), 1, true) ~= nil
 end
 
 local function CleanMenuLabel(label)
-    if type(label) ~= 'string' then return '' end
+    if type(label) ~= 'string' then
+        return ''
+    end
 
-    return label
-        :gsub('<.->', '')
-        :gsub('&nbsp;', ' ')
-        :gsub('^%s*(.-)%s*$', '%1')
+    return label:gsub('<.->', ''):gsub('&nbsp;', ' '):gsub('^%s*(.-)%s*$', '%1')
 end
 
 local function GetCartTotal()
@@ -77,21 +77,34 @@ local function NormalizeVehiclePropsForPaidCart(vehicleProps, cart)
 end
 
 local function EnsureWorkshopVehicleModsLoaded(vehicle)
-    if not vehicle or vehicle == 0 or not DoesEntityExist(vehicle) then return false end
+    if not vehicle or vehicle == 0 or not DoesEntityExist(vehicle) then
+        return false
+    end
 
     SetVehicleModKit(vehicle, 0)
+
     local timeout = GetGameTimer() + 5000
+
     while not IsVehicleModLoadDone(vehicle) and GetGameTimer() < timeout do
         Wait(0)
-        if not DoesEntityExist(vehicle) then return false end
+
+        if not DoesEntityExist(vehicle) then
+            return false
+        end
     end
 
     return true
 end
 
 local function ResetWorkshopCamera()
-    if not Config.Workshop or not Config.Workshop.EnableCamera then return end
-    if not WorkshopCamera then return end
+    if not Config.Workshop or not Config.Workshop.EnableCamera then
+        return
+    end
+
+    if not WorkshopCamera then
+        return
+    end
+
     WorkshopCamera.Stop()
 end
 
@@ -120,6 +133,7 @@ end)
 
 RegisterNetEvent('esx_lscustom:restoreMods', function(netId, props)
     local xVehicle = NetworkGetEntityFromNetworkId(netId)
+
     if props ~= nil then
         if DoesEntityExist(xVehicle) then
             xLib.game.setVehicleProperties(xVehicle, props)
@@ -130,10 +144,14 @@ end)
 RegisterNetEvent('esx_lscustom:cancelInstallMod')
 AddEventHandler('esx_lscustom:cancelInstallMod', function()
     local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
-    if (GetPedInVehicleSeat(vehicle, -1) ~= PlayerPedId()) then
+
+    if GetPedInVehicleSeat(vehicle, -1) ~= PlayerPedId() then
         vehicle = GetPlayersLastVehicle(PlayerPedId())
     end
-    if not vehicle or vehicle == 0 or not next(myCar) then return end
+
+    if not vehicle or vehicle == 0 or not next(myCar) then
+        return
+    end
 
     RestoreVehicleProps(vehicle, myCar)
 end)
@@ -144,11 +162,12 @@ local function HandleCartPurchaseResult(success, message, paidProps)
     if not success then
         message = message or TranslateCap('purchase_invalid')
         ESX.ShowNotification(message)
+
         if nuiIsOpen then
             SendNUIMessage({
                 action = 'purchaseResult',
                 success = false,
-                message = message
+                message = message,
             })
             SendNuiState()
         elseif lsMenuIsShowed then
@@ -158,6 +177,7 @@ local function HandleCartPurchaseResult(success, message, paidProps)
     end
 
     local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+
     if vehicle and vehicle ~= 0 then
         RestoreVehicleProps(vehicle, paidProps)
     end
@@ -167,29 +187,29 @@ local function HandleCartPurchaseResult(success, message, paidProps)
 end
 
 AddEventHandler('onClientResourceStop', function(resource)
-	if resource == GetCurrentResourceName() then
-		if lsMenuIsShowed then
+    if resource == GetCurrentResourceName() then
+        if lsMenuIsShowed then
             if CloseWorkshop then
                 CloseWorkshop(false)
             else
                 ResetWorkshopCamera()
                 TriggerEvent('esx_lscustom:cancelInstallMod')
             end
-		end
-	end
+        end
+    end
 end)
 
 AddEventHandler('onResourceStop', function(resource)
-	if resource == GetCurrentResourceName() then
-		if lsMenuIsShowed then
+    if resource == GetCurrentResourceName() then
+        if lsMenuIsShowed then
             if CloseWorkshop then
                 CloseWorkshop(false)
             else
                 ResetWorkshopCamera()
                 TriggerEvent('esx_lscustom:cancelInstallMod')
             end
-		end
-	end
+        end
+    end
 end)
 
 function CloseWorkshop(save)
@@ -208,6 +228,7 @@ function CloseWorkshop(save)
 
     if not save then
         TriggerEvent('esx_lscustom:cancelInstallMod')
+
         if myCar.plate then
             TriggerServerEvent('esx_lscustom:stopModing', myCar.plate)
         end
@@ -230,12 +251,16 @@ local function BuildNuiMenu(data)
         CalculateMenuPrice = CalculateMenuPrice,
         CleanMenuLabel = CleanMenuLabel,
         GetCartTotal = GetCartTotal,
-        GetGameBuild = function() return gameBuild end,
-        GetMyCar = function() return myCar end,
+        GetGameBuild = function()
+            return gameBuild
+        end,
+        GetMyCar = function()
+            return myCar
+        end,
         GetVehiclePrice = GetVehiclePrice,
         IsDefaultOrInstalled = IsDefaultOrInstalled,
         IsTurboMod = IsTurboMod,
-        IsPerformanceMod = IsPerformanceMod
+        IsPerformanceMod = IsPerformanceMod,
     })
 end
 
@@ -243,17 +268,18 @@ local function BuildNuiStats()
     local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
     local base = CalcHandlingStats(vehicle)
     local live = CalcModdedStats(vehicle, base)
-
     return {
         speed = { value = live.speed, delta = live.speed - base.speed },
         accel = { value = live.accel, delta = live.accel - base.accel },
         brake = { value = live.brake, delta = live.brake - base.brake },
-        handling = { value = live.handling, delta = live.handling - base.handling }
+        handling = { value = live.handling, delta = live.handling - base.handling },
     }
 end
 
 function SendNuiState(menu)
-    if not nuiIsOpen then return end
+    if not nuiIsOpen then
+        return
+    end
 
     SendNUIMessage({
         action = 'state',
@@ -263,12 +289,14 @@ function SendNuiState(menu)
         total = GetCartTotal(),
         currency = Config.Currency or '$',
         locale = WorkshopLocale.GetNuiPayload(),
-        stats = BuildNuiStats()
+        stats = BuildNuiStats(),
     })
 end
 
 local function OpenVehicleStatsMenu(parent)
-    if not Config.Workshop or not Config.Workshop.EnableStats then return end
+    if not Config.Workshop or not Config.Workshop.EnableStats then
+        return
+    end
 
     local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
     local base = CalcHandlingStats(vehicle)
@@ -277,8 +305,9 @@ local function OpenVehicleStatsMenu(parent)
         { key = 'speed', label = TranslateCap('stats_speed') },
         { key = 'accel', label = TranslateCap('stats_accel') },
         { key = 'brake', label = TranslateCap('stats_brake') },
-        { key = 'handling', label = TranslateCap('stats_handling') }
+        { key = 'handling', label = TranslateCap('stats_handling') },
     }
+
     local elements = {}
 
     for i = 1, #labels do
@@ -288,28 +317,29 @@ local function OpenVehicleStatsMenu(parent)
 
         elements[#elements + 1] = {
             label = ('%s: %s/100%s'):format(stat.label, live[stat.key], deltaText),
-            value = 'noop'
+            value = 'noop',
         }
     end
 
     elements[#elements + 1] = {
         label = ('%s: %s'):format(TranslateCap('cart'), FormatMoney(GetCartTotal())),
-        value = 'noop'
+        value = 'noop',
     }
 
     ESX.UI.Menu.Open('default', GetCurrentResourceName(), 'vehicleStats', {
         title = TranslateCap('vehicle_stats'),
         align = 'top-left',
-        elements = elements
-    }, function()
-    end, function(_, menu)
+        elements = elements,
+    }, function() end, function(_, menu)
         menu.close()
         GetAction({ value = parent or 'main' })
     end)
 end
 
 local function OpenCameraMenu(parent)
-    if not Config.Workshop or not Config.Workshop.EnableCamera then return end
+    if not Config.Workshop or not Config.Workshop.EnableCamera then
+        return
+    end
 
     ESX.UI.Menu.Open('default', GetCurrentResourceName(), 'cameraMenu', {
         title = TranslateCap('camera'),
@@ -325,8 +355,8 @@ local function OpenCameraMenu(parent)
             { label = TranslateCap('camera_rotate_left'), value = 'rotateLeft' },
             { label = TranslateCap('camera_rotate_right'), value = 'rotateRight' },
             { label = TranslateCap('camera_zoom_in'), value = 'zoomIn' },
-            { label = TranslateCap('camera_zoom_out'), value = 'zoomOut' }
-        }
+            { label = TranslateCap('camera_zoom_out'), value = 'zoomOut' },
+        },
     }, function(data)
         if data.current.value == 'rotateLeft' then
             WorkshopCamera.Rotate(-1)
@@ -348,11 +378,15 @@ local function OpenCameraMenu(parent)
 end
 
 local function CheckoutCart()
-    if pendingCartPurchase then return end
+    if pendingCartPurchase then
+        return
+    end
 
     local cart = GetCartList()
+
     if #cart == 0 or GetCartTotal() <= 0 then
         ESX.ShowNotification(TranslateCap('cart_no_changes'))
+
         if nuiIsOpen then
             SendNUIMessage({ action = 'toast', message = TranslateCap('cart_no_changes') })
             SendNuiState()
@@ -363,6 +397,7 @@ local function CheckoutCart()
     end
 
     local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+
     if not vehicle or vehicle == 0 then
         if nuiIsOpen then
             SendNUIMessage({ action = 'toast', message = TranslateCap('must_stay_in_vehicle') })
@@ -374,19 +409,22 @@ local function CheckoutCart()
     end
 
     RestoreVehicleProps(vehicle, myCar)
+
     for i = 1, #cart do
         UpdateMods(cart[i])
     end
 
     local vehicleProps = NormalizeVehiclePropsForPaidCart(xLib.game.getVehicleProperties(vehicle), cart)
+
     RestoreVehicleProps(vehicle, vehicleProps)
     cartPreviewProps = vehicleProps
     pendingCartPurchase = true
 
     local payload = {
         cart = cart,
-        vehicleProps = vehicleProps
+        vehicleProps = vehicleProps,
     }
+
     local netId = NetworkGetNetworkIdFromEntity(vehicle)
 
     CreateThread(function()
@@ -411,18 +449,22 @@ local function CheckoutCart()
         end
 
         local ok, success, message = pcall(xLib.callback.await, 'esx_lscustom:buyCart', false, payload, netId, account)
+
         HandleCartPurchaseResult(ok and success == true, ok and message or nil, vehicleProps)
     end)
 end
 
 local function HandleWorkshopAction(current, parent)
-    if not current or not current.value then return false end
+    if not current or not current.value then
+        return false
+    end
 
     if current.value == 'cartCheckout' then
         CheckoutCart()
         return true
     elseif current.value == 'cartClear' then
         local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+
         ClearCart()
         cartPreviewProps = myCar
         RestoreVehicleProps(vehicle, myCar)
@@ -445,6 +487,7 @@ function UpdateMods(data)
 
     if data.modType then
         WorkshopCamera.Focus(data.modType)
+
         local props = {}
 
         if data.wheelType then
@@ -458,10 +501,11 @@ function UpdateMods(data)
             props = {}
         elseif data.modType == 'neonColor' then
             if data.modNum[1] == 0 and data.modNum[2] == 0 and data.modNum[3] == 0 then
-                props['neonEnabled'] = {false, false, false, false}
+                props['neonEnabled'] = { false, false, false, false }
             else
-                props['neonEnabled'] = {true, true, true, true}
+                props['neonEnabled'] = { true, true, true, true }
             end
+
             xLib.game.setVehicleProperties(vehicle, props)
             props = {}
         elseif data.modType == 'tyreSmokeColor' then
@@ -474,6 +518,7 @@ function UpdateMods(data)
             else
                 props['modXenon'] = false
             end
+
             xLib.game.setVehicleProperties(vehicle, props)
             props = {}
         end
@@ -490,10 +535,14 @@ local function AddCurrentNuiModToCart(item)
     end
 
     local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
-    if not vehicle or vehicle == 0 then return end
+
+    if not vehicle or vehicle == 0 then
+        return
+    end
 
     local menuKey = item.menuKey
     local menuConfig = menuKey and Config.Menus[menuKey]
+
     if not menuConfig and (item.modType == 'modFrontWheels' or item.modType == 'modBackWheels') then
         menuKey, menuConfig = FindWheelMenu(item)
     end
@@ -504,14 +553,16 @@ local function AddCurrentNuiModToCart(item)
     end
 
     UpdateMods(item)
+
     local price = CalculateMenuPrice(menuKey, menuConfig, item, GetVehiclePrice(vehicle))
+
     AddCartItem({
         label = CleanMenuLabel(item.label),
         menuKey = menuKey,
         modType = item.modType,
         modNum = item.modNum,
         wheelType = item.wheelType,
-        price = price
+        price = price,
     })
 
     cartPreviewProps = xLib.game.getVehicleProperties(vehicle)
@@ -520,7 +571,9 @@ local function AddCurrentNuiModToCart(item)
 end
 
 local function OpenLSCustomsInterface(vehicle)
-    if not vehicle or vehicle == 0 or not DoesEntityExist(vehicle) then return end
+    if not vehicle or vehicle == 0 or not DoesEntityExist(vehicle) then
+        return
+    end
 
     lsMenuIsShowed = true
     nuiIsOpen = true
@@ -529,6 +582,7 @@ local function OpenLSCustomsInterface(vehicle)
     pendingCartPurchase = false
 
     FreezeEntityPosition(vehicle, true)
+
     if not EnsureWorkshopVehicleModsLoaded(vehicle) then
         CloseWorkshop(false)
         return
@@ -540,6 +594,7 @@ local function OpenLSCustomsInterface(vehicle)
     WorkshopCamera.Start(vehicle)
 
     local netId = NetworkGetNetworkIdFromEntity(vehicle)
+
     TriggerServerEvent('esx_lscustom:startModing', myCar, netId)
 
     ESX.HideUI()
@@ -552,7 +607,7 @@ local function OpenLSCustomsInterface(vehicle)
         theme = xLib.colors.getESXTheme(),
         features = {
             camera = Config.Workshop and Config.Workshop.EnableCamera == true,
-            stats = Config.Workshop and Config.Workshop.EnableStats == true
+            stats = Config.Workshop and Config.Workshop.EnableStats == true,
         },
         menu = BuildNuiMenu({ value = currentNuiMenu }),
         root = BuildNuiMenu({ value = 'main' }).elements,
@@ -560,7 +615,7 @@ local function OpenLSCustomsInterface(vehicle)
         total = GetCartTotal(),
         currency = Config.Currency or '$',
         locale = WorkshopLocale.GetNuiPayload(),
-        stats = BuildNuiStats()
+        stats = BuildNuiStats(),
     })
 end
 
@@ -571,13 +626,15 @@ end)
 
 RegisterNUICallback('openMenu', function(data, cb)
     local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+
     RestoreVehicleProps(vehicle, cartPreviewProps)
 
     currentNuiMenu = data and data.value or DefaultNuiMenu
     currentNuiColor = data and data.color or nil
+
     local menu = BuildNuiMenu({
         value = currentNuiMenu,
-        color = currentNuiColor
+        color = currentNuiColor,
     })
 
     SendNuiState(menu)
@@ -602,6 +659,7 @@ end)
 
 RegisterNUICallback('clearCart', function(_, cb)
     local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+
     ClearCart()
     cartPreviewProps = myCar
     RestoreVehicleProps(vehicle, myCar)
@@ -642,17 +700,27 @@ LSCustomLegacyDeps = {
     CloseWorkshop = CloseWorkshop,
     FindWheelMenu = FindWheelMenu,
     FormatMoney = FormatMoney,
-    GetCartPreviewProps = function() return cartPreviewProps end,
-    GetCartTotal = function() return GetCartTotal() end,
-    GetGameBuild = function() return gameBuild end,
-    GetMyCar = function() return myCar end,
+    GetCartPreviewProps = function()
+        return cartPreviewProps
+    end,
+    GetCartTotal = function()
+        return GetCartTotal()
+    end,
+    GetGameBuild = function()
+        return gameBuild
+    end,
+    GetMyCar = function()
+        return myCar
+    end,
     GetVehiclePrice = GetVehiclePrice,
     HandleWorkshopAction = HandleWorkshopAction,
     IsDefaultOrInstalled = IsDefaultOrInstalled,
     IsTurboMod = IsTurboMod,
     RestoreVehicleProps = RestoreVehicleProps,
-    SetCartPreviewProps = function(props) cartPreviewProps = props end,
-    UpdateMods = UpdateMods
+    SetCartPreviewProps = function(props)
+        cartPreviewProps = props
+    end,
+    UpdateMods = UpdateMods,
 }
 
 -- Blips
@@ -663,7 +731,7 @@ CreateThread(function()
             sprite = 72,
             scale = 0.8,
             shortRange = true,
-            label = v.Name
+            label = v.Name,
         })
     end
 end)
@@ -704,11 +772,13 @@ CreateThread(function()
                     if #(coords - v.Pos) < Config.DrawDistance then
                         Near = true
                         Sleep = 0
+
                         if not lsMenuIsShowed then
                             if not HintDisplayed then
                                 HintDisplayed = true
                                 ESX.TextUI(v.Hint)
                             end
+
                             if IsControlJustReleased(0, 38) then
                                 local vehicle = GetVehiclePedIsIn(playerPed, false)
 
@@ -717,6 +787,7 @@ CreateThread(function()
                                 else
                                     lsMenuIsShowed = true
                                     FreezeEntityPosition(vehicle, true)
+
                                     if EnsureWorkshopVehicleModsLoaded(vehicle) then
                                         myCar = xLib.game.getVehicleProperties(vehicle)
                                         cartPreviewProps = myCar
@@ -724,27 +795,29 @@ CreateThread(function()
                                         WorkshopCamera.Start(vehicle)
 
                                         local netId = NetworkGetNetworkIdFromEntity(vehicle)
+
                                         TriggerServerEvent('esx_lscustom:startModing', myCar, netId)
 
                                         ESX.UI.Menu.CloseAll()
                                         GetAction({
-                                            value = 'main'
+                                            value = 'main',
                                         })
                                     else
                                         CloseWorkshop(false)
                                     end
                                 end
-
                             end
                         end
                     end
                 end
+
                 if not Near and HintDisplayed then
                     HintDisplayed = false
                     ESX.HideUI()
                 end
             end
         end
+
         Wait(Sleep)
     end
 end)

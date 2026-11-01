@@ -15,14 +15,14 @@ shared_script '@es_extended/imports.lua'
 
 shared_script '@esx_lib/imports.lua'
 server_scripts {
-	'server/main.lua'
+    'server/main.lua',
 }
 
 client_scripts {
-	'client/main.lua'
+    'client/main.lua',
 }
 
 dependencies {
-	'esx_lib',
-	'es_extended'
+    'esx_lib',
+    'es_extended',
 }

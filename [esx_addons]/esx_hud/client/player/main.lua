@@ -3,18 +3,20 @@
 
 local bool, ammoInClip = false, 0
 local WeaponList = {}
+
 function HUD:GetJobLabel()
     if not ESX.PlayerData.job then
         return
     end
 
-    if ESX.PlayerData.job.name == "unemployed" then
+    if ESX.PlayerData.job.name == 'unemployed' then
         return ESX.PlayerData.job.label
     end
 
-    local dutySuffix = ESX.PlayerData.job.onDuty and "" or Translate("job_off_duty")
-    return string.format("%s - %s %s", ESX.PlayerData.job.label, ESX.PlayerData.job.grade_label, dutySuffix)
+    local dutySuffix = ESX.PlayerData.job.onDuty and '' or Translate('job_off_duty')
+    return string.format('%s - %s %s', ESX.PlayerData.job.label, ESX.PlayerData.job.grade_label, dutySuffix)
 end
+
 function HUD:GetLocation()
     local PPos = GetEntityCoords(ESX.PlayerData.ped)
     local streetHash = GetStreetNameAtCoord(PPos.x, PPos.y, PPos.z)
@@ -23,7 +25,7 @@ function HUD:GetLocation()
 end
 
 function HUD:IsRecording()
-    if type(IsRecording) ~= "function" then
+    if type(IsRecording) ~= 'function' then
         return false
     end
 
@@ -36,10 +38,11 @@ function HUD:UpdateAccounts(accounts)
         if accounts == nil then
             return
         end
+
         for _, data in pairs(accounts) do
-            if data.name == "bank" then
+            if data.name == 'bank' then
                 self.Data.Money.bank = data.money
-            elseif data.name == "money" then
+            elseif data.name == 'money' then
                 self.Data.Money.cash = data.money
             end
         end
@@ -51,12 +54,16 @@ function HUD:GetWeapons()
 end
 
 function HUD:SlowThick()
-    if self.slowThreadRunning then return end
+    if self.slowThreadRunning then
+        return
+    end
+
     self.slowThreadRunning = true
     CreateThread(function()
         while not ESX.PlayerLoaded do
             Wait(200)
         end
+
         while ESX.PlayerLoaded do
             self.Data.Position = GetEntityCoords(ESX.PlayerData.ped)
 
@@ -66,16 +73,19 @@ function HUD:SlowThick()
 
             if not Config.Disable.Weapon then
                 self.Data.Weapon.Active, self.Data.Weapon.CurrentWeapon = GetCurrentPedWeapon(ESX.PlayerData.ped, false)
+
                 if self.Data.Weapon.CurrentWeapon == 0 then
                     self.Data.Weapon.Active = false
                 end
+
                 self.Data.Weapon.Name = nil
                 self.Data.Weapon.Image = nil
+
                 if self.Data.Weapon.Active and WeaponList[self.Data.Weapon.CurrentWeapon] then
                     self.Data.Weapon.MaxAmmo = (GetAmmoInPedWeapon(ESX.PlayerData.ped, self.Data.Weapon.CurrentWeapon) - ammoInClip)
                     self.Data.Weapon.Name = WeaponList[self.Data.Weapon.CurrentWeapon].label and WeaponList[self.Data.Weapon.CurrentWeapon].label or false
                     self.Data.Weapon.isWeaponMelee = not WeaponList[self.Data.Weapon.CurrentWeapon].ammo
-                    self.Data.Weapon.Image = string.gsub(WeaponList[self.Data.Weapon.CurrentWeapon].name, "WEAPON_", "")
+                    self.Data.Weapon.Image = string.gsub(WeaponList[self.Data.Weapon.CurrentWeapon].name, 'WEAPON_', '')
                     self.Data.Weapon.Image = string.lower(self.Data.Weapon.Image)
                 end
 
@@ -87,12 +97,16 @@ function HUD:SlowThick()
 
             Wait(1000)
         end
+
         self.slowThreadRunning = false
     end)
 end
 
 function HUD:FastThick()
-    if self.fastThreadRunning then return end
+    if self.fastThreadRunning then
+        return
+    end
+
     self.fastThreadRunning = true
     CreateThread(function()
         while not ESX.PlayerLoaded do
@@ -100,6 +114,7 @@ function HUD:FastThick()
         end
 
         local srvLogo = self:GetTheme().logoUrl
+
         while ESX.PlayerLoaded do
             if not Config.Disable.Voice then
                 self.Data.isTalking = NetworkIsPlayerTalking(ESX.playerId)
@@ -112,7 +127,7 @@ function HUD:FastThick()
 
             local values = {
                 playerId = ESX.serverId,
-                onlinePlayers = GlobalState["playerCount"],
+                onlinePlayers = GlobalState['playerCount'],
                 serverLogo = srvLogo,
                 moneys = { bank = self.Data.Money.bank or 0, money = self.Data.Money.cash or 0 },
                 weaponData = {
@@ -123,11 +138,11 @@ function HUD:FastThick()
                     currentAmmo = self.Data.Weapon.CurrentAmmo or 0,
                     maxAmmo = self.Data.Weapon.MaxAmmo or 0,
                 },
-                streetName = self.Data.Location or "",
+                streetName = self.Data.Location or '',
                 zoneName = GetLabelText(GetNameOfZone(self.Data.Position.x, self.Data.Position.y, self.Data.Position.z)),
                 heading = GetEntityHeading(ESX.PlayerData.ped),
                 recording = self:IsRecording(),
-                gameTime = string.format("%02d:%02d", GetClockHours(), GetClockMinutes()),
+                gameTime = string.format('%02d:%02d', GetClockHours(), GetClockMinutes()),
                 voice = {
                     mic = self.Data.isTalking or false,
                     radio = self.Data.isTalkingOnRadio,
@@ -136,52 +151,57 @@ function HUD:FastThick()
                 job = HUD:GetJobLabel(),
             }
 
-            xLib.nui.send({ type = "HUD_DATA", value = values })
+            xLib.nui.send({ type = 'HUD_DATA', value = values })
             Wait(500)
         end
+
         self.fastThreadRunning = false
     end)
 end
 
 -- Handlers
 -- On script start
-AddEventHandler("onResourceStart", function(resource)
+AddEventHandler('onResourceStart', function(resource)
     if GetCurrentResourceName() ~= resource then
         return
     end
+
     Wait(1000)
+
     if not Config.Disable.Weapon then
         HUD:GetWeapons()
     end
 end)
 
 -- On player loaded
-ESX.SecureNetEvent("esx:playerLoaded", function(xPlayer)
+ESX.SecureNetEvent('esx:playerLoaded', function(xPlayer)
     if not Config.Disable.Weapon then
         HUD:GetWeapons()
     end
+
     HUD:GetJobLabel(xPlayer.job)
 end)
 
-AddEventHandler("esx:pauseMenuActive", function(state)
+AddEventHandler('esx:pauseMenuActive', function(state)
     if HUD.Data.hudHidden then
         return
     end
+
     HUD:Toggle(not state)
 end)
 
 -- job handler
-RegisterNetEvent("esx:setJob")
-AddEventHandler("esx:setJob", function(job)
+RegisterNetEvent('esx:setJob')
+AddEventHandler('esx:setJob', function(job)
     ESX.PlayerData.job = job
 end)
 
 --Cash and Bank handler
 if not Config.Disable.Money then
-    RegisterNetEvent("esx:setAccountMoney", function(account)
-        if account.name == "money" then
+    RegisterNetEvent('esx:setAccountMoney', function(account)
+        if account.name == 'money' then
             HUD.Data.Money.cash = account.money
-        elseif account.name == "bank" then
+        elseif account.name == 'bank' then
             HUD.Data.Money.bank = account.money
         end
     end)

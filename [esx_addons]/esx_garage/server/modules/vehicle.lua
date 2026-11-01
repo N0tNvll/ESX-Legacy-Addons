@@ -172,10 +172,7 @@ local function validPlate(plate)
 
     plate = normPlate(plate)
 
-    return #plate >= 1
-        and #plate <= MAX_PLATE_LENGTH
-        and plate:match('[A-Z0-9]') ~= nil
-        and plate:match('^[A-Z0-9 %-]+$') ~= nil
+    return #plate >= 1 and #plate <= MAX_PLATE_LENGTH and plate:match('[A-Z0-9]') ~= nil and plate:match('^[A-Z0-9 %-]+$') ~= nil
 end
 
 ---@param values table
@@ -277,13 +274,8 @@ local function hasRentalTable()
         return rentalTable
     end
 
-    local count = MySQL.scalar.await(
-        (
-            'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA '
-            .. '= DATABASE() AND TABLE_NAME = '
-            .. "'rented_vehicles'"
-        )
-    )
+    local count = MySQL.scalar.await(('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA ' .. '= DATABASE() AND TABLE_NAME = ' .. "'rented_vehicles'"))
+
     assert(tonumber(count), 'Unable to inspect rental ownership')
     rentalTable, rentalTableChecked = tonumber(count) > 0, GetGameTimer()
     return rentalTable
@@ -294,12 +286,7 @@ AddEventHandler('esx_vehicleshop:ready', function()
 end)
 
 local function isRental(plate)
-    return hasRentalTable()
-        and MySQL.scalar.await(
-                'SELECT 1 FROM rented_vehicles WHERE plate = ? LIMIT 1',
-                { plate }
-            )
-            ~= nil
+    return hasRentalTable() and MySQL.scalar.await('SELECT 1 FROM rented_vehicles WHERE plate = ? LIMIT 1', { plate }) ~= nil
 end
 
 ---@param scope table
@@ -311,14 +298,8 @@ local function ownedRow(scope, plate)
 
     appendParams(params, plateParams)
 
-    local row = MySQL.single.await(
-        ('SELECT `owner`, %s FROM `owned_vehicles` WHERE %s AND %s LIMIT 1'):format(
-            VEHICLE_SELECT_COLUMNS,
-            ownership,
-            condition
-        ),
-        params
-    )
+    local row = MySQL.single.await(('SELECT `owner`, %s FROM `owned_vehicles` WHERE %s AND %s LIMIT 1'):format(VEHICLE_SELECT_COLUMNS, ownership, condition), params)
+
     scope.vehicle = row
     return row
 end
@@ -332,12 +313,7 @@ end
 local function cleanPropsValue(value, depth)
     local valueType = type(value)
 
-    if
-        valueType == 'number'
-        or valueType == 'boolean'
-        or valueType == 'vector3'
-        or valueType == 'vector4'
-    then
+    if valueType == 'number' or valueType == 'boolean' or valueType == 'vector3' or valueType == 'vector4' then
         return value
     end
 
@@ -459,12 +435,7 @@ local function refundCharge(xPlayer, amount, account)
     end)
 
     if not ok then
-        print(
-            ('[esx_garage] failed to refund impound fee for %s: %s'):format(
-                xPlayer.identifier or 'unknown',
-                tostring(err)
-            )
-        )
+        print(('[esx_garage] failed to refund impound fee for %s: %s'):format(xPlayer.identifier or 'unknown', tostring(err)))
     end
 end
 
@@ -481,7 +452,6 @@ local function canAfford(xPlayer, amount)
     end
 
     local bank = xPlayer.getAccount('bank')
-
     return bank ~= nil and bank.money >= amount
 end
 
@@ -574,22 +544,10 @@ local function restoreRetrieveState(scope, row)
 
     appendNullableCondition(condition, params, 'job', row.job)
 
-    local ok, err = pcall(
-        MySQL.update.await,
-        ('UPDATE `owned_vehicles` SET %s WHERE %s'):format(
-            table.concat(assignments, ', '),
-            table.concat(condition, ' AND ')
-        ),
-        params
-    )
+    local ok, err = pcall(MySQL.update.await, ('UPDATE `owned_vehicles` SET %s WHERE %s'):format(table.concat(assignments, ', '), table.concat(condition, ' AND ')), params)
 
     if not ok then
-        print(
-            ('[esx_garage] failed to rollback retrieve state for %s: %s'):format(
-                row.plate,
-                tostring(err)
-            )
-        )
+        print(('[esx_garage] failed to rollback retrieve state for %s: %s'):format(row.plate, tostring(err)))
     end
 end
 
@@ -600,11 +558,7 @@ local function deleteRetrievedVehicle(xVehicle)
     end)
 
     if not ok then
-        print(
-            ('[esx_garage] failed to delete retrieved vehicle after failed retrieve: %s'):format(
-                tostring(err)
-            )
-        )
+        print(('[esx_garage] failed to delete retrieved vehicle after failed retrieve: %s'):format(tostring(err)))
     end
 end
 
@@ -613,11 +567,7 @@ end
 ---@return boolean, string?
 local function prepareRetrieveSpawn(scope, row)
     local condition, params = retrieveStateCondition(scope, row, storedValue(row.stored))
-    local ok, result = pcall(
-        MySQL.update.await,
-        ('UPDATE `owned_vehicles` SET `stored` = 1 WHERE %s'):format(condition),
-        params
-    )
+    local ok, result = pcall(MySQL.update.await, ('UPDATE `owned_vehicles` SET `stored` = 1 WHERE %s'):format(condition), params)
 
     if not ok then
         return false, 'error'
@@ -640,17 +590,7 @@ local function finalizeCurrentRetrieveState(scope, current, lastUsed)
 
     appendParams(queryParams, params)
 
-    local ok, result = pcall(
-        MySQL.update.await,
-        (
-            (
-                'UPDATE `owned_vehicles` SET `stored` = 0, `pound` = NULL, '
-                .. '`parking` = NULL, `last_used` = ? WHERE '
-                .. '%s'
-            )
-        ):format(condition),
-        queryParams
-    )
+    local ok, result = pcall(MySQL.update.await, (('UPDATE `owned_vehicles` SET `stored` = 0, `pound` = NULL, ' .. '`parking` = NULL, `last_used` = ? WHERE ' .. '%s')):format(condition), queryParams)
 
     if not ok then
         return false, 'error'
@@ -679,17 +619,7 @@ local function commitRetrieveState(scope, row)
 
     appendParams(queryParams, params)
 
-    local ok, result = pcall(
-        MySQL.update.await,
-        (
-            (
-                'UPDATE `owned_vehicles` SET `stored` = 0, `pound` = NULL, '
-                .. '`parking` = NULL, `last_used` = ? WHERE '
-                .. '%s'
-            )
-        ):format(condition),
-        queryParams
-    )
+    local ok, result = pcall(MySQL.update.await, (('UPDATE `owned_vehicles` SET `stored` = 0, `pound` = NULL, ' .. '`parking` = NULL, `last_used` = ? WHERE ' .. '%s')):format(condition), queryParams)
 
     if not ok then
         return false, 'error'
@@ -703,11 +633,9 @@ local function commitRetrieveState(scope, row)
             local canFinalize = false
 
             if currentStored == 0 then
-                canFinalize = activePound(current.pound) == nil
-                    or sameOptionalLocation(current.pound, row.pound)
+                canFinalize = activePound(current.pound) == nil or sameOptionalLocation(current.pound, row.pound)
             elseif currentStored == 1 then
-                canFinalize = sameOptionalLocation(current.parking, row.parking)
-                    and sameOptionalLocation(current.pound, row.pound)
+                canFinalize = sameOptionalLocation(current.parking, row.parking) and sameOptionalLocation(current.pound, row.pound)
             end
 
             if canFinalize then
@@ -757,7 +685,6 @@ local function isNearPoint(source, anchor)
     end
 
     local tolerance = (Config.Settings.interactionDistance or 3.0) + 10.0
-
     return #(GetEntityCoords(ped) - vec3(anchor.x, anchor.y, anchor.z)) <= tolerance
 end
 
@@ -797,11 +724,7 @@ local function hasUnmanagedWorldVehicle(plateKey, expectedModel, managedEntity)
     for i = 1, #vehicles do
         local veh = vehicles[i]
 
-        if
-            veh ~= managedEntity
-            and sameVehicleModel(GetEntityModel(veh), expectedModel)
-            and normPlate(GetVehicleNumberPlateText(veh) or '') == plateKey
-        then
+        if veh ~= managedEntity and sameVehicleModel(GetEntityModel(veh), expectedModel) and normPlate(GetVehicleNumberPlateText(veh) or '') == plateKey then
             return true
         end
     end
@@ -889,16 +812,7 @@ local function parkingMatchesScope(scope, garage)
         return garage.type ~= 'job'
     end
 
-    return garage.type == 'job'
-        and (
-            garage.job == scope.job
-            or (
-                not garage.job
-                and garage.access
-                and garage.access.jobs
-                and garage.access.jobs[scope.job] ~= nil
-            )
-        )
+    return garage.type == 'job' and (garage.job == scope.job or (not garage.job and garage.access and garage.access.jobs and garage.access.jobs[scope.job] ~= nil))
 end
 
 ---@param garageId string?
@@ -928,19 +842,10 @@ local function garageScopeCondition(garageId, scope)
             params[#params + 1] = garageIds[i]
         end
 
-        invalidParkingCondition = (' OR `parking` NOT IN (%s)'):format(
-            table.concat(placeholders, ', ')
-        )
+        invalidParkingCondition = (' OR `parking` NOT IN (%s)'):format(table.concat(placeholders, ', '))
     end
 
-    return (
-        (
-            ' AND (`stored` <> 1 OR `pound` IS NOT NULL OR `parking` IS NULL OR '
-            .. '`parking` = '
-            .. '?%s)'
-        )
-    ):format(invalidParkingCondition),
-        params
+    return ((' AND (`stored` <> 1 OR `pound` IS NOT NULL OR `parking` IS NULL OR ' .. '`parking` = ' .. '?%s)')):format(invalidParkingCondition), params
 end
 
 ---@param values table
@@ -993,7 +898,6 @@ xLib.callback.registerCompat('esx_garage:getVehicles', function(source, cb, data
 
     local request = type(data) == 'table' and data or { garageId = data }
     local garageId = request.garageId
-
     local scope, scopeError = ResolveGarageScope(source, garageId, request.fleetGarageId)
 
     if not scope then
@@ -1001,7 +905,6 @@ xLib.callback.registerCompat('esx_garage:getVehicles', function(source, cb, data
     end
 
     local impound = scope.impound
-
     local page = vehiclePage(request.page)
     local pageSize = vehiclePageSize(request.pageSize)
     local offset = (page - 1) * pageSize
@@ -1010,8 +913,8 @@ xLib.callback.registerCompat('esx_garage:getVehicles', function(source, cb, data
     local categorySql, categoryParams = GarageCategories.condition(scope.location, source)
 
     if scope.impound and scope.fleetGarageId then
-        local modelSql, modelParams =
-            GarageCategories.condition(Garages[scope.fleetGarageId], source)
+        local modelSql, modelParams = GarageCategories.condition(Garages[scope.fleetGarageId], source)
+
         categorySql = categorySql .. ' AND ' .. modelSql
         appendParams(categoryParams, modelParams)
     end
@@ -1063,15 +966,7 @@ xLib.callback.registerCompat('esx_garage:getVehicles', function(source, cb, data
     params[#params + 1] = pageSize + 1
     params[#params + 1] = offset
 
-    local rows = MySQL.query.await(
-        ('SELECT %s FROM `owned_vehicles` WHERE %s%s ORDER BY %s LIMIT ? OFFSET ?'):format(
-            VEHICLE_SELECT_COLUMNS,
-            ownerSql,
-            pageSql,
-            orderSql
-        ),
-        params
-    ) or {}
+    local rows = MySQL.query.await(('SELECT %s FROM `owned_vehicles` WHERE %s%s ORDER BY %s LIMIT ? OFFSET ?'):format(VEHICLE_SELECT_COLUMNS, ownerSql, pageSql, orderSql), params) or {}
 
     if not CanUseGarageScope(scope) then
         return cb({ success = false, error = 'not_allowed' })
@@ -1101,16 +996,7 @@ xLib.callback.registerCompat('esx_garage:getVehicles', function(source, cb, data
             plates[#plates + 1] = row.plate
         end
 
-        for _, row in
-            ipairs(
-                MySQL.query.await(
-                    ('SELECT plate FROM rented_vehicles WHERE plate IN (%s)'):format(
-                        table.concat(placeholders, ',')
-                    ),
-                    plates
-                ) or {}
-            )
-        do
+        for _, row in ipairs(MySQL.query.await(('SELECT plate FROM rented_vehicles WHERE plate IN (%s)'):format(table.concat(placeholders, ',')), plates) or {}) do
             rented[row.plate] = true
         end
 
@@ -1161,15 +1047,7 @@ local function retrieveVehicle(source, cb, data)
     local plate = data and data.plate
     local spawn = data and data.spawn
 
-    if
-        not validPlate(plate)
-        or type(spawn) ~= 'table'
-        or type(spawn.x) ~= 'number'
-        or type(spawn.y) ~= 'number'
-        or type(spawn.z) ~= 'number'
-        or (spawn.w ~= nil and type(spawn.w) ~= 'number')
-        or (spawn.h ~= nil and type(spawn.h) ~= 'number')
-    then
+    if not validPlate(plate) or type(spawn) ~= 'table' or type(spawn.x) ~= 'number' or type(spawn.y) ~= 'number' or type(spawn.z) ~= 'number' or (spawn.w ~= nil and type(spawn.w) ~= 'number') or (spawn.h ~= nil and type(spawn.h) ~= 'number') then
         return cb({ success = false, error = 'invalid' })
     end
 
@@ -1198,13 +1076,7 @@ local function retrieveVehicle(source, cb, data)
             return { success = false, error = 'wrong_vehicle_category' }
         end
 
-        if
-            not GarageCategories.acceptsModel(
-                garage or Garages[scope.fleetGarageId] or location,
-                row,
-                source
-            )
-        then
+        if not GarageCategories.acceptsModel(garage or Garages[scope.fleetGarageId] or location, row, source) then
             return { success = false, error = 'not_allowed' }
         end
 
@@ -1228,9 +1100,7 @@ local function retrieveVehicle(source, cb, data)
         end
 
         local expectedModel = storedVehicleModel(row)
-        local hasWorldVehicle = managedEntity ~= nil
-            or hasUnmanagedWorldVehicle(key, expectedModel, managedEntity)
-
+        local hasWorldVehicle = managedEntity ~= nil or hasUnmanagedWorldVehicle(key, expectedModel, managedEntity)
         local fee = 0
         local rowPound = activePound(row.pound)
 
@@ -1271,15 +1141,7 @@ local function retrieveVehicle(source, cb, data)
                 return { success = false, error = 'not_stored' }
             end
 
-            if
-                not garage.delivery
-                and Config.Settings.restrictToGarage
-                and row.parking
-                and Garages[row.parking]
-                and parkingMatchesScope(scope, Garages[row.parking])
-                and GarageCategories.accepts(Garages[row.parking], row)
-                and row.parking ~= data.garageId
-            then
+            if not garage.delivery and Config.Settings.restrictToGarage and row.parking and Garages[row.parking] and parkingMatchesScope(scope, Garages[row.parking]) and GarageCategories.accepts(Garages[row.parking], row) and row.parking ~= data.garageId then
                 return { success = false, error = 'wrong_garage' }
             end
         end
@@ -1342,16 +1204,7 @@ local function retrieveVehicle(source, cb, data)
             return { success = false, error = 'not_allowed' }
         end
 
-        if
-            not GarageCategories.acceptsEntity(location, xVehicle:getEntity())
-            or (
-                scope.fleetGarageId
-                and not GarageCategories.acceptsEntity(
-                    Garages[scope.fleetGarageId],
-                    xVehicle:getEntity()
-                )
-            )
-        then
+        if not GarageCategories.acceptsEntity(location, xVehicle:getEntity()) or (scope.fleetGarageId and not GarageCategories.acceptsEntity(Garages[scope.fleetGarageId], xVehicle:getEntity())) then
             deleteRetrievedVehicle(xVehicle)
             restoreRetrieveState(scope, row)
             return { success = false, error = 'wrong_vehicle_category' }
@@ -1416,20 +1269,13 @@ exports('deliverPurchasedVehicle', function(source, plate, entry, spawn)
     end
 
     for _, point in ipairs({ entry, spawn }) do
-        if
-            not isFiniteNumber(point.x)
-            or not isFiniteNumber(point.y)
-            or not isFiniteNumber(point.z)
-        then
+        if not isFiniteNumber(point.x) or not isFiniteNumber(point.y) or not isFiniteNumber(point.z) then
             return false
         end
     end
 
     local condition, params = plateCondition(plate)
-    local row = MySQL.single.await(
-        ('SELECT owner, job, type, vehicle FROM owned_vehicles WHERE %s LIMIT 1'):format(condition),
-        params
-    )
+    local row = MySQL.single.await(('SELECT owner, job, type, vehicle FROM owned_vehicles WHERE %s LIMIT 1'):format(condition), params)
 
     if not row or row.owner ~= player.identifier then
         return false
@@ -1523,16 +1369,7 @@ local function persistStoredVehicle(scope, row, garageId, encoded)
 
     appendParams(params, conditions)
 
-    local affected = MySQL.update.await(
-        (
-            (
-                'UPDATE `owned_vehicles` SET `stored` = 1, `parking` = ?, `pound` '
-                .. '= NULL, `vehicle` = ?, `last_used` = ? WHERE '
-                .. '%s'
-            )
-        ):format(condition),
-        params
-    )
+    local affected = MySQL.update.await((('UPDATE `owned_vehicles` SET `stored` = 1, `parking` = ?, `pound` ' .. '= NULL, `vehicle` = ?, `last_used` = ? WHERE ' .. '%s')):format(condition), params)
 
     if affectedRows(affected) ~= 1 then
         return false, 'state_changed'
@@ -1630,7 +1467,6 @@ xLib.callback.registerCompat('esx_garage:storeVehicle', function(source, cb, dat
         local ped = GetPlayerPed(source)
         local pedCoords = (ped and ped > 0) and GetEntityCoords(ped)
         local pedVehicle = (ped and ped > 0) and GetVehiclePedIsIn(ped, false) or 0
-
         local xVehicle = ESX.GetExtendedVehicleFromPlate(row.plate)
 
         if xVehicle then
@@ -1654,10 +1490,7 @@ xLib.callback.registerCompat('esx_garage:storeVehicle', function(source, cb, dat
                 return { success = false, error = 'wrong_vehicle_category' }
             end
 
-            if
-                pedVehicle ~= entity
-                and (not pedCoords or #(pedCoords - GetEntityCoords(entity)) > 6.0)
-            then
+            if pedVehicle ~= entity and (not pedCoords or #(pedCoords - GetEntityCoords(entity)) > 6.0) then
                 return { success = false, error = 'no_vehicle' }
             end
 
@@ -1691,12 +1524,7 @@ xLib.callback.registerCompat('esx_garage:storeVehicle', function(source, cb, dat
             end
 
             if not deleted then
-                print(
-                    ('[esx_garage] stored %s but vehicle cleanup failed: %s'):format(
-                        row.plate,
-                        tostring(deleteError)
-                    )
-                )
+                print(('[esx_garage] stored %s but vehicle cleanup failed: %s'):format(row.plate, tostring(deleteError)))
             end
         else
             local entity = pedVehicle
@@ -1704,13 +1532,7 @@ xLib.callback.registerCompat('esx_garage:storeVehicle', function(source, cb, dat
             if not (entity and entity > 0 and DoesEntityExist(entity)) then
                 local netEntity = data.netId and NetworkGetEntityFromNetworkId(data.netId) or 0
 
-                if
-                    netEntity
-                    and netEntity > 0
-                    and DoesEntityExist(netEntity)
-                    and pedCoords
-                    and #(pedCoords - GetEntityCoords(netEntity)) < 6.0
-                then
+                if netEntity and netEntity > 0 and DoesEntityExist(netEntity) and pedCoords and #(pedCoords - GetEntityCoords(netEntity)) < 6.0 then
                     entity = netEntity
                 else
                     return { success = false, error = 'no_vehicle' }
@@ -1759,9 +1581,7 @@ xLib.callback.registerCompat('esx_garage:storeVehicle', function(source, cb, dat
             local released, err = pcall(garage.onStored, source)
 
             if not released then
-                print(
-                    ('[esx_garage] stored vehicle service cleanup failed: %s'):format(tostring(err))
-                )
+                print(('[esx_garage] stored vehicle service cleanup failed: %s'):format(tostring(err)))
             end
         end
 
@@ -1783,12 +1603,7 @@ local function updateMetadata(scope, row, column, value)
 
     appendParams(values, params)
 
-    local affected = affectedRows(
-        MySQL.update.await(
-            ('UPDATE `owned_vehicles` SET `%s` = ? WHERE %s'):format(column, condition),
-            values
-        )
-    )
+    local affected = affectedRows(MySQL.update.await(('UPDATE `owned_vehicles` SET `%s` = ? WHERE %s'):format(column, condition), values))
 
     if not CanUseGarageScope(scope) then
         return false
@@ -1799,7 +1614,6 @@ local function updateMetadata(scope, row, column, value)
     end
     -- MySQL can report zero changed rows when a name/favorite is already equal.
     local current = ownedRow(scope, row.plate)
-
     return current ~= nil and current[column] == value and CanUseGarageScope(scope)
 end
 
@@ -1953,12 +1767,7 @@ xLib.callback.registerCompat('esx_garage:transferVehicle', function(source, cb, 
     local xPlayerPed = GetPlayerPed(source)
     local targetPed = GetPlayerPed(targetId)
 
-    if
-        xPlayerPed <= 0
-        or targetPed <= 0
-        or not DoesEntityExist(xPlayerPed)
-        or not DoesEntityExist(targetPed)
-    then
+    if xPlayerPed <= 0 or targetPed <= 0 or not DoesEntityExist(xPlayerPed) or not DoesEntityExist(targetPed) then
         return cb({ success = false, error = 'player_ped' })
     end
 
@@ -1999,19 +1808,8 @@ xLib.callback.registerCompat('esx_garage:transferVehicle', function(source, cb, 
 
         appendParams(params, conditions)
 
-        local rentalGuard = hasRentalTable()
-                and (
-                    ' AND NOT EXISTS (SELECT 1 FROM rented_vehicles r WHERE '
-                    .. 'r.plate = owned_vehicles.plate)'
-                )
-            or ''
-        local affected = MySQL.update.await(
-            ('UPDATE `owned_vehicles` SET `owner` = ? WHERE %s AND `stored` = 1%s'):format(
-                condition,
-                rentalGuard
-            ),
-            params
-        )
+        local rentalGuard = hasRentalTable() and (' AND NOT EXISTS (SELECT 1 FROM rented_vehicles r WHERE ' .. 'r.plate = owned_vehicles.plate)') or ''
+        local affected = MySQL.update.await(('UPDATE `owned_vehicles` SET `owner` = ? WHERE %s AND `stored` = 1%s'):format(condition, rentalGuard), params)
 
         if (affected or 0) < 1 then
             return { success = false }
@@ -2019,14 +1817,7 @@ xLib.callback.registerCompat('esx_garage:transferVehicle', function(source, cb, 
 
         target.showNotification(TranslateCap('received_vehicle', row.plate))
 
-        TriggerEvent(
-            'esx_garage:vehicleTransferred',
-            source,
-            targetId,
-            row.plate,
-            xPlayer.identifier,
-            target.identifier
-        )
+        TriggerEvent('esx_garage:vehicleTransferred', source, targetId, row.plate, xPlayer.identifier, target.identifier)
 
         return { success = true }
     end)
@@ -2101,7 +1892,6 @@ local function defaultImpoundLot(row, preferred)
     end
 
     local fallback = Config.Impounds and Config.Impounds[1]
-
     return fallback and fallback.id or nil
 end
 
@@ -2114,11 +1904,7 @@ local function impoundVehicle(plate, lot, knownRow)
     end
 
     local condition, plateParams = plateCondition(plate)
-    local row = knownRow
-        or MySQL.single.await(
-            ('SELECT `type`, `vehicle` FROM `owned_vehicles` WHERE %s LIMIT 1'):format(condition),
-            plateParams
-        )
+    local row = knownRow or MySQL.single.await(('SELECT `type`, `vehicle` FROM `owned_vehicles` WHERE %s LIMIT 1'):format(condition), plateParams)
 
     if not row then
         return false
@@ -2127,11 +1913,7 @@ local function impoundVehicle(plate, lot, knownRow)
     local lotId = defaultImpoundLot(row, lot)
 
     if not lotId then
-        print(
-            ('[esx_garage] impoundVehicle: no compatible impound for %s, row preserved'):format(
-                plate
-            )
-        )
+        print(('[esx_garage] impoundVehicle: no compatible impound for %s, row preserved'):format(plate))
         return false
     end
 
@@ -2145,16 +1927,7 @@ local function impoundVehicle(plate, lot, knownRow)
 
         appendParams(params, plateParams)
 
-        MySQL.update.await(
-            (
-                (
-                    'UPDATE `owned_vehicles` SET `stored` = 1, `pound` = ?, '
-                    .. '`parking` = NULL WHERE '
-                    .. '%s'
-                )
-            ):format(condition),
-            params
-        )
+        MySQL.update.await((('UPDATE `owned_vehicles` SET `stored` = 1, `pound` = ?, ' .. '`parking` = NULL WHERE ' .. '%s')):format(condition), params)
     end
 
     local condition, plateParams = plateCondition(plate)
@@ -2163,12 +1936,7 @@ local function impoundVehicle(plate, lot, knownRow)
     appendParams(params, plateParams)
     params[#params + 1] = lotId
 
-    local settled = MySQL.scalar.await(
-        ('SELECT COUNT(*) FROM `owned_vehicles` WHERE %s AND `stored` = 1 AND `pound` = ?'):format(
-            condition
-        ),
-        params
-    ) or 0
+    local settled = MySQL.scalar.await(('SELECT COUNT(*) FROM `owned_vehicles` WHERE %s AND `stored` = 1 AND `pound` = ?'):format(condition), params) or 0
 
     if settled < 1 then
         return false
@@ -2184,19 +1952,8 @@ local deletedVehicleWorkerPending = false
 local function processDeletedVehicle(record)
     local plate, model = record.plate, record.model
     local key = normPlate(plate)
-
     local condition, plateParams = plateCondition(plate)
-    local ok, row = pcall(
-        MySQL.single.await,
-        (
-            (
-                'SELECT `stored`, `pound`, `vehicle`, `type` FROM `owned_vehicles` '
-                .. 'WHERE %s AND `stored` = 0 AND `pound` IS NULL LIMIT '
-                .. '1'
-            )
-        ):format(condition),
-        plateParams
-    )
+    local ok, row = pcall(MySQL.single.await, (('SELECT `stored`, `pound`, `vehicle`, `type` FROM `owned_vehicles` ' .. 'WHERE %s AND `stored` = 0 AND `pound` IS NULL LIMIT ' .. '1')):format(condition), plateParams)
 
     if not ok or not row then
         return
@@ -2210,12 +1967,7 @@ local function processDeletedVehicle(record)
 
     local storedModel = storedVehicleModel(row)
 
-    if
-        type(model) == 'number'
-        and model ~= 0
-        and storedModel
-        and not sameVehicleModel(storedModel, model)
-    then
+    if type(model) == 'number' and model ~= 0 and storedModel and not sameVehicleModel(storedModel, model) then
         return
     end
 
@@ -2243,12 +1995,7 @@ scheduleDeletedVehicleWorker = function()
             deletedVehicleImpounds[key] = nil
 
             if not ok then
-                print(
-                    ('[esx_garage] deleted vehicle recovery failed for %s: %s'):format(
-                        key,
-                        tostring(err)
-                    )
-                )
+                print(('[esx_garage] deleted vehicle recovery failed for %s: %s'):format(key, tostring(err)))
             end
 
             processed = processed + 1
@@ -2351,8 +2098,7 @@ local function impoundOutVehiclesOnStop()
             if key ~= '' and not seen[key] then
                 seen[key] = true
 
-                local xVehicle = ESX.GetExtendedVehicleFromPlate(plate)
-                    or ESX.GetExtendedVehicleFromPlate(key)
+                local xVehicle = ESX.GetExtendedVehicleFromPlate(plate) or ESX.GetExtendedVehicleFromPlate(key)
 
                 if xVehicle then
                     local deleted, deleteErr = pcall(function()
@@ -2362,15 +2108,7 @@ local function impoundOutVehiclesOnStop()
                     if deleted then
                         liveImpounded = liveImpounded + 1
                     else
-                        print(
-                            (
-                                (
-                                    '[esx_garage] impoundOutVehiclesOnStop: failed '
-                                    .. 'to impound live vehicle %s: '
-                                    .. '%s'
-                                )
-                            ):format(key, tostring(deleteErr))
-                        )
+                        print((('[esx_garage] impoundOutVehiclesOnStop: failed ' .. 'to impound live vehicle %s: ' .. '%s')):format(key, tostring(deleteErr)))
                     end
                 end
             end
@@ -2384,43 +2122,19 @@ local function impoundOutVehiclesOnStop()
             local condition, params = GarageCategories.condition(lot)
 
             table.insert(params, 1, lot.id)
-            total = total
-                + (
-                    MySQL.update.await(
-                        (
-                            (
-                                'UPDATE `owned_vehicles` SET `stored` = 1, `pound` '
-                                .. '= ?, `parking` = NULL WHERE `stored` = 0 AND '
-                                .. '%s'
-                            )
-                        ):format(condition),
-                        params
-                    ) or 0
-                )
+            total = total + (MySQL.update.await((('UPDATE `owned_vehicles` SET `stored` = 1, `pound` ' .. '= ?, `parking` = NULL WHERE `stored` = 0 AND ' .. '%s')):format(condition), params) or 0)
         end
 
         return total
     end)
 
     if not ok then
-        print(
-            ('[esx_garage] impoundOutVehiclesOnStop: failed to impound out vehicles: %s'):format(
-                tostring(affected)
-            )
-        )
+        print(('[esx_garage] impoundOutVehiclesOnStop: failed to impound out vehicles: %s'):format(tostring(affected)))
         return
     end
 
     if liveImpounded > 0 or (affected or 0) > 0 then
-        print(
-            (
-                (
-                    '[esx_garage] impoundOutVehiclesOnStop: impounded %d live '
-                    .. 'vehicle(s) and %d database row(s) at compatible '
-                    .. 'lots'
-                )
-            ):format(liveImpounded, affected or 0)
-        )
+        print((('[esx_garage] impoundOutVehiclesOnStop: impounded %d live ' .. 'vehicle(s) and %d database row(s) at compatible ' .. 'lots')):format(liveImpounded, affected or 0))
     end
 end
 

@@ -69,5 +69,5 @@ Locales['tr'] = {
     ['ui_no_response'] = 'Sunucu yanıt vermedi. Lütfen tekrar dene.',
     ['ui_location_marked'] = 'İş konumu haritanda işaretlendi.',
     ['ui_location_unavailable'] = 'Konum mevcut değil.',
-    ['ui_location_failed'] = 'Konum işaretlenemedi.'
+    ['ui_location_failed'] = 'Konum işaretlenemedi.',
 }

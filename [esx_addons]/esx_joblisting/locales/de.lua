@@ -69,5 +69,5 @@ Locales['de'] = {
     ['ui_no_response'] = 'Der Server hat nicht geantwortet. Bitte versuche es erneut.',
     ['ui_location_marked'] = 'Arbeitsort auf deiner Karte markiert.',
     ['ui_location_unavailable'] = 'Ort nicht verfügbar.',
-    ['ui_location_failed'] = 'Der Ort konnte nicht markiert werden.'
+    ['ui_location_failed'] = 'Der Ort konnte nicht markiert werden.',
 }

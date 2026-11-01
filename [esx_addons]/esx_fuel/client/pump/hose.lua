@@ -34,7 +34,7 @@ function Pump.releaseHose()
     end
 
     Pump.hose = nil
-    Fuel.setBusy("hose", false)
+    Fuel.setBusy('hose', false)
 end
 
 ---@param pump integer
@@ -46,6 +46,7 @@ function Pump.takeNozzle(pump)
     local ped = PlayerPedId()
     local coords = GetEntityCoords(ped)
     local nozzle = CreateObject(NOZZLE_MODEL, coords.x, coords.y, coords.z, false, false, false)
+
     SetModelAsNoLongerNeeded(NOZZLE_MODEL)
     AttachEntityToEntity(nozzle, ped, GetPedBoneIndex(ped, HAND_BONE), 0.11, 0.02, 0.02, -80.0, -90.0, 15.0, true, true, false, true, 1, true)
 
@@ -65,9 +66,10 @@ function Pump.takeNozzle(pump)
         ActivatePhysics(rope)
 
         local nozzleCoords = GetOffsetFromEntityInWorldCoords(nozzle, 0.0, -0.033, -0.195)
+
         AttachEntitiesToRope(rope, pump, nozzle, pumpCoords.x, pumpCoords.y, pumpCoords.z + 1.4, nozzleCoords.x, nozzleCoords.y, nozzleCoords.z, Config.Refuel.HoseLength, false, false, nil, nil)
     end
 
     Pump.hose = { pump = pump, pumpCoords = pumpCoords, nozzle = nozzle, rope = rope }
-    Fuel.setBusy("hose", true)
+    Fuel.setBusy('hose', true)
 end

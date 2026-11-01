@@ -5,7 +5,7 @@ Config.TimedRentals = {}
 
 local Rentals = Config.TimedRentals
 
-Rentals.Locale = GetConvar('esx:locale', 'en')
+Rentals.Locale = Config.Locale
 Rentals.Currency = 'USD'
 Rentals.PaymentAccounts = { 'money', 'bank' }
 Rentals.RequireDrivingLicense = false
@@ -106,8 +106,8 @@ Rentals.Branches = {
 function Rentals.translate(key)
     local name = 'timed_rental_' .. key
     local locales = Locales or {}
-    local translations = locales[Rentals.Locale] or {}
+    local locale = Rentals.Locale:lower():gsub('_', '-')
+    local translations = locales[locale] or locales[locale:match('^%a+')] or {}
     local english = locales.en or {}
-
     return translations[name] or english[name] or key
 end

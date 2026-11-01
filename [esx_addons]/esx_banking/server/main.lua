@@ -5,14 +5,12 @@ ESXCatalog.awaitReady()
 
 local BANK = {}
 local bankDatabaseReady = false
-
 local spawnedPeds = {}
 local netIdTable = {}
 local playerSessions = {}
 local playerLocks = {}
 local atmModelLookup = {}
 local rateLimiters = {}
-
 local TRANSACTION_TYPES = {
     deposit = 'DEPOSIT',
     withdraw = 'WITHDRAW',
@@ -184,7 +182,6 @@ local function IsRateLimited(playerId, key, cooldownMs)
     end
 
     local allowed = limiterState.limiter:consume(playerId)
-
     return not allowed
 end
 
@@ -406,7 +403,6 @@ local function ValidateAccess(playerId, requestedType, accessData)
 
     if requestedType == 'atm' then
         local isNear, atm = IsPlayerNearAtm(playerId, type(accessData) == 'table' and accessData.atm or nil)
-
         return isNear, 'atm', atm
     end
 
@@ -479,12 +475,8 @@ local function FetchTransactionHistory(identifier)
     local historyDays = math.max(1, GetConfigNumber('HistoryDays', 30))
     local historyLimit = math.max(1, math.min(GetConfigNumber('HistoryLimit', 20), 100))
     local since = (os.time() - (historyDays * 86400)) * 1000
-
     local ok, rows = pcall(function()
-        return MySQL.query.await(
-            'SELECT label, type, amount, time, balance FROM banking WHERE identifier = ? AND time > ? ORDER BY time DESC LIMIT ?',
-            { identifier, since, historyLimit }
-        )
+        return MySQL.query.await('SELECT label, type, amount, time, balance FROM banking WHERE identifier = ? AND time > ? ORDER BY time DESC LIMIT ?', { identifier, since, historyLimit })
     end)
 
     if not ok or type(rows) ~= 'table' then
@@ -603,7 +595,6 @@ local function ParsePayload(payload)
 
     if action == 'pincode' then
         local pinNumber, pinText = NormalizePin(payload.pin)
-
         return action, pinNumber, pinText
     end
 
@@ -627,7 +618,6 @@ local function ParsePayload(payload)
 
     if payload.pincode then
         local pinNumber, pinText = NormalizePin(payload.pincode)
-
         return 'pincode', pinNumber, pinText
     end
 
@@ -819,12 +809,8 @@ function BANK.LogTransaction(playerId, label, logType, amount, bankMoney)
     local safeLogType = FormatLogValue(logType or label):upper()
     local safeLabel = FormatLogValue(label or safeLogType)
     local balance = tonumber(bankMoney) or GetAccountMoney(xPlayer, 'bank') or 0
-
     local ok, result = pcall(function()
-        return MySQL.insert.await(
-            'INSERT INTO banking (identifier, label, type, amount, time, balance) VALUES (?, ?, ?, ?, ?, ?)',
-            { identifier, safeLabel, safeLogType, normalizedAmount, os.time() * 1000, balance }
-        )
+        return MySQL.insert.await('INSERT INTO banking (identifier, label, type, amount, time, balance) VALUES (?, ?, ?, ?, ?, ?)', { identifier, safeLabel, safeLogType, normalizedAmount, os.time() * 1000, balance })
     end)
 
     if not ok or not result then

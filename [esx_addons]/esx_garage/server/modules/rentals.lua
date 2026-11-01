@@ -11,10 +11,7 @@ local function live(record)
         return nil
     end
 
-    if
-        GetEntityModel(entity) ~= record.model
-        or NetworkGetNetworkIdFromEntity(entity) ~= record.netId
-    then
+    if GetEntityModel(entity) ~= record.model or NetworkGetNetworkIdFromEntity(entity) ~= record.netId then
         return nil
     end
 
@@ -102,22 +99,11 @@ exports('spawnRentalVehicle', function(lease, branch, vehicleType, options)
     vehicles[lease.plate] = record
 
     local ok, problem = pcall(function()
-        record.entity = CreateVehicleServerSetter(
-            record.model,
-            vehicleType,
-            coords.x,
-            coords.y,
-            coords.z,
-            coords.w
-        )
+        record.entity = CreateVehicleServerSetter(record.model, vehicleType, coords.x, coords.y, coords.z, coords.w)
 
         local deadline = GetGameTimer() + options.timeout
 
-        while
-            record.entity ~= 0
-            and not DoesEntityExist(record.entity)
-            and GetGameTimer() < deadline
-        do
+        while record.entity ~= 0 and not DoesEntityExist(record.entity) and GetGameTimer() < deadline do
             Wait(50)
         end
 

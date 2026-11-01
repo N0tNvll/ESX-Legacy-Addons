@@ -4,7 +4,6 @@ Locales['hu'] = {
     ['cloakroom_prompt'] = 'Nyomd meg az [E] gombot az öltöző megnyitásához.',
     ['wear_citizen'] = 'Civil ruha',
     ['wear_work'] = 'Taxis egyenruha',
-
     -- Garázs
     ['spawner_prompt'] = 'Nyomd meg az [E] gombot a garázs megnyitásához.',
     ['vehicle_spawned'] = 'Sikeresen lehívtad ezt a járművet: ~b~%s!',
@@ -14,7 +13,6 @@ Locales['hu'] = {
     ['only_taxi'] = 'Csak taxikat tárolhatsz itt.',
     ['empty_authorized_vehicles_table'] = 'Az engedélyezett járművek listája üres a config.lua fájlban.',
     ['unknow_model'] = 'A jármű nem hívható le, mert a modell ismeretlen.',
-
     ['taking_service'] = 'Szolgálatba lépés: Taxi/Uber',
     ['full_service'] = 'Teljes szolgálat: ',
     ['amount_invalid'] = 'Érvénytelen összeg',
@@ -56,5 +54,5 @@ Locales['hu'] = {
     ['bill_amount'] = 'Számlázandó összeg...',
     ['deposit_amount'] = 'Befizetendő összeg...',
     ['withdraw_amount'] = 'Felvenni kívánt összeg...',
-    ['confirm'] = 'Megerősítés'
+    ['confirm'] = 'Megerősítés',
 }

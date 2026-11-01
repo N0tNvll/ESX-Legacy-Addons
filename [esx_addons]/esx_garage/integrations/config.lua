@@ -2,8 +2,7 @@
 -- Copyright (C) 2022-2026 ESX Framework
 -- Loaded inside the job resource after its own config, on both sides.
 local resource = GetCurrentResourceName()
-local locations = resource == 'esx_policejob' and Config.PoliceStations
-    or resource == 'esx_ambulancejob' and Config.Hospitals
+local locations = resource == 'esx_policejob' and Config.PoliceStations or resource == 'esx_ambulancejob' and Config.Hospitals
 
 for _, location in pairs(locations or {}) do
     for _, group in ipairs({ 'Vehicles', 'Helicopters', 'Planes', 'Boats' }) do

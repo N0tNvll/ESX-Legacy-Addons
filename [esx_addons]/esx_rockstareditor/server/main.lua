@@ -6,8 +6,8 @@ local accessLimiter = xLib.rateLimiter({
     refill = 2,
     interval = 1000,
 })
-local actions =
-    { open = true, start = true, save = true, discard = true, editor = true, status = true }
+
+local actions = { open = true, start = true, save = true, discard = true, editor = true, status = true }
 
 xLib.callback.register('esx_rockstareditor:authorize', function(source, action)
     if type(action) ~= 'string' or not actions[action] then
@@ -26,9 +26,7 @@ xLib.callback.register('esx_rockstareditor:authorize', function(source, action)
 
     if Config.RestrictAccess then
         local allowedGroup = Config.AllowedGroups[player.getGroup()] == true
-        local allowedAce = type(Config.AcePermission) == 'string'
-            and Config.AcePermission ~= ''
-            and IsPlayerAceAllowed(source, Config.AcePermission)
+        local allowedAce = type(Config.AcePermission) == 'string' and Config.AcePermission ~= '' and IsPlayerAceAllowed(source, Config.AcePermission)
 
         if not allowedGroup and not allowedAce then
             return { ok = false, reason = 'access_denied' }

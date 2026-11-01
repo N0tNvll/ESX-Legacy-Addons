@@ -5,7 +5,6 @@ local PETROLCAN <const> = `WEAPON_PETROLCAN`
 local PUMP_RANGE <const> = 2.0
 local PUMP_SCAN_MS <const> = 250
 local INTERACT_KEY <const> = 38
-
 local pumpHashes = {}
 
 for i = 1, #Config.PumpModels do
@@ -47,7 +46,7 @@ local function handleFilling(pressed)
         Pump.cancelFilling = true
     end
 
-    return _U("text_stop")
+    return _U('text_stop')
 end
 
 ---@param hose FuelHose
@@ -57,7 +56,7 @@ end
 local function handleHose(hose, coords, pressed)
     if not DoesEntityExist(hose.pump) or #(coords - hose.pumpCoords) > Config.Refuel.HoseLength + 1.0 then
         Pump.releaseHose()
-        ESX.ShowNotification(_U("hose_dropped"))
+        ESX.ShowNotification(_U('hose_dropped'))
         return nil
     end
 
@@ -72,7 +71,7 @@ local function handleHose(hose, coords, pressed)
             Pump.openForVehicle(vehicle)
         end
 
-        return Fuel.getKind(vehicle) == "electric" and _U("text_charge") or _U("text_refuel")
+        return Fuel.getKind(vehicle) == 'electric' and _U('text_charge') or _U('text_refuel')
     end
 
     if #(coords - hose.pumpCoords) <= PUMP_RANGE then
@@ -80,7 +79,7 @@ local function handleHose(hose, coords, pressed)
             Pump.releaseHose()
         end
 
-        return _U("text_return")
+        return _U('text_return')
     end
 
     return nil
@@ -96,14 +95,14 @@ local function handlePump(ped, pump, pressed)
             Pump.openForCan()
         end
 
-        return _U("text_fill_can")
+        return _U('text_fill_can')
     end
 
     if pressed then
         Pump.takeNozzle(pump)
     end
 
-    return _U("text_take")
+    return _U('text_take')
 end
 
 ---@param coords vector3
@@ -112,7 +111,7 @@ end
 local function handleCharger(coords, pressed)
     local vehicle = Fuel.getVehicleAtTank(coords)
 
-    if not vehicle or Fuel.getKind(vehicle) ~= "electric" then
+    if not vehicle or Fuel.getKind(vehicle) ~= 'electric' then
         return nil
     end
 
@@ -120,7 +119,7 @@ local function handleCharger(coords, pressed)
         Pump.openForVehicle(vehicle)
     end
 
-    return _U("text_charge")
+    return _U('text_charge')
 end
 
 CreateThread(function()
@@ -130,7 +129,7 @@ CreateThread(function()
     while true do
         local sleep = 500
         local ped = PlayerPedId()
-        local pressed = Fuel.isShown("pump") and IsControlJustReleased(0, INTERACT_KEY)
+        local pressed = Fuel.isShown('pump') and IsControlJustReleased(0, INTERACT_KEY)
         local text
 
         if IsPedInAnyVehicle(ped, false) or IsEntityDead(ped) then
@@ -165,12 +164,12 @@ CreateThread(function()
             end
         end
 
-        Fuel.hint("pump", text)
+        Fuel.hint('pump', text)
         Wait(sleep)
     end
 end)
 
-AddEventHandler("onResourceStop", function(resource)
+AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then
         return
     end

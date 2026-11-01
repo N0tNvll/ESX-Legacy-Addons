@@ -10,11 +10,13 @@ end
 
 local function isNearClothesShop(source)
     local ped = GetPlayerPed(source)
+
     if ped <= 0 then
         return false
     end
 
     local coords = GetEntityCoords(ped)
+
     for i = 1, #Config.Shops do
         if #(coords - Config.Shops[i]) <= (Config.ShopDistance or 3.0) then
             return true
@@ -45,11 +47,9 @@ local function calculatePurchaseCost(newSkin, oldSkin)
     end
 
     local purchaseCost = 0
+
     for _, value in pairs(Config.SkinProps) do
-        if
-            (newSkin[value .. '_1'] ~= oldSkin[value .. '_1'])
-            or (newSkin[value .. '_2'] ~= oldSkin[value .. '_2'])
-        then
+        if (newSkin[value .. '_1'] ~= oldSkin[value .. '_1']) or (newSkin[value .. '_2'] ~= oldSkin[value .. '_2']) then
             purchaseCost = purchaseCost + Config.Price
         end
     end
@@ -61,20 +61,15 @@ RegisterServerEvent('esx_clotheshop:saveOutfit')
 AddEventHandler('esx_clotheshop:saveOutfit', function(label, skin)
     local source = source
     local xPlayer = ESX.Player(source)
+
     label = sanitizeOutfitLabel(label)
 
-    if
-        not xPlayer
-        or not label
-        or type(skin) ~= 'table'
-        or not ClothesPurchases[source]
-        or not isCurrentPlayer(source, ClothesPurchases[source].player)
-        or ClothesPurchases[source].expires < GetGameTimer()
-    then
+    if not xPlayer or not label or type(skin) ~= 'table' or not ClothesPurchases[source] or not isCurrentPlayer(source, ClothesPurchases[source].player) or ClothesPurchases[source].expires < GetGameTimer() then
         return
     end
 
     local purchase = ClothesPurchases[source]
+
     ClothesPurchases[source] = nil
     skin = purchase.skin
     TriggerEvent('esx_datastore:getDataStore', 'property', xPlayer.getIdentifier(), function(store)
@@ -120,8 +115,7 @@ xLib.callback.registerCompat('esx_clotheshop:quoteClothes', function(source, cb,
     cb(calculatePurchaseCost(validated, current))
 end)
 
-xLib.callback.registerCompat(
-    'esx_clotheshop:buyClothes', function(source, cb, newSkin, oldSkin, account)
+xLib.callback.registerCompat('esx_clotheshop:buyClothes', function(source, cb, newSkin, oldSkin, account)
     local xPlayer = ESX.GetPlayerFromId(source)
 
     if not xPlayer or ClothesPayments[xPlayer.getIdentifier()] or not isNearClothesShop(source) then
@@ -155,8 +149,7 @@ xLib.callback.registerCompat(
 
     ClothesPayments[identifier] = true
 
-    local charged, failure =
-        PaymentGateway.Charge(xPlayer, account, purchaseCost, 'Outfit Purchase')
+    local charged, failure = PaymentGateway.Charge(xPlayer, account, purchaseCost, 'Outfit Purchase')
 
     if not charged then
         ClothesPayments[identifier] = nil
@@ -175,8 +168,7 @@ xLib.callback.registerCompat(
         ClothesPayments[identifier] = nil
 
         if saved ~= true then
-            if
-                PaymentGateway.Refund(xPlayer, account, purchaseCost, 'Outfit Purchase Refund') ~= true then
+            if PaymentGateway.Refund(xPlayer, account, purchaseCost, 'Outfit Purchase Refund') ~= true then
                 print(('[esx_clotheshop] Outfit refund failed for %s'):format(identifier))
             end
         elseif isCurrentPlayer(source, xPlayer) then
@@ -185,11 +177,7 @@ xLib.callback.registerCompat(
                 skin = newSkin,
                 expires = GetGameTimer() + (Config.PurchaseSessionDuration or 60000),
             }
-            TriggerClientEvent(
-                'esx:showNotification',
-                source,
-                TranslateCap('you_paid', purchaseCost)
-            )
+            TriggerClientEvent('esx:showNotification', source, TranslateCap('you_paid', purchaseCost))
         end
 
         xPlayer.endAccountOperation()
@@ -210,6 +198,7 @@ end)
 xLib.callback.registerCompat('esx_clotheshop:checkPropertyDataStore', function(source, cb)
     local xPlayer = ESX.Player(source)
     local foundStore = false
+
     if not xPlayer then
         return cb(false)
     end

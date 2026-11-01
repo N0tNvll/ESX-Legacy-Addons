@@ -2,8 +2,8 @@
 -- Copyright (C) 2022-2026 ESX Framework
 
 Locales['tr'] = {
+    ['used_beer'] = 'you used 1x Beer',
     ['used_food'] = '%s adet yemek yediniz',
     ['used_drink'] = '%s adet içecek içtiniz',
-    ['got_healed'] = 'İyileştirildiniz.'
+    ['got_healed'] = 'İyileştirildiniz.',
 }
-  

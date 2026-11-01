@@ -5,10 +5,10 @@
 --- something checks the purchase and charges with xPlayer.chargeAccount on its own server.
 --- README.md documents the export and EXAMPLES.md shows a seller.
 
-local Validate = require "shared.module.validate.main"
+local Validate = require('shared.module.validate.main')
 
 Validate.config()
 
 if Config.TestCommand then
-    require "server.module.test.main"
+    require('server.module.test.main')
 end

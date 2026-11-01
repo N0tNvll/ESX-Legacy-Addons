@@ -1,11 +1,7 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Runs server-side inside the job resource, after its config and garage adapter.
 local resource = GetCurrentResourceName()
-local job = assert(
-    ({ esx_policejob = 'police', esx_ambulancejob = 'ambulance' })[resource],
-    'Unsupported dealership integration'
-)
-
+local job = assert(({ esx_policejob = 'police', esx_ambulancejob = 'ambulance' })[resource], 'Unsupported dealership integration')
 local registering, pending = false, false
 
 local function authorized(source)
@@ -16,8 +12,7 @@ local function authorized(source)
     end
 
     if Config.EnableESXService then
-        return GetResourceState('esx_service') == 'started'
-            and exports['esx_service']:IsInService(job, source) == true
+        return GetResourceState('esx_service') == 'started' and exports['esx_service']:IsInService(job, source) == true
     end
 
     return true
@@ -73,8 +68,7 @@ local function register()
                     local settings = Config.DealershipIntegration or {}
 
                     exports['esx_vehicleshop']:registerDealership(id, {
-                        label = point.ShopLabel
-                            or ((location.label or location.Label or key) .. ' - ' .. job),
+                        label = point.ShopLabel or ((location.label or location.Label or key) .. ' - ' .. job),
                         mode = 'public',
                         existingInteraction = true,
                         coords = point.Spawner,

@@ -1,21 +1,8 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
-local HasAlreadyEnteredMarker,
-    OnJob,
-    IsNearCustomer,
-    CustomerIsEnteringVehicle,
-    CustomerEnteredVehicle,
-    CurrentActionData =
-    false, false, false, false, false, {}
-local CurrentCustomer,
-    CurrentCustomerBlip,
-    DestinationBlip,
-    targetCoords,
-    LastZone,
-    CurrentAction,
-    CurrentActionMsg,
-    lastSelectedNPC
+local HasAlreadyEnteredMarker, OnJob, IsNearCustomer, CustomerIsEnteringVehicle, CustomerEnteredVehicle, CurrentActionData = false, false, false, false, false, {}
+local CurrentCustomer, CurrentCustomerBlip, DestinationBlip, targetCoords, LastZone, CurrentAction, CurrentActionMsg, lastSelectedNPC
 local textUIMessage
 
 local function hideActionTextUI()
@@ -139,16 +126,7 @@ function StopTaxiJob()
         TaskLeaveVehicle(CurrentCustomer, vehicle, 0)
 
         if CustomerEnteredVehicle then
-            TaskGoStraightToCoord(
-                CurrentCustomer,
-                targetCoords.x,
-                targetCoords.y,
-                targetCoords.z,
-                1.0,
-                -1,
-                0.0,
-                0.0
-            )
+            TaskGoStraightToCoord(CurrentCustomer, targetCoords.x, targetCoords.y, targetCoords.z, 1.0, -1, 0.0, 0.0)
         end
     end
 
@@ -163,33 +141,26 @@ function OpenCloakroom()
         { label = TranslateCap('wear_work'), value = 'wear_work' },
     }
 
-    OpenTaxiMenu(
-        'default',
-        'cloakroom',
-        TranslateCap('cloakroom_menu'),
-        elements,
-        function(data, menu)
-            if data.current.value == 'wear_citizen' then
-                xLib.callback('esx_skin:getPlayerSkin', false, function(skin)
-                    TriggerEvent('skinchanger:loadSkin', skin)
-                end)
-            elseif data.current.value == 'wear_work' then
-                xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
-                    if skin.sex == 0 then
-                        TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_male)
-                    else
-                        TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_female)
-                    end
-                end)
-            end
-        end,
-        function(data, menu)
-            menu.close()
-            CurrentAction = 'cloakroom'
-            CurrentActionMsg = TranslateCap('cloakroom_prompt')
-            CurrentActionData = {}
+    OpenTaxiMenu('default', 'cloakroom', TranslateCap('cloakroom_menu'), elements, function(data, menu)
+        if data.current.value == 'wear_citizen' then
+            xLib.callback('esx_skin:getPlayerSkin', false, function(skin)
+                TriggerEvent('skinchanger:loadSkin', skin)
+            end)
+        elseif data.current.value == 'wear_work' then
+            xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
+                if skin.sex == 0 then
+                    TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_male)
+                else
+                    TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_female)
+                end
+            end)
         end
-    )
+    end, function(data, menu)
+        menu.close()
+        CurrentAction = 'cloakroom'
+        CurrentActionMsg = TranslateCap('cloakroom_prompt')
+        CurrentActionData = {}
+    end)
 end
 
 function OpenTaxiActionsMenu()
@@ -198,11 +169,7 @@ function OpenTaxiActionsMenu()
         { label = TranslateCap('take_stock'), value = 'get_stock' },
     }
 
-    if
-        Config.EnablePlayerManagement
-        and ESX.PlayerData.job ~= nil
-        and ESX.PlayerData.job.grade_name == 'boss'
-    then
+    if Config.EnablePlayerManagement and ESX.PlayerData.job ~= nil and ESX.PlayerData.job.grade_name == 'boss' then
         elements[#elements + 1] = {
             label = TranslateCap('boss_actions'),
             value = 'boss_actions',
@@ -210,10 +177,7 @@ function OpenTaxiActionsMenu()
     end
 
     OpenTaxiMenu('default', 'taxi_actions', TranslateCap('taxi'), elements, function(data, menu)
-        if
-            Config.OxInventory
-            and (data.current.value == 'put_stock' or data.current.value == 'get_stock')
-        then
+        if Config.OxInventory and (data.current.value == 'put_stock' or data.current.value == 'get_stock') then
             exports.ox_inventory:openInventory('stash', 'society_taxi')
             menu.close()
             return
@@ -240,85 +204,62 @@ function OpenMobileTaxiActionsMenu()
         { label = TranslateCap('start_job'), value = 'start_job' },
     }
 
-    OpenTaxiMenu(
-        'default',
-        'mobile_taxi_actions',
-        TranslateCap('taxi'),
-        elements,
-        function(data, menu)
-            if data.current.value == 'billing' then
-                OpenTaxiMenu(
-                    'dialog',
-                    'taxi_billing',
-                    TranslateCap('bill_amount'),
-                    nil,
-                    function(data2, menu2)
-                        local amount = tonumber(data2.value)
+    OpenTaxiMenu('default', 'mobile_taxi_actions', TranslateCap('taxi'), elements, function(data, menu)
+        if data.current.value == 'billing' then
+            OpenTaxiMenu('dialog', 'taxi_billing', TranslateCap('bill_amount'), nil, function(data2, menu2)
+                local amount = tonumber(data2.value)
 
-                        if amount == nil or amount <= 0 then
-                            ESX.ShowNotification(TranslateCap('amount_invalid'))
-                        else
-                            menu2.close()
-
-                            local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
-
-                            if closestPlayer == -1 or closestDistance > 3.0 then
-                                ESX.ShowNotification(TranslateCap('no_players_near'))
-                            else
-                                TriggerServerEvent(
-                                    'esx_billing:sendBill',
-                                    GetPlayerServerId(closestPlayer),
-                                    'society_taxi',
-                                    'Taxi',
-                                    amount
-                                )
-                                ESX.ShowNotification(TranslateCap('billing_sent'))
-                            end
-                        end
-                    end,
-                    function(data2, menu2)
-                        menu2.close()
-                    end
-                )
-            elseif data.current.value == 'start_job' then
-                if OnJob then
-                    menu.close()
-                    StopTaxiJob()
+                if amount == nil or amount <= 0 then
+                    ESX.ShowNotification(TranslateCap('amount_invalid'))
                 else
-                    if ESX.PlayerData.job ~= nil and ESX.PlayerData.job.name == 'taxi' then
-                        local playerPed = PlayerPedId()
-                        local vehicle = GetVehiclePedIsIn(playerPed, false)
+                    menu2.close()
 
-                        if
-                            IsPedInAnyVehicle(playerPed, false)
-                            and GetPedInVehicleSeat(vehicle, -1) == playerPed
-                        then
-                            if tonumber(ESX.PlayerData.job.grade) >= 3 then
+                    local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
+
+                    if closestPlayer == -1 or closestDistance > 3.0 then
+                        ESX.ShowNotification(TranslateCap('no_players_near'))
+                    else
+                        TriggerServerEvent('esx_billing:sendBill', GetPlayerServerId(closestPlayer), 'society_taxi', 'Taxi', amount)
+                        ESX.ShowNotification(TranslateCap('billing_sent'))
+                    end
+                end
+            end, function(data2, menu2)
+                menu2.close()
+            end)
+        elseif data.current.value == 'start_job' then
+            if OnJob then
+                menu.close()
+                StopTaxiJob()
+            else
+                if ESX.PlayerData.job ~= nil and ESX.PlayerData.job.name == 'taxi' then
+                    local playerPed = PlayerPedId()
+                    local vehicle = GetVehiclePedIsIn(playerPed, false)
+
+                    if IsPedInAnyVehicle(playerPed, false) and GetPedInVehicleSeat(vehicle, -1) == playerPed then
+                        if tonumber(ESX.PlayerData.job.grade) >= 3 then
+                            menu.close()
+                            StartTaxiJob()
+                        else
+                            if IsInAuthorizedVehicle() then
                                 menu.close()
                                 StartTaxiJob()
-                            else
-                                if IsInAuthorizedVehicle() then
-                                    menu.close()
-                                    StartTaxiJob()
-                                else
-                                    ESX.ShowNotification(TranslateCap('must_in_taxi'))
-                                end
-                            end
-                        else
-                            if tonumber(ESX.PlayerData.job.grade) >= 3 then
-                                ESX.ShowNotification(TranslateCap('must_in_vehicle'))
                             else
                                 ESX.ShowNotification(TranslateCap('must_in_taxi'))
                             end
                         end
+                    else
+                        if tonumber(ESX.PlayerData.job.grade) >= 3 then
+                            ESX.ShowNotification(TranslateCap('must_in_vehicle'))
+                        else
+                            ESX.ShowNotification(TranslateCap('must_in_taxi'))
+                        end
                     end
                 end
             end
-        end,
-        function(data, menu)
-            menu.close()
         end
-    )
+    end, function(data, menu)
+        menu.close()
+    end)
 end
 
 function IsInAuthorizedVehicle()
@@ -326,10 +267,7 @@ function IsInAuthorizedVehicle()
     local vehModel = GetEntityModel(GetVehiclePedIsIn(playerPed, false))
 
     for i = 1, #Config.AuthorizedVehicles, 1 do
-        if
-            Config.AuthorizedVehicles[i].model
-            and vehModel == joaat(Config.AuthorizedVehicles[i].model)
-        then
+        if Config.AuthorizedVehicles[i].model and vehModel == joaat(Config.AuthorizedVehicles[i].model) then
             return true
         end
     end
@@ -348,42 +286,28 @@ function OpenGetStocksMenu()
             }
         end
 
-        OpenTaxiMenu(
-            'default',
-            'stocks_menu',
-            TranslateCap('taxi_stock'),
-            elements,
-            function(data, menu)
-                local itemName = data.current.value
+        OpenTaxiMenu('default', 'stocks_menu', TranslateCap('taxi_stock'), elements, function(data, menu)
+            local itemName = data.current.value
 
-                OpenTaxiMenu(
-                    'dialog',
-                    'stocks_menu_get_item_count',
-                    TranslateCap('quantity'),
-                    nil,
-                    function(data2, menu2)
-                        local count = tonumber(data2.value)
+            OpenTaxiMenu('dialog', 'stocks_menu_get_item_count', TranslateCap('quantity'), nil, function(data2, menu2)
+                local count = tonumber(data2.value)
 
-                        if count == nil then
-                            ESX.ShowNotification(TranslateCap('quantity_invalid'))
-                        else
-                            menu2.close()
-                            menu.close()
-                            TriggerServerEvent('esx_taxijob:getStockItem', itemName, count)
+                if count == nil then
+                    ESX.ShowNotification(TranslateCap('quantity_invalid'))
+                else
+                    menu2.close()
+                    menu.close()
+                    TriggerServerEvent('esx_taxijob:getStockItem', itemName, count)
 
-                            Wait(300)
-                            OpenGetStocksMenu()
-                        end
-                    end,
-                    function(data2, menu2)
-                        menu2.close()
-                    end
-                )
-            end,
-            function(data, menu)
-                menu.close()
-            end
-        )
+                    Wait(300)
+                    OpenGetStocksMenu()
+                end
+            end, function(data2, menu2)
+                menu2.close()
+            end)
+        end, function(data, menu)
+            menu.close()
+        end)
     end, function(menu)
         CurrentAction = 'taxi_actions_menu'
         CurrentActionMsg = TranslateCap('press_to_open')
@@ -407,41 +331,27 @@ function OpenPutStocksMenu()
             end
         end
 
-        OpenTaxiMenu(
-            'default',
-            'stocks_menu',
-            TranslateCap('inventory'),
-            elements,
-            function(data, menu)
-                local itemName = data.current.value
+        OpenTaxiMenu('default', 'stocks_menu', TranslateCap('inventory'), elements, function(data, menu)
+            local itemName = data.current.value
 
-                OpenTaxiMenu(
-                    'dialog',
-                    'stocks_menu_put_item_count',
-                    TranslateCap('quantity'),
-                    nil,
-                    function(data2, menu2)
-                        local count = tonumber(data2.value)
+            OpenTaxiMenu('dialog', 'stocks_menu_put_item_count', TranslateCap('quantity'), nil, function(data2, menu2)
+                local count = tonumber(data2.value)
 
-                        if count == nil then
-                            ESX.ShowNotification(TranslateCap('quantity_invalid'))
-                        else
-                            menu2.close()
-                            menu.close()
-                            TriggerServerEvent('esx_taxijob:putStockItems', itemName, count)
-                            Wait(300)
-                            OpenPutStocksMenu()
-                        end
-                    end,
-                    function(data2, menu2)
-                        menu2.close()
-                    end
-                )
-            end,
-            function(data, menu)
-                menu.close()
-            end
-        )
+                if count == nil then
+                    ESX.ShowNotification(TranslateCap('quantity_invalid'))
+                else
+                    menu2.close()
+                    menu.close()
+                    TriggerServerEvent('esx_taxijob:putStockItems', itemName, count)
+                    Wait(300)
+                    OpenPutStocksMenu()
+                end
+            end, function(data2, menu2)
+                menu2.close()
+            end)
+        end, function(data, menu)
+            menu.close()
+        end)
     end, function(menu)
         CurrentAction = 'taxi_actions_menu'
         CurrentActionMsg = TranslateCap('press_to_open')
@@ -454,7 +364,6 @@ AddEventHandler('esx_taxijob:hasEnteredMarker', function(zone)
         CurrentAction = 'taxi_actions_menu'
         CurrentActionMsg = TranslateCap('press_to_open')
         CurrentActionData = {}
-
     elseif zone == 'Cloakroom' then
         CurrentAction = 'cloakroom'
         CurrentActionMsg = TranslateCap('cloakroom_prompt')
@@ -509,12 +418,7 @@ AddEventHandler('esx_phone:loaded', function(phoneNumber, contacts)
         ),
     }
 
-    TriggerEvent(
-        'esx_phone:addSpecialContact',
-        specialContact.name,
-        specialContact.number,
-        specialContact.base64Icon
-    )
+    TriggerEvent('esx_phone:addSpecialContact', specialContact.name, specialContact.number, specialContact.base64Icon)
 end)
 
 -- Create Blips
@@ -536,43 +440,16 @@ CreateThread(function()
         local sleep = 1500
 
         if ESX.PlayerData.job and ESX.PlayerData.job.name == 'taxi' then
-
             local coords = GetEntityCoords(PlayerPedId())
             local isInMarker, currentZone = false
 
             for k, v in pairs(Config.Zones) do
                 local zonePos = vector3(v.Pos.x, v.Pos.y, v.Pos.z)
-                local distance = (k == 'VehicleSpawner' or k == 'VehicleDeleter') and math.huge
-                    or #(coords - zonePos)
+                local distance = (k == 'VehicleSpawner' or k == 'VehicleDeleter') and math.huge or #(coords - zonePos)
 
                 if v.Type ~= -1 and distance < Config.DrawDistance then
                     sleep = 0
-                    DrawMarker(
-                        v.Type,
-                        v.Pos.x,
-                        v.Pos.y,
-                        v.Pos.z,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        v.Size.x,
-                        v.Size.y,
-                        v.Size.z,
-                        v.Color.r,
-                        v.Color.g,
-                        v.Color.b,
-                        100,
-                        false,
-                        false,
-                        2,
-                        v.Rotate,
-                        nil,
-                        nil,
-                        false
-                    )
+                    DrawMarker(v.Type, v.Pos.x, v.Pos.y, v.Pos.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, v.Size.x, v.Size.y, v.Size.z, v.Color.r, v.Color.g, v.Color.b, 100, false, false, 2, v.Rotate, nil, nil, false)
                 end
 
                 if distance < v.Size.x then
@@ -580,10 +457,7 @@ CreateThread(function()
                 end
             end
 
-            if
-                (isInMarker and not HasAlreadyEnteredMarker)
-                or (isInMarker and LastZone ~= currentZone)
-            then
+            if (isInMarker and not HasAlreadyEnteredMarker) or (isInMarker and LastZone ~= currentZone) then
                 HasAlreadyEnteredMarker, LastZone = true, currentZone
                 TriggerEvent('esx_taxijob:hasEnteredMarker', currentZone)
             end
@@ -649,14 +523,7 @@ CreateThread(function()
 
                     SetEntityAsMissionEntity(CurrentCustomer, false, true)
 
-                    CurrentCustomer,
-                        CurrentCustomerBlip,
-                        DestinationBlip,
-                        IsNearCustomer,
-                        CustomerIsEnteringVehicle,
-                        CustomerEnteredVehicle,
-                        targetCoords =
-                        nil, nil, nil, false, false, false, nil
+                    CurrentCustomer, CurrentCustomerBlip, DestinationBlip, IsNearCustomer, CustomerIsEnteringVehicle, CustomerEnteredVehicle, targetCoords = nil, nil, nil, false, false, false, nil
                 end
 
                 if IsPedInAnyVehicle(playerPed, false) then
@@ -674,16 +541,7 @@ CreateThread(function()
 
                                 ESX.ShowNotification(TranslateCap('arrive_dest'))
 
-                                TaskGoStraightToCoord(
-                                    CurrentCustomer,
-                                    targetCoords.x,
-                                    targetCoords.y,
-                                    targetCoords.z,
-                                    1.0,
-                                    -1,
-                                    0.0,
-                                    0.0
-                                )
+                                TaskGoStraightToCoord(CurrentCustomer, targetCoords.x, targetCoords.y, targetCoords.z, 1.0, -1, 0.0, 0.0)
                                 SetEntityAsMissionEntity(CurrentCustomer, false, true)
                                 TriggerServerEvent('esx_taxijob:success')
                                 RemoveBlip(DestinationBlip)
@@ -696,79 +554,33 @@ CreateThread(function()
 
                                 scope(CurrentCustomer)
 
-                                CurrentCustomer,
-                                    CurrentCustomerBlip,
-                                    DestinationBlip,
-                                    IsNearCustomer,
-                                    CustomerIsEnteringVehicle,
-                                    CustomerEnteredVehicle,
-                                    targetCoords =
-                                    nil, nil, nil, false, false, false, nil
+                                CurrentCustomer, CurrentCustomerBlip, DestinationBlip, IsNearCustomer, CustomerIsEnteringVehicle, CustomerEnteredVehicle, targetCoords = nil, nil, nil, false, false, false, nil
                             end
 
                             if targetCoords then
-                                DrawMarker(
-                                    36,
-                                    targetCoords.x,
-                                    targetCoords.y,
-                                    targetCoords.z + 1.1,
-                                    0.0,
-                                    0.0,
-                                    0.0,
-                                    0.0,
-                                    0.0,
-                                    0.0,
-                                    1.0,
-                                    1.0,
-                                    1.0,
-                                    234,
-                                    223,
-                                    72,
-                                    155,
-                                    false,
-                                    false,
-                                    2,
-                                    true,
-                                    nil,
-                                    nil,
-                                    false
-                                )
+                                DrawMarker(36, targetCoords.x, targetCoords.y, targetCoords.z + 1.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 234, 223, 72, 155, false, false, 2, true, nil, nil, false)
                             end
                         else
                             RemoveBlip(CurrentCustomerBlip)
                             CurrentCustomerBlip = nil
-                            targetCoords =
-                                Config.JobLocations[GetRandomIntInRange(1, #Config.JobLocations)]
+                            targetCoords = Config.JobLocations[GetRandomIntInRange(1, #Config.JobLocations)]
+
                             local distance = #(playerCoords - targetCoords)
 
                             while distance < Config.MinimumDistance do
                                 Wait(0)
 
-                                targetCoords = Config.JobLocations[GetRandomIntInRange(
-                                    1,
-                                    #Config.JobLocations
-                                )]
+                                targetCoords = Config.JobLocations[GetRandomIntInRange(1, #Config.JobLocations)]
                                 distance = #(playerCoords - targetCoords)
                             end
 
-                            local street = table.pack(
-                                GetStreetNameAtCoord(targetCoords.x, targetCoords.y, targetCoords.z)
-                            )
-
+                            local street = table.pack(GetStreetNameAtCoord(targetCoords.x, targetCoords.y, targetCoords.z))
                             local msg = nil
 
                             if street[2] ~= 0 and street[2] ~= nil then
-                                msg = string.format(
-                                    TranslateCap(
-                                        'take_me_to_near',
-                                        GetStreetNameFromHashKey(street[1]),
-                                        GetStreetNameFromHashKey(street[2])
-                                    )
-                                )
+                                msg = string.format(TranslateCap('take_me_to_near', GetStreetNameFromHashKey(street[1]), GetStreetNameFromHashKey(street[2])))
                             else
-                                msg = string.format(
-                                    TranslateCap('take_me_to', GetStreetNameFromHashKey(street[1]))
-                                )
+                                msg = string.format(TranslateCap('take_me_to', GetStreetNameFromHashKey(street[1])))
                             end
 
                             ESX.ShowNotification(msg)
@@ -779,57 +591,25 @@ CreateThread(function()
                                 route = true,
                             })
 
-                            TriggerServerEvent(
-                                'esx_taxijob:startMission',
-                                customerCoords,
-                                targetCoords
-                            )
+                            TriggerServerEvent('esx_taxijob:startMission', customerCoords, targetCoords)
                             CustomerEnteredVehicle = true
                         end
                     else
-                        DrawMarker(
-                            36,
-                            customerCoords.x,
-                            customerCoords.y,
-                            customerCoords.z + 1.1,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            1.0,
-                            1.0,
-                            1.0,
-                            234,
-                            223,
-                            72,
-                            155,
-                            false,
-                            false,
-                            2,
-                            true,
-                            nil,
-                            nil,
-                            false
-                        )
+                        DrawMarker(36, customerCoords.x, customerCoords.y, customerCoords.z + 1.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 234, 223, 72, 155, false, false, 2, true, nil, nil, false)
 
                         if not CustomerEnteredVehicle then
                             if customerDistance <= 40.0 then
-
                                 if not IsNearCustomer then
                                     ESX.ShowNotification(TranslateCap('close_to_client'))
                                     IsNearCustomer = true
                                 end
-
                             end
 
                             if customerDistance <= 20.0 then
                                 if not CustomerIsEnteringVehicle then
                                     ClearPedTasksImmediately(CurrentCustomer)
 
-                                    local maxSeats, freeSeat =
-                                        GetVehicleMaxNumberOfPassengers(vehicle)
+                                    local maxSeats, freeSeat = GetVehicleMaxNumberOfPassengers(vehicle)
 
                                     for i = maxSeats - 1, 0, -1 do
                                         if IsVehicleSeatFree(vehicle, i) then
@@ -839,14 +619,7 @@ CreateThread(function()
                                     end
 
                                     if freeSeat then
-                                        TaskEnterVehicle(
-                                            CurrentCustomer,
-                                            vehicle,
-                                            -1,
-                                            freeSeat,
-                                            2.0,
-                                            0
-                                        )
+                                        TaskEnterVehicle(CurrentCustomer, vehicle, -1, freeSeat, 2.0, 0)
                                         CustomerIsEnteringVehicle = true
                                     end
                                 end
@@ -882,13 +655,7 @@ CreateThread(function()
     while true do
         local sleep = 1500
 
-        if
-            CurrentAction
-            and ESX.PlayerLoaded
-            and not ESX.PlayerData.dead
-            and ESX.PlayerData.job
-            and ESX.PlayerData.job.name == 'taxi'
-        then
+        if CurrentAction and ESX.PlayerLoaded and not ESX.PlayerData.dead and ESX.PlayerData.job and ESX.PlayerData.job.name == 'taxi' then
             sleep = 0
 
             if textUIMessage ~= CurrentActionMsg then
@@ -896,11 +663,7 @@ CreateThread(function()
                 textUIMessage = CurrentActionMsg
             end
 
-            if
-                IsControlJustReleased(0, 38)
-                and ESX.PlayerData.job
-                and ESX.PlayerData.job.name == 'taxi'
-            then
+            if IsControlJustReleased(0, 38) and ESX.PlayerData.job and ESX.PlayerData.job.name == 'taxi' then
                 if CurrentAction == 'taxi_actions_menu' then
                     OpenTaxiActionsMenu()
                 elseif CurrentAction == 'cloakroom' then
@@ -918,12 +681,7 @@ CreateThread(function()
 end)
 
 RegisterCommand('taximenu', function()
-    if
-        not ESX.PlayerData.dead
-        and Config.EnablePlayerManagement
-        and ESX.PlayerData.job
-        and ESX.PlayerData.job.name == 'taxi'
-    then
+    if not ESX.PlayerData.dead and Config.EnablePlayerManagement and ESX.PlayerData.job and ESX.PlayerData.job.name == 'taxi' then
         OpenMobileTaxiActionsMenu()
     end
 end, false)

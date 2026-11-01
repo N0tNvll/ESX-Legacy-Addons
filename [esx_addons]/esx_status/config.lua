@@ -17,4 +17,5 @@ Config.Display = false -- Enable the esx_status bars (disable if you are using a
 Config.AuthoritativeStatuses = {
     hunger = { default = 1000000, decay = 100 },
     thirst = { default = 1000000, decay = 75 },
+    drunk = { default = 0, decay = 1500 },
 }

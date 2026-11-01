@@ -6,22 +6,22 @@
 
 Config = {}
 
-Config.Locale = GetConvar("esx:locale", "en")
+Config.Locale = GetConvar('esx:locale', 'en')
 
 --- ESX account behind each way to pay, one account per way. RequestPayment takes and returns
 --- these account names, so a seller hands the result straight to xPlayer.chargeAccount.
 ---@type table<PaymentMethod, string>
 Config.Accounts = {
-    cash = "money",
-    card = "bank",
+    cash = 'money',
+    card = 'bank',
 }
 
 --- Order the methods are listed in, and the methods a request gets when it names none.
 ---@type PaymentMethod[]
-Config.Methods = { "cash", "card" }
+Config.Methods = { 'cash', 'card' }
 
 --- Currency symbol shown before amounts when a request names none.
-Config.Currency = "$"
+Config.Currency = '$'
 
 --- Payments of at least this amount have to be held to confirm; 0 turns holding off.
 Config.HoldAmount = 50000

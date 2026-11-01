@@ -69,5 +69,5 @@ Locales['pl'] = {
     ['ui_no_response'] = 'Serwer nie odpowiedział. Spróbuj ponownie.',
     ['ui_location_marked'] = 'Miejsce pracy zaznaczone na mapie.',
     ['ui_location_unavailable'] = 'Lokalizacja niedostępna.',
-    ['ui_location_failed'] = 'Nie udało się zaznaczyć lokalizacji.'
+    ['ui_location_failed'] = 'Nie udało się zaznaczyć lokalizacji.',
 }

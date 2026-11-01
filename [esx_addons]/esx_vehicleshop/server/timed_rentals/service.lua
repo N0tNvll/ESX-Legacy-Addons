@@ -15,10 +15,7 @@ local function isAllowed(values, selected)
 end
 
 local function validPlayer(playerId, player, branch)
-    return Rental.current(playerId, player)
-        and Rental.near(playerId, branch)
-        and GetEntityHealth(GetPlayerPed(playerId)) > 0
-        and GetVehiclePedIsIn(GetPlayerPed(playerId), false) == 0
+    return Rental.current(playerId, player) and Rental.near(playerId, branch) and GetEntityHealth(GetPlayerPed(playerId)) > 0 and GetVehiclePedIsIn(GetPlayerPed(playerId), false) == 0
 end
 
 local function hasLicense(player)
@@ -26,10 +23,7 @@ local function hasLicense(player)
         return true
     end
 
-    return MySQL.scalar.await(
-        'SELECT 1 FROM user_licenses WHERE owner = ? AND type = ? LIMIT 1',
-        { player.identifier, Config.DrivingLicenseType }
-    ) ~= nil
+    return MySQL.scalar.await('SELECT 1 FROM user_licenses WHERE owner = ? AND type = ? LIMIT 1', { player.identifier, Config.DrivingLicenseType }) ~= nil
 end
 
 local function spawnVehicle(ctx, branch, vehicle, lease)
@@ -56,22 +50,13 @@ local function publishVehicle(ctx, lease, playerId, player)
     Rental.leases[lease.identifier] = lease
     ctx.persisted = true
 
-    if
-        not exports['esx_garage']:publishRentalVehicle(lease.identifier, lease.plate, lease.expires)
-    then
+    if not exports['esx_garage']:publishRentalVehicle(lease.identifier, lease.plate, lease.expires) then
         Rental.removeEntity(lease)
         return Rental.error('unavailable')
     end
 
     TriggerClientEvent('esx_vehiclerental:contract', playerId, Rental.publicLease(lease))
-    TriggerEvent(
-        'esx_vehiclerental:rented',
-        playerId,
-        lease.netId,
-        lease.plate,
-        lease.model,
-        lease.expires
-    )
+    TriggerEvent('esx_vehiclerental:rented', playerId, lease.netId, lease.plate, lease.model, lease.expires)
 
     return {
         ok = true,
@@ -93,9 +78,7 @@ function Rental.cleanupOperation(ctx)
         local ok, err = pcall(action, ...)
 
         if not ok then
-            print(
-                ('[esx_vehicleshop:rentals] Compensation cleanup failed: %s'):format(tostring(err))
-            )
+            print(('[esx_vehicleshop:rentals] Compensation cleanup failed: %s'):format(tostring(err)))
         end
     end
 
@@ -106,26 +89,15 @@ function Rental.cleanupOperation(ctx)
 
         if ctx.lease then
             -- Dispatch cleanup even on resource stop; pending insertions are discarded on next startup.
-            cleanup(
-                MySQL.update,
-                'DELETE FROM esx_vehicle_rentals WHERE identifier = ? AND plate = ?',
-                { ctx.lease.identifier, ctx.lease.plate }
-            )
+            cleanup(MySQL.update, 'DELETE FROM esx_vehicle_rentals WHERE identifier = ? AND plate = ?', { ctx.lease.identifier, ctx.lease.plate })
         end
 
         if ctx.charged and ctx.charged > 0 then
-            local ok, refunded =
-                pcall(ctx.player.addAccountMoney, ctx.account, ctx.charged, 'Vehicle Rental Refund')
+            local ok, refunded = pcall(ctx.player.addAccountMoney, ctx.account, ctx.charged, 'Vehicle Rental Refund')
 
             if not ok or refunded ~= true then
                 ctx.refundFailed = true
-                print(
-                    ('[esx_vehicleshop:rentals] REFUND FAILED: %s / %s / %d'):format(
-                        ctx.identifier,
-                        ctx.account,
-                        ctx.charged
-                    )
-                )
+                print(('[esx_vehicleshop:rentals] REFUND FAILED: %s / %s / %d'):format(ctx.identifier, ctx.account, ctx.charged))
             end
         end
     end
@@ -169,11 +141,7 @@ function Rental.execute(playerId, run)
     local cleanupOk, cleanupError = pcall(Rental.cleanupOperation, ctx)
 
     if not ok or not cleanupOk then
-        print(
-            ('[esx_vehicleshop:rentals] Operation failed: %s'):format(
-                tostring(not ok and result or cleanupError)
-            )
-        )
+        print(('[esx_vehicleshop:rentals] Operation failed: %s'):format(tostring(not ok and result or cleanupError)))
         return Rental.error('internal_error')
     end
 
@@ -258,13 +226,7 @@ function Rental.rent(playerId, request)
         local vehicle = Rental.key(request.vehicle) and Config.Vehicles[request.vehicle]
         local plan = Rental.key(request.plan) and Config.Plans[request.plan]
 
-        if
-            not branch
-            or not vehicle
-            or not plan
-            or not isAllowed(branch.vehicles, request.vehicle)
-            or not isAllowed(Config.PaymentAccounts, request.account)
-        then
+        if not branch or not vehicle or not plan or not isAllowed(branch.vehicles, request.vehicle) or not isAllowed(Config.PaymentAccounts, request.account) then
             return Rental.error('invalid_request')
         end
 
@@ -294,10 +256,7 @@ function Rental.rent(playerId, request)
             return Rental.error('insufficient_funds')
         end
 
-        local plate = xLib.vehiclePlate.generateUnique(
-            { prefix = 'R', letters = 3, numbers = 4 },
-            Rental.DB.plateExists
-        )
+        local plate = xLib.vehiclePlate.generateUnique({ prefix = 'R', letters = 3, numbers = 4 }, Rental.DB.plateExists)
 
         if not plate then
             return Rental.error('spawn_failed')
@@ -341,11 +300,7 @@ function Rental.rent(playerId, request)
         local activated, activationError = pcall(Rental.DB.activate, lease)
 
         if not activated then
-            print(
-                ('[esx_vehicleshop:rentals] Contract activation failed: %s'):format(
-                    tostring(activationError)
-                )
-            )
+            print(('[esx_vehicleshop:rentals] Contract activation failed: %s'):format(tostring(activationError)))
             return Rental.error('save_failed')
         end
 
@@ -448,14 +403,7 @@ function Rental.returnVehicle(playerId, branchId)
         local entity = Rental.liveEntity(lease)
         local ped = GetPlayerPed(playerId)
 
-        if
-            not Rental.near(playerId, branch, true)
-            or not entity
-            or GetEntityRoutingBucket(entity) ~= branch.bucket
-            or GetVehiclePedIsIn(ped, false) ~= entity
-            or GetPedInVehicleSeat(entity, -1) ~= ped
-            or #(GetEntityCoords(entity) - branch.returnCoords) > Config.ReturnDistance
-        then
+        if not Rental.near(playerId, branch, true) or not entity or GetEntityRoutingBucket(entity) ~= branch.bucket or GetVehiclePedIsIn(ped, false) ~= entity or GetPedInVehicleSeat(entity, -1) ~= ped or #(GetEntityCoords(entity) - branch.returnCoords) > Config.ReturnDistance then
             return Rental.error('return_vehicle')
         end
 

@@ -11,8 +11,12 @@ Helpers = {}
 Logs = Logs or {
     record = function() end,
     flush = function() end,
-    purge = function() return 0 end,
-    query = function() return { logs = {}, hasMore = false, nextOffset = 0, limit = 0 } end,
+    purge = function()
+        return 0
+    end,
+    query = function()
+        return { logs = {}, hasMore = false, nextOffset = 0, limit = 0 }
+    end,
 }
 
 local translations = nil
@@ -24,11 +28,11 @@ local MAX_VEHICLE_PAGE_SIZE = tonumber(ADMIN_LIMITS.VehiclePageSize) or 100
 local MAX_BAN_PAGE_SIZE = tonumber(ADMIN_LIMITS.BanPageSize) or 100
 local recentPlayers = {}
 local MAX_RECENT_PLAYERS = tonumber(ADMIN_LIMITS.RecentPlayersCap) or 100
-local VEHICLE_SELECT_COLUMNS = "owner, plate, vehicle, stored, pound, type"
+local VEHICLE_SELECT_COLUMNS = 'owner, plate, vehicle, stored, pound, type'
 local serverStartedAt = os.time()
 local serverManagementConfig = Config.ServerManagement or {}
 local serverEnvironment = {
-    weather = serverManagementConfig.DefaultWeather or "CLEAR",
+    weather = serverManagementConfig.DefaultWeather or 'CLEAR',
     hour = math.floor(tonumber(serverManagementConfig.DefaultHour) or 12),
     minute = math.floor(tonumber(serverManagementConfig.DefaultMinute) or 0),
     blackout = serverManagementConfig.DefaultBlackout == true,
@@ -46,16 +50,18 @@ for group, allowed in pairs(Config.AllowedGroups) do
 end
 
 local function capitalize(str)
-    if type(str) ~= "string" or str == "" then return str end
+    if type(str) ~= 'string' or str == '' then
+        return str
+    end
     return str:sub(1, 1):upper() .. str:sub(2)
 end
 
 local function trim(str)
-    if type(str) ~= "string" then
-        return ""
+    if type(str) ~= 'string' then
+        return ''
     end
 
-    return str:match("^%s*(.-)%s*$")
+    return str:match('^%s*(.-)%s*$')
 end
 
 Helpers.trim = trim
@@ -65,8 +71,9 @@ Helpers.trim = trim
 -- =============================================
 function Helpers.safeQuery(query, params)
     local ok, result = pcall(MySQL.query.await, query, params)
+
     if not ok then
-        print(("[esx-adminmenu] DB query failed: %s"):format(tostring(result)))
+        print(('[esx-adminmenu] DB query failed: %s'):format(tostring(result)))
         return nil
     end
     return result
@@ -74,8 +81,9 @@ end
 
 function Helpers.safeScalar(query, params)
     local ok, result = pcall(MySQL.scalar.await, query, params)
+
     if not ok then
-        print(("[esx-adminmenu] DB scalar failed: %s"):format(tostring(result)))
+        print(('[esx-adminmenu] DB scalar failed: %s'):format(tostring(result)))
         return nil
     end
     return result
@@ -83,8 +91,9 @@ end
 
 function Helpers.safeUpdate(query, params)
     local ok, result = pcall(MySQL.update.await, query, params)
+
     if not ok then
-        print(("[esx-adminmenu] DB update failed: %s"):format(tostring(result)))
+        print(('[esx-adminmenu] DB update failed: %s'):format(tostring(result)))
         return nil
     end
     return result
@@ -103,39 +112,48 @@ end
 --- @param value any
 --- @return boolean
 function Helpers.isCallable(value)
-    if type(value) == "function" then
+    if type(value) == 'function' then
         return true
     end
 
-    if type(value) ~= "table" then
+    if type(value) ~= 'table' then
         return false
     end
 
     local meta = getmetatable(value)
-    return type(meta) == "table" and type(meta.__call) == "function"
+    return type(meta) == 'table' and type(meta.__call) == 'function'
 end
 
 function Helpers.registerCallback(name, handler)
     xLib.callback.registerCompat(name, function(source, cb, ...)
         local ok, result = pcall(handler, source, ...)
+
         if not ok then
-            print(("[esx-adminmenu] Callback %s errored: %s"):format(name, tostring(result)))
-            cb({ success = false, err = "Internal error." })
+            print(('[esx-adminmenu] Callback %s errored: %s'):format(name, tostring(result)))
+            cb({ success = false, err = 'Internal error.' })
             return
         end
+
         cb(result)
     end)
 end
 
 -- Single accessor for the three action -> feature permission maps.
 local ACTION_PERMISSION_MAPS = {
-    adminMenu = function() return Config.AdminMenu and Config.AdminMenu.ActionPermissions or {} end,
-    playerActions = function() return Config.PlayerActions and Config.PlayerActions.ActionPermissions or {} end,
-    serverManagement = function() return Config.ServerManagement and Config.ServerManagement.ActionPermissions or {} end,
+    adminMenu = function()
+        return Config.AdminMenu and Config.AdminMenu.ActionPermissions or {}
+    end,
+    playerActions = function()
+        return Config.PlayerActions and Config.PlayerActions.ActionPermissions or {}
+    end,
+    serverManagement = function()
+        return Config.ServerManagement and Config.ServerManagement.ActionPermissions or {}
+    end,
 }
 
 function Helpers.getActionPermission(namespace, action)
     local getter = ACTION_PERMISSION_MAPS[namespace]
+
     if not getter then
         return nil
     end
@@ -144,9 +162,11 @@ end
 
 function Helpers.getFormattedPlayTime(playtime)
     playtime = tonumber(playtime) or 0
+
     if playtime <= 0 then
         return { days = 0, hours = 0, minutes = 0 }
     end
+
     local days = math.floor(playtime / 86400)
     local hours = math.floor((playtime % 86400) / 3600)
     local minutes = math.floor((playtime % 3600) / 60)
@@ -155,6 +175,7 @@ end
 
 function Helpers.isOnline(source)
     source = tonumber(source)
+
     if not source then
         return false
     end
@@ -164,6 +185,7 @@ end
 
 function Helpers.isBanned(identifier)
     local ban = BanCache.get(identifier)
+
     if ban then
         return ban
     end
@@ -193,18 +215,18 @@ function Helpers.formatServerUptime(seconds)
     local minutes = math.floor((total % 3600) / 60)
 
     if days > 0 then
-        return ("%dd %02dh"):format(days, hours)
+        return ('%dd %02dh'):format(days, hours)
     end
 
     if hours > 0 then
-        return ("%dh %02dm"):format(hours, minutes)
+        return ('%dh %02dm'):format(hours, minutes)
     end
 
     if minutes > 0 then
-        return ("%dm"):format(minutes)
+        return ('%dm'):format(minutes)
     end
 
-    return ("%ds"):format(total % 60)
+    return ('%ds'):format(total % 60)
 end
 
 function Helpers.setServerEnvironment(data)
@@ -219,8 +241,7 @@ function Helpers.setServerEnvironment(data)
     end
 
     if data.minute ~= nil then
-        serverEnvironment.minute = math.max(0,
-            math.min(59, math.floor(tonumber(data.minute) or serverEnvironment.minute)))
+        serverEnvironment.minute = math.max(0, math.min(59, math.floor(tonumber(data.minute) or serverEnvironment.minute)))
     end
 
     if data.blackout ~= nil then
@@ -246,29 +267,34 @@ function Helpers.getServerEnvironment()
     }
 end
 
-local densityStorageKey = "populationDensity:v1"
+local densityStorageKey = 'populationDensity:v1'
 
 local function setPopulationDensity(enabled, data, persist)
-    if type(enabled) ~= "boolean" then
-        return false, "Invalid density override state."
+    if type(enabled) ~= 'boolean' then
+        return false, 'Invalid density override state.'
     end
 
     local density = {}
+
     if enabled then
-        if type(data) ~= "table" then
-            return false, "Invalid population density."
+        if type(data) ~= 'table' then
+            return false, 'Invalid population density.'
         end
-        for _, key in ipairs({ "pedDensity", "vehicleDensity", "randomVehicleDensity" }) do
+
+        for _, key in ipairs({ 'pedDensity', 'vehicleDensity', 'randomVehicleDensity' }) do
             local value = data[key]
-            if type(value) ~= "number" or value ~= value or value < 0 or value > 1 then
-                return false, "Density values must be numbers between 0 and 1."
+
+            if type(value) ~= 'number' or value ~= value or value < 0 or value > 1 then
+                return false, 'Density values must be numbers between 0 and 1.'
             end
+
             density[key] = value
         end
     end
 
     if persist then
         local saved = { version = 1, enabled = enabled }
+
         for key, value in pairs(density) do
             saved[key] = value
         end
@@ -276,23 +302,26 @@ local function setPopulationDensity(enabled, data, persist)
         -- failed write is reported instead of presenting a temporary success.
         local ok, err = pcall(function()
             local encoded = json.encode(saved)
+
             SetResourceKvp(densityStorageKey, encoded)
-            assert(GetResourceKvpString(densityStorageKey) == encoded, "KVP write verification failed")
+            assert(GetResourceKvpString(densityStorageKey) == encoded, 'KVP write verification failed')
         end)
+
         if not ok then
-            print(("[esx-adminmenu] Could not persist population density: %s"):format(tostring(err)))
-            return false, "Could not save population density. Please try again."
+            print(('[esx-adminmenu] Could not persist population density: %s'):format(tostring(err)))
+            return false, 'Could not save population density. Please try again.'
         end
     end
 
     serverEnvironment.densityEnabled = enabled
+
     if enabled then
         for key, value in pairs(density) do
             serverEnvironment[key] = value
         end
     end
 
-    GlobalState["esx:populationDensity"] = enabled and density or false
+    GlobalState['esx:populationDensity'] = enabled and density or false
     return true
 end
 
@@ -302,24 +331,28 @@ end
 
 local densityRestored = false
 local densityReadOk, savedDensity = pcall(GetResourceKvpString, densityStorageKey)
+
 if not densityReadOk then
-    print(("[esx-adminmenu] Could not read saved population density: %s"):format(tostring(savedDensity)))
+    print(('[esx-adminmenu] Could not read saved population density: %s'):format(tostring(savedDensity)))
 elseif savedDensity ~= nil then
     local decodedOk, saved = pcall(json.decode, savedDensity)
-    local err = "Invalid saved population density format or version."
-    if decodedOk and type(saved) == "table" and saved.version == 1 then
+    local err = 'Invalid saved population density format or version.'
+
+    if decodedOk and type(saved) == 'table' and saved.version == 1 then
         densityRestored, err = setPopulationDensity(saved.enabled, saved, false)
     end
+
     if not densityRestored then
-        print(("[esx-adminmenu] Ignoring invalid saved population density: %s"):format(tostring(err)))
+        print(('[esx-adminmenu] Ignoring invalid saved population density: %s'):format(tostring(err)))
     end
 end
 
 if not densityRestored then
-    if type(serverManagementConfig.DefaultDensity) == "table" then
+    if type(serverManagementConfig.DefaultDensity) == 'table' then
         local ok, err = setPopulationDensity(true, serverManagementConfig.DefaultDensity, false)
+
         if not ok then
-            print(("[esx-adminmenu] Invalid DefaultDensity: %s"):format(err))
+            print(('[esx-adminmenu] Invalid DefaultDensity: %s'):format(err))
             setPopulationDensity(false, nil, false)
         end
     else
@@ -329,10 +362,9 @@ end
 
 function Helpers.getServerData()
     local uptimeSeconds = Helpers.getServerUptimeSeconds()
-
     return {
         currentPlayers = #GetPlayers(),
-        maxPlayers = GetConvarInt("sv_maxclients", 32),
+        maxPlayers = GetConvarInt('sv_maxclients', 32),
         uptimeSeconds = uptimeSeconds,
         uptimeFormatted = Helpers.formatServerUptime(uptimeSeconds),
         environment = Helpers.getServerEnvironment(),
@@ -341,6 +373,7 @@ end
 
 function Helpers.hasPermission(source)
     local xPlayer = ESX.GetPlayerFromId(source)
+
     if not xPlayer then
         return false
     end
@@ -349,16 +382,18 @@ function Helpers.hasPermission(source)
 end
 
 function Helpers.hasFeaturePermission(source, feature)
-    if type(feature) ~= "string" or feature == "" then
+    if type(feature) ~= 'string' or feature == '' then
         return false
     end
 
     local xPlayer = ESX.GetPlayerFromId(source)
+
     if not xPlayer then
         return false
     end
 
     local featurePermissions = Config.FeaturePermissions and Config.FeaturePermissions[feature]
+
     if not featurePermissions then
         return false
     end
@@ -368,21 +403,23 @@ end
 
 function Helpers.normalizeLicenseIdentifier(identifier)
     identifier = trim(identifier)
-    if identifier == "" or #identifier > 100 then
+
+    if identifier == '' or #identifier > 100 then
         return nil
     end
 
-    local license = identifier:match("^license:([%w%-_]+)$")
+    local license = identifier:match('^license:([%w%-_]+)$')
+
     if license then
-        return "license:" .. license
+        return 'license:' .. license
     end
 
-    if identifier:find(":") then
+    if identifier:find(':') then
         return nil
     end
 
-    if identifier:match("^[%w%-_]+$") then
-        return "license:" .. identifier
+    if identifier:match('^[%w%-_]+$') then
+        return 'license:' .. identifier
     end
 
     return nil
@@ -393,6 +430,7 @@ function Helpers.getPlayerLicenseIdentifier(source)
 
     for i = 1, #identifiers do
         local identifier = Helpers.normalizeLicenseIdentifier(identifiers[i])
+
         if identifier then
             return identifier
         end
@@ -411,7 +449,7 @@ function Helpers.getBanIdentifiers(source)
 
     for i = 1, #identifiers do
         local id = identifiers[i]
-        local prefix = type(id) == "string" and id:match("^([^:]+):") or nil
+        local prefix = type(id) == 'string' and id:match('^([^:]+):') or nil
 
         if prefix and wanted[prefix] and not seen[id] then
             seen[id] = true
@@ -428,10 +466,10 @@ local function getIdentifierMap(source)
 
     for i = 1, #identifiers do
         local identifier = identifiers[i]
-        local key = identifier:match("^([^:]+):") or ("identifier_" .. i)
+        local key = identifier:match('^([^:]+):') or ('identifier_' .. i)
 
         if result[key] then
-            key = ("%s_%d"):format(key, i)
+            key = ('%s_%d'):format(key, i)
         end
 
         result[key] = identifier
@@ -458,16 +496,14 @@ local function loadLastSeenFor(identifiers)
     end
 
     local placeholders = {}
+
     for i = 1, #identifiers do
-        placeholders[i] = "?"
+        placeholders[i] = '?'
     end
 
-    local rows = Helpers.safeQuery(
-        ("SELECT identifier, last_seen FROM users WHERE identifier IN (%s)"):format(table.concat(placeholders, ",")),
-        identifiers
-    )
-
+    local rows = Helpers.safeQuery(('SELECT identifier, last_seen FROM users WHERE identifier IN (%s)'):format(table.concat(placeholders, ',')), identifiers)
     local map = {}
+
     for i = 1, #(rows or {}) do
         map[rows[i].identifier] = rows[i].last_seen
     end
@@ -478,8 +514,7 @@ end
 function Helpers.getPlayerList(viewerSource)
     local players = {}
     local identifiers = {}
-    local canSeeSensitive = viewerSource and Helpers.hasFeaturePermission(viewerSource, "sensitiveInfo")
-
+    local canSeeSensitive = viewerSource and Helpers.hasFeaturePermission(viewerSource, 'sensitiveInfo')
     local xPlayers = ESX.ExtendedPlayers()
 
     -- One heavy numeric loop
@@ -487,8 +522,8 @@ function Helpers.getPlayerList(viewerSource)
         local xPlayer = xPlayers[i]
         local src = xPlayer.src
         local full = ESX.GetPlayerFromId(src)
-
         local charIdentifier = full and full.identifier
+
         if charIdentifier then
             identifiers[#identifiers + 1] = charIdentifier
         end
@@ -496,36 +531,30 @@ function Helpers.getPlayerList(viewerSource)
         local ped = GetPlayerPed(src)
         local coords = xPlayer.getCoords(true)
         local playtime = Helpers.getFormattedPlayTime(xPlayer.getPlayTime() or 0)
-
         local job = full and full.getJob()
-        local bank = full and full.getAccount("bank")
-        local black = full and full.getAccount("black_money")
+        local bank = full and full.getAccount('bank')
+        local black = full and full.getAccount('black_money')
+
         players[#players + 1] = {
-            status = "online",
+            status = 'online',
             id = src,
             name = xPlayer.getName(),
             is_staff = Config.AllowedGroups[xPlayer.getGroup()] == true,
             group = canSeeSensitive and xPlayer.getGroup() or nil,
-
             cash = xPlayer.getMoney(),
             bank = bank and bank.money or 0,
             alt_money = black and black.money or 0,
-
             health = ped ~= 0 and math.floor(GetEntityHealth(ped) - 100) or 0,
             armor = ped ~= 0 and GetPedArmour(ped) or 0,
-
             char_identifier = canSeeSensitive and charIdentifier or nil,
             identifier = canSeeSensitive and Helpers.getPlayerLicenseIdentifier(src) or nil,
             ip = canSeeSensitive and GetPlayerEndpoint(src) or nil,
             identifiers = canSeeSensitive and getIdentifierMap(src) or nil,
             routing_bucket = GetPlayerRoutingBucket(src),
             radio_channel = Helpers.getPlayerRadioChannel(src),
-
-            job = job and job.name or "unemployed",
-            job_grade = job and job.grade_label or "",
-
-            gender = full and full.variables.sex or "m",
-
+            job = job and job.name or 'unemployed',
+            job_grade = job and job.grade_label or '',
+            gender = full and full.variables.sex or 'm',
             play_time = playtime,
             position = coords and { x = coords.x, y = coords.y, z = coords.z } or nil,
         }
@@ -537,6 +566,7 @@ function Helpers.getPlayerList(viewerSource)
     -- One light numeric loop for adding the last_seen's after getting all the current xPlayer identifiers.
     for i = 1, #players do
         local id = players[i].char_identifier
+
         players[i].last_join = id and lastSeenMap[id] or nil
     end
 
@@ -568,22 +598,23 @@ end
 --- "offline" so the playerDropped path keeps its original behaviour.
 function Helpers.addRecentPlayer(source, status)
     local xPlayer = ESX.GetPlayerFromId(source)
+
     if not xPlayer then
         return
     end
 
     local ped = GetPlayerPed(source)
     local job = xPlayer.getJob and xPlayer.getJob() or nil
-    local bank = xPlayer.getAccount and xPlayer.getAccount("bank") or nil
-    local black = xPlayer.getAccount and xPlayer.getAccount("black_money") or nil
-    local isOnline = status == "online"
+    local bank = xPlayer.getAccount and xPlayer.getAccount('bank') or nil
+    local black = xPlayer.getAccount and xPlayer.getAccount('black_money') or nil
+    local isOnline = status == 'online'
 
     upsertRecentPlayer({
         -- A still-connected player keeps their server id so the UI can act on
         -- them live; playerDropped later upserts the same identifier as offline.
-        status = isOnline and "online" or "offline",
+        status = isOnline and 'online' or 'offline',
         id = isOnline and source or nil,
-        name = xPlayer.getName and xPlayer.getName() or GetPlayerName(source) or "Unknown",
+        name = xPlayer.getName and xPlayer.getName() or GetPlayerName(source) or 'Unknown',
         cash = xPlayer.getMoney and xPlayer.getMoney() or 0,
         bank = bank and bank.money or 0,
         alt_money = black and black.money or 0,
@@ -591,25 +622,26 @@ function Helpers.addRecentPlayer(source, status)
         armor = ped ~= 0 and GetPedArmour(ped) or 0,
         char_identifier = xPlayer.identifier,
         identifier = Helpers.getPlayerLicenseIdentifier(source),
-        job = job and job.name or "unemployed",
-        job_grade = job and (job.grade_label or job.grade_name or tostring(job.grade)) or "",
-        gender = xPlayer.variables and xPlayer.variables.sex or "m",
+        job = job and job.name or 'unemployed',
+        job_grade = job and (job.grade_label or job.grade_name or tostring(job.grade)) or '',
+        gender = xPlayer.variables and xPlayer.variables.sex or 'm',
         play_time = Helpers.getFormattedPlayTime(xPlayer.getPlayTime and xPlayer.getPlayTime() or 0),
         last_join = os.time(),
     })
 end
 
 function Helpers.getRecentPlayers(viewerSource)
-    if Helpers.hasFeaturePermission(viewerSource, "sensitiveInfo") then
+    if Helpers.hasFeaturePermission(viewerSource, 'sensitiveInfo') then
         return recentPlayers
     end
 
     local sanitized = {}
+
     for i = 1, #recentPlayers do
         local player = {}
 
         for key, value in pairs(recentPlayers[i]) do
-            if key ~= "identifier" and key ~= "char_identifier" and key ~= "identifiers" and key ~= "ip" then
+            if key ~= 'identifier' and key ~= 'char_identifier' and key ~= 'identifiers' and key ~= 'ip' then
                 player[key] = value
             end
         end
@@ -637,13 +669,16 @@ function Helpers.getTranslations()
         -- UI strings are literal text, not string.format templates (for
         -- example density_hint contains percentages). Locale files are
         -- loaded by the manifest; read them directly with English fallback.
-        local english = Locales and Locales["en"] or {}
+        local english = Locales and Locales['en'] or {}
         local active = Locales and Locales[Config.Locale] or english
+
         for key in pairs(english) do
             local value = active[key]
-            if type(value) ~= "string" then
+
+            if type(value) ~= 'string' then
                 value = english[key]
             end
+
             translations[key] = value
         end
     end
@@ -653,8 +688,9 @@ end
 
 function Helpers.getTranslation(key)
     if not key then
-        return "missing_key"
+        return 'missing_key'
     end
+
     if translations == nil then
         Helpers.getTranslations()
     end
@@ -667,7 +703,8 @@ local function decodeVehicleProps(rawVehicle)
     end
 
     local ok, decoded = pcall(json.decode, rawVehicle)
-    if ok and type(decoded) == "table" then
+
+    if ok and type(decoded) == 'table' then
         return decoded
     end
 
@@ -675,15 +712,15 @@ local function decodeVehicleProps(rawVehicle)
 end
 
 local function escapeLike(value)
-    return (value:gsub("([%%_\\\\])", "\\\\%1"))
+    return (value:gsub('([%%_\\\\])', '\\\\%1'))
 end
 
 local function toVehicleRecord(row, canSeeSensitive)
     local vehicleProps = decodeVehicleProps(row.vehicle)
     local vehicleHash = tonumber(vehicleProps.model)
-    local pound = type(row.pound) == "string" and trim(row.pound) or nil
+    local pound = type(row.pound) == 'string' and trim(row.pound) or nil
 
-    if pound == "" then
+    if pound == '' then
         pound = nil
     end
 
@@ -695,8 +732,8 @@ local function toVehicleRecord(row, canSeeSensitive)
         plate = row.plate,
         owner = canSeeSensitive and row.owner or nil,
         model = vehicleHash,
-        type = capitalize(row.type or "car"),
-        stored = row.stored == 1 or row.stored == "1" or row.stored == true,
+        type = capitalize(row.type or 'car'),
+        stored = row.stored == 1 or row.stored == '1' or row.stored == true,
         impounded = pound ~= nil,
         impoundName = pound,
     }
@@ -706,11 +743,11 @@ local function vehicleResultKey(row)
     local plate = trim(row and row.plate):upper()
     local owner = trim(row and row.owner)
 
-    if plate == "" then
+    if plate == '' then
         return nil
     end
 
-    return plate .. "\0" .. owner
+    return plate .. '\0' .. owner
 end
 
 local function compareVehicleRows(left, right)
@@ -752,17 +789,12 @@ local function vehiclePageResult(rows, limit, nextOffset, canSeeSensitive)
 end
 
 local function queryVehiclePrefix(column, pattern, limit)
-    local orderBy = column == "plate" and "`plate` ASC" or ("`%s` ASC, `plate` ASC"):format(column)
-
-    return Helpers.safeQuery(
-        ("SELECT %s FROM owned_vehicles WHERE `%s` LIKE ? ESCAPE '\\\\' ORDER BY %s LIMIT ?")
-        :format(VEHICLE_SELECT_COLUMNS, column, orderBy),
-        { pattern, limit + 1 }
-    )
+    local orderBy = column == 'plate' and '`plate` ASC' or ('`%s` ASC, `plate` ASC'):format(column)
+    return Helpers.safeQuery(("SELECT %s FROM owned_vehicles WHERE `%s` LIKE ? ESCAPE '\\\\' ORDER BY %s LIMIT ?"):format(VEHICLE_SELECT_COLUMNS, column, orderBy), { pattern, limit + 1 })
 end
 
 local function appendUniqueVehicleRows(target, seen, rows)
-    if type(rows) ~= "table" then
+    if type(rows) ~= 'table' then
         return
     end
 
@@ -777,20 +809,21 @@ local function appendUniqueVehicleRows(target, seen, rows)
 end
 
 local function searchVehicles(search, limit, canSeeSensitive)
-    local pattern = escapeLike(search) .. "%"
+    local pattern = escapeLike(search) .. '%'
     local rows = {}
     local seen = {}
 
     if canSeeSensitive then
-        appendUniqueVehicleRows(rows, seen, queryVehiclePrefix("owner", pattern, limit))
+        appendUniqueVehicleRows(rows, seen, queryVehiclePrefix('owner', pattern, limit))
     end
 
-    appendUniqueVehicleRows(rows, seen, queryVehiclePrefix("plate", pattern, limit))
-    appendUniqueVehicleRows(rows, seen, queryVehiclePrefix("type", pattern, limit))
+    appendUniqueVehicleRows(rows, seen, queryVehiclePrefix('plate', pattern, limit))
+    appendUniqueVehicleRows(rows, seen, queryVehiclePrefix('type', pattern, limit))
 
     table.sort(rows, compareVehicleRows)
 
     local page = vehiclePageResult(rows, limit, #rows, canSeeSensitive)
+
     page.hasMore = false
     page.nextOffset = #page.vehicles
 
@@ -801,14 +834,16 @@ function Helpers.getVehiclesPage(data, canSeeSensitive)
     data = data or {}
 
     local limit = tonumber(data.limit) or MAX_VEHICLE_PAGE_SIZE
+
     limit = math.max(1, math.min(limit, MAX_VEHICLE_PAGE_SIZE))
 
     local offset = tonumber(data.offset) or 0
+
     offset = math.max(0, offset)
 
     local search = trim(data.search):sub(1, 64)
 
-    if search ~= "" then
+    if search ~= '' then
         if offset > 0 then
             return {
                 vehicles = {},
@@ -822,23 +857,20 @@ function Helpers.getVehiclesPage(data, canSeeSensitive)
     end
 
     local params = {}
+
     params[#params + 1] = limit + 1
     params[#params + 1] = offset
 
-    local rows = Helpers.safeQuery(
-        ("SELECT %s FROM owned_vehicles ORDER BY plate ASC LIMIT ? OFFSET ?"):format(VEHICLE_SELECT_COLUMNS),
-        params
-    )
-
+    local rows = Helpers.safeQuery(('SELECT %s FROM owned_vehicles ORDER BY plate ASC LIMIT ? OFFSET ?'):format(VEHICLE_SELECT_COLUMNS), params)
     return vehiclePageResult(rows, limit, offset + math.min(#(rows or {}), limit), canSeeSensitive)
 end
 
 local function normalizeTimestamp(value)
-    if value == nil or value == "" then
+    if value == nil or value == '' then
         return nil
     end
 
-    if type(value) == "number" then
+    if type(value) == 'number' then
         if value <= 0 then
             return nil
         end
@@ -850,18 +882,21 @@ local function normalizeTimestamp(value)
         return math.floor(value)
     end
 
-    if type(value) == "string" then
+    if type(value) == 'string' then
         value = trim(value)
-        if value == "" or value:find("^0000%-00%-00") then
+
+        if value == '' or value:find('^0000%-00%-00') then
             return nil
         end
 
         local numeric = tonumber(value)
+
         if numeric then
             return normalizeTimestamp(numeric)
         end
 
-        local year, month, day, hour, min, sec = value:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)[ T](%d%d):(%d%d):(%d%d)")
+        local year, month, day, hour, min, sec = value:match('^(%d%d%d%d)%-(%d%d)%-(%d%d)[ T](%d%d):(%d%d):(%d%d)')
+
         if not year then
             return nil
         end
@@ -909,11 +944,12 @@ local function normalizeBanRecord(ban, now)
 
     if expires then
         local remaining = math.max(0, expires - now)
+
         normalized.remaining_seconds = remaining
         normalized.remaining_formatted = Helpers.formatRemainingTime(remaining)
     else
         normalized.remaining_seconds = nil
-        normalized.remaining_formatted = Helpers.getTranslation("permanent")
+        normalized.remaining_formatted = Helpers.getTranslation('permanent')
     end
 
     return normalized, expires
@@ -925,43 +961,50 @@ function Helpers.formatRemainingTime(seconds)
     local daySeconds = 60 * 60 * 24
     local hourSeconds = 60 * 60
     local minuteSeconds = 60
-
     local years = math.floor(seconds / yearSeconds)
+
     seconds = seconds % yearSeconds
 
     local weeks = math.floor(seconds / weekSeconds)
+
     seconds = seconds % weekSeconds
 
     local days = math.floor(seconds / daySeconds)
+
     seconds = seconds % daySeconds
 
     local hours = math.floor(seconds / hourSeconds)
+
     seconds = seconds % hourSeconds
 
     local minutes = math.floor(seconds / minuteSeconds)
-
     local parts = {}
 
     if years > 0 then
-        table.insert(parts, years .. "y")
-    end
-    if weeks > 0 then
-        table.insert(parts, weeks .. "w")
-    end
-    if days > 0 then
-        table.insert(parts, days .. "d")
-    end
-    if hours > 0 then
-        table.insert(parts, hours .. "h")
-    end
-    if minutes > 0 then
-        table.insert(parts, minutes .. "m")
-    end
-    if #parts == 0 then
-        table.insert(parts, "<1m")
+        table.insert(parts, years .. 'y')
     end
 
-    return table.concat(parts, ", ")
+    if weeks > 0 then
+        table.insert(parts, weeks .. 'w')
+    end
+
+    if days > 0 then
+        table.insert(parts, days .. 'd')
+    end
+
+    if hours > 0 then
+        table.insert(parts, hours .. 'h')
+    end
+
+    if minutes > 0 then
+        table.insert(parts, minutes .. 'm')
+    end
+
+    if #parts == 0 then
+        table.insert(parts, '<1m')
+    end
+
+    return table.concat(parts, ', ')
 end
 
 -- Caches the SORTED set of active raw ban records, rebuilt only when the ban
@@ -973,6 +1016,7 @@ local sortedActiveGen = -1
 
 local function getSortedActiveBanRecords()
     local gen = BanCache.getGeneration and BanCache.getGeneration() or 0
+
     if sortedActiveCache and sortedActiveGen == gen then
         return sortedActiveCache
     end
@@ -983,6 +1027,7 @@ local function getSortedActiveBanRecords()
 
     for i = 1, #all do
         local expires = normalizeTimestamp(all[i].expires_at)
+
         if not (expires and now >= expires) then
             active[#active + 1] = all[i]
         end
@@ -1001,14 +1046,15 @@ function Helpers.getActiveBansPage(data)
     data = data or {}
 
     local limit = tonumber(data.limit) or MAX_BAN_PAGE_SIZE
+
     limit = math.max(1, math.min(limit, MAX_BAN_PAGE_SIZE))
 
     local offset = tonumber(data.offset) or 0
+
     offset = math.max(0, offset)
 
     local records = getSortedActiveBanRecords()
     local now = os.time()
-
     local result = {}
     local lastIndex = math.min(#records, offset + limit)
 
@@ -1029,6 +1075,7 @@ local NumberCharset, Charset = {}, {}
 for i = 48, 57 do
     NumberCharset[#NumberCharset + 1] = string.char(i)
 end
+
 for i = 65, 90 do
     Charset[#Charset + 1] = string.char(i)
 end
@@ -1037,6 +1084,7 @@ math.randomseed(os.time())
 
 local function randomFrom(charset, length)
     local parts = {}
+
     for i = 1, math.max(0, length) do
         parts[i] = charset[math.random(#charset)]
     end
@@ -1044,14 +1092,14 @@ local function randomFrom(charset, length)
 end
 
 function Helpers.isPlateTaken(plate)
-    return Helpers.safeScalar("SELECT 1 FROM owned_vehicles WHERE plate = ? LIMIT 1", { plate }) ~= nil
+    return Helpers.safeScalar('SELECT 1 FROM owned_vehicles WHERE plate = ? LIMIT 1', { plate }) ~= nil
 end
 
 function Helpers.generatePlate()
     local plateConfig = Config.Plate or {}
     local letters = tonumber(plateConfig.Letters) or 3
     local numbers = tonumber(plateConfig.Numbers) or 3
-    local separator = plateConfig.UseSpace == false and "" or " "
+    local separator = plateConfig.UseSpace == false and '' or ' '
     local attempts = tonumber(ADMIN_LIMITS.PlateGenAttempts) or 50
 
     for _ = 1, attempts do
@@ -1074,17 +1122,17 @@ end
 local function normalizeImpounds(result)
     local out = {}
 
-    if type(result) ~= "table" then
+    if type(result) ~= 'table' then
         return out
     end
 
     for key, impound in pairs(result) do
-        if type(impound) == "table" then
-            local id = type(impound.id) == "string" and trim(impound.id) or nil
+        if type(impound) == 'table' then
+            local id = type(impound.id) == 'string' and trim(impound.id) or nil
 
-            if id and id ~= "" then
+            if id and id ~= '' then
                 out[id] = impound
-            elseif type(key) == "string" and key ~= "" then
+            elseif type(key) == 'string' and key ~= '' then
                 out[key] = impound
             end
         end
@@ -1099,7 +1147,7 @@ function Helpers.getImpounds()
     end
 
     local ok, result = pcall(function()
-        return exports["esx_garage"]:getImpounds()
+        return exports['esx_garage']:getImpounds()
     end)
 
     local normalized = ok and normalizeImpounds(result) or {}

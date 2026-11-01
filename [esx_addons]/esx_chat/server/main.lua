@@ -4,27 +4,44 @@
 local limiter = xLib.rateLimiter({
     capacity = Config.RateLimit.burst,
     refill = 1,
-    interval = Config.RateLimit.interval
+    interval = Config.RateLimit.interval,
 })
 
-local function sanitizeText(value)
+local commandLimiters = {}
+
+for name, cooldown in pairs(Config.CommandCooldowns or {}) do
+    local interval = tonumber(cooldown)
+
+    if interval and interval > 0 then
+        commandLimiters[name] = xLib.rateLimiter({
+            capacity = 1,
+            refill = 1,
+            interval = math.max(1, math.floor(interval)),
+            staleMs = math.max(60000, interval * 4),
+        })
+    end
+end
+
+local function sanitizeText(value, maximum)
     if type(value) ~= 'string' then
         return nil
     end
 
-    if #value > Config.MaxMessageLength * 4 then
-        value = value:sub(1, Config.MaxMessageLength * 4)
+    maximum = maximum or Config.MaxMessageLength
+
+    if #value > maximum * 4 then
+        value = value:sub(1, maximum * 4)
     end
 
     value = value:gsub('%c', ' '):gsub('%s+', ' ')
     value = value:match('^%s*(.*%S)') or ''
 
-    if #value > Config.MaxMessageLength then
-        value = value:sub(1, Config.MaxMessageLength)
-    end
-
     while #value > 0 and not utf8.len(value) do
         value = value:sub(1, -2)
+    end
+
+    if (utf8.len(value) or 0) > maximum then
+        value = value:sub(1, utf8.offset(value, maximum + 1) - 1)
     end
 
     if value == '' then
@@ -35,7 +52,17 @@ local function sanitizeText(value)
 end
 
 local function getPlayerName(playerId, xPlayer)
-    local name = xPlayer and xPlayer.getName()
+    local name
+
+    if Config.EnableESXIdentity ~= false and xPlayer then
+        if Config.OnlyFirstname and xPlayer.get then
+            name = xPlayer.get('firstName')
+        end
+
+        if type(name) ~= 'string' or name == '' then
+            name = xPlayer.getName()
+        end
+    end
 
     if type(name) == 'string' and name ~= '' then
         return name
@@ -53,7 +80,7 @@ local function systemMessage(target, text)
         type = 'system',
         title = TranslateCap('title_system'),
         text = text,
-        icon = 'system'
+        icon = 'system',
     })
 end
 
@@ -63,9 +90,13 @@ local function log(command, playerId, xPlayer, text, recipients, extra)
     end
 
     local fields = {
-        { name = 'Player', value = ('%s (%s)'):format(getPlayerName(playerId, xPlayer), playerId), inline = true },
+        {
+            name = 'Player',
+            value = ('%s (%s)'):format(getPlayerName(playerId, xPlayer), playerId),
+            inline = true,
+        },
         { name = 'Identifier', value = xPlayer and xPlayer.getIdentifier() or '-', inline = true },
-        { name = 'Recipients', value = recipients, inline = true }
+        { name = 'Recipients', value = recipients, inline = true },
     }
 
     if extra then
@@ -86,11 +117,20 @@ local function sendToPlayers(playerIds, payload)
 end
 
 local function getNearbyPlayerIds(playerId, distance)
-    local nearby = xLib.onesync.getPlayersInArea(playerId, distance, nil, GetPlayerRoutingBucket(playerId))
-    local ids = {}
+    local nearby = xLib.onesync.getPlayersInArea(playerId, distance, nil, GetPlayerRoutingBucket(playerId)) or {}
+    local ids, seen = {}, {}
 
     for i = 1, #nearby do
-        ids[i] = nearby[i].id
+        local id = nearby[i].id
+
+        if id and not seen[id] then
+            ids[#ids + 1] = id
+            seen[id] = true
+        end
+    end
+
+    if not seen[playerId] then
+        ids[#ids + 1] = playerId
     end
 
     return ids
@@ -108,18 +148,17 @@ local function buildProximityMessage(command, name, text)
             type = 'dice',
             title = TranslateCap('title_dice', name),
             text = _U('dice_result', rollDice(command.sides)),
-            icon = 'user-plus'
+            icon = 'user-plus',
         }
     end
 
     if key == 'try' then
         local result = math.random(0, 1) == 1 and _U('try_success') or _U('try_failure')
-
         return {
             type = 'try',
             title = TranslateCap('title_try', name),
             text = _U('try_result', text, result),
-            icon = 'user-plus'
+            icon = 'user-plus',
         }
     end
 
@@ -128,7 +167,7 @@ local function buildProximityMessage(command, name, text)
             type = 'environment',
             title = TranslateCap('title_environment', name),
             text = text,
-            icon = 'user-plus'
+            icon = 'user-plus',
         }
     end
 
@@ -136,7 +175,7 @@ local function buildProximityMessage(command, name, text)
         type = key,
         title = name,
         text = text,
-        icon = 'user-plus'
+        icon = 'user-plus',
     }
 end
 
@@ -166,7 +205,7 @@ handlers.global = function(command, playerId, xPlayer, text)
         type = command.name,
         title = title,
         text = text,
-        icon = command.name == 'ooc' and 'user' or 'message'
+        icon = command.name == 'ooc' and 'user' or 'message',
     })
 
     log(command, playerId, xPlayer, text, GetNumPlayerIndices())
@@ -183,15 +222,19 @@ handlers.job = function(command, playerId, xPlayer, text)
         type = 'job',
         title = _U('title_job', string.upper(job.label or job.name), getPlayerName(playerId, xPlayer)),
         text = text,
-        icon = 'user'
+        icon = 'user',
     })
 
     log(command, playerId, xPlayer, text, recipients, { name = 'Job', value = job.name, inline = true })
 end
 
 handlers.private = function(command, playerId, xPlayer, text, targetId)
-    if not targetId or not GetPlayerName(targetId) then
+    if not targetId or targetId ~= targetId or targetId <= 0 or targetId > 2147483647 or targetId % 1 ~= 0 or not GetPlayerName(targetId) then
         return systemMessage(playerId, _U('player_not_found'))
+    end
+
+    if targetId == playerId then
+        return
     end
 
     local senderName = getPlayerName(playerId, xPlayer)
@@ -201,14 +244,14 @@ handlers.private = function(command, playerId, xPlayer, text, targetId)
         type = 'pm',
         title = _U('title_pm_in', senderName),
         text = text,
-        icon = 'message'
+        icon = 'message',
     })
 
     push(playerId, {
         type = 'pm',
         title = _U('title_pm_out', targetName),
         text = text,
-        icon = 'message'
+        icon = 'message',
     })
 
     log(command, playerId, xPlayer, text, 1, { name = 'Target', value = ('%s (%s)'):format(targetName, targetId), inline = true })
@@ -220,8 +263,9 @@ handlers.staff = function(command, playerId, xPlayer, text)
         type = 'system',
         title = _U('title_report', playerId, name),
         text = text,
-        icon = 'system'
+        icon = 'system',
     }
+
     local recipients = 0
 
     for i = 1, #Config.StaffGroups do
@@ -248,13 +292,17 @@ local function buildSuggestion(command)
     end
 
     if not NO_TEXT_COMMANDS[command.name] then
-        arguments[#arguments + 1] = { name = 'text', help = command.scope == 'proximity' and _U('arg_action') or _U('arg_message'), type = 'merge' }
+        arguments[#arguments + 1] = {
+            name = 'text',
+            help = command.scope == 'proximity' and _U('arg_action') or _U('arg_message'),
+            type = 'merge',
+        }
     end
 
     return {
         help = command.description or _U(('command_%s'):format(command.name)),
         arguments = arguments,
-        validate = false
+        validate = false,
     }
 end
 
@@ -274,15 +322,16 @@ local function runCommand(command, xPlayer, args)
     end
 
     local playerId = xPlayer.source
+    local commandLimiter = commandLimiters[command.name]
 
-    if not limiter:consume(playerId) then
+    if not limiter:consume(playerId) or (commandLimiter and not commandLimiter:consume(playerId)) then
         return systemMessage(playerId, _U('rate_limited'))
     end
 
     local text
 
     if not NO_TEXT_COMMANDS[command.name] then
-        text = sanitizeText(args.text)
+        text = sanitizeText(args.text, command.scope == 'proximity' and Config.ProximityMaxLength or nil)
 
         if not text then
             return systemMessage(playerId, usage(command))
@@ -326,14 +375,16 @@ end
 
 registerCommands()
 
-RegisterNetEvent('esx_chat:submitGlobal', function(rawText)
+local function submitGlobal(rawText)
     local playerId = source
+    local xPlayer = ESX.GetPlayerFromId(playerId)
+    local globalLimiter = commandLimiters.ooc
 
-    if not Config.AllowGlobalChat then
+    if not Config.AllowGlobalChat or not xPlayer then
         return
     end
 
-    if not limiter:consume(playerId) then
+    if not limiter:consume(playerId) or (globalLimiter and not globalLimiter:consume(playerId)) then
         return systemMessage(playerId, _U('rate_limited'))
     end
 
@@ -343,7 +394,6 @@ RegisterNetEvent('esx_chat:submitGlobal', function(rawText)
         return
     end
 
-    local xPlayer = ESX.GetPlayerFromId(playerId)
     local name = getPlayerName(playerId, xPlayer)
 
     if Config.EmitLegacyChatMessage then
@@ -358,20 +408,32 @@ RegisterNetEvent('esx_chat:submitGlobal', function(rawText)
         type = 'global',
         title = name,
         text = text,
-        icon = 'user'
+        icon = 'user',
     })
 
     log({ name = 'global' }, playerId, xPlayer, text, GetNumPlayerIndices())
+end
+
+RegisterNetEvent('esx_chat:submitGlobal', submitGlobal)
+
+RegisterNetEvent('_chat:messageEntered', function(_, _, message)
+    submitGlobal(message)
 end)
 
 CreateThread(function()
     Wait(1000)
 
-    if GetResourceState('chat') == 'started' then
-        print('[^3WARNING^7] esx_chat replaces the default chat resource. Remove "ensure chat" from your server.cfg to avoid two chat windows.')
+    if GetResourceState('chat') == 'started' and GetResourcePath('chat') ~= GetResourcePath(GetCurrentResourceName()) then
+        print('[^3WARNING^7] esx_chat replaces the default chat resource. ' .. 'Remove "ensure chat" from your server.cfg to avoid two chat windows.')
     end
 end)
 
-exports('addMessage', function(target, message)
+local function addMessage(target, message)
     push(target or -1, message)
+end
+
+exports('addMessage', addMessage)
+
+AddEventHandler('__cfx_export_chat_addMessage', function(setCallback)
+    setCallback(addMessage)
 end)

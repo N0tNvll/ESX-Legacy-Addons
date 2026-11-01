@@ -10,55 +10,28 @@ local function validateConfiguration()
     end
 
     for _, plan in pairs(Config.Plans) do
-        assert(
-            type(plan.minutes) == 'number'
-                and plan.minutes % 1 == 0
-                and plan.minutes >= 1
-                and plan.minutes <= 10080,
-            'Invalid rental duration'
-        )
-        assert(
-            type(plan.multiplier) == 'number' and plan.multiplier > 0 and plan.multiplier <= 10,
-            'Invalid rental multiplier'
-        )
+        assert(type(plan.minutes) == 'number' and plan.minutes % 1 == 0 and plan.minutes >= 1 and plan.minutes <= 10080, 'Invalid rental duration')
+        assert(type(plan.multiplier) == 'number' and plan.multiplier > 0 and plan.multiplier <= 10, 'Invalid rental multiplier')
     end
 
     for model, vehicle in pairs(Config.Vehicles) do
         assert(Rental.key(model), 'Invalid rental model')
-        assert(
-            vehicle.type == 'automobile' or vehicle.type == 'bike',
-            'Rental vehicle type must be automobile or bike'
-        )
-        assert(
-            type(vehicle.rate) == 'number' and vehicle.rate > 0 and vehicle.rate <= 1000000,
-            'Invalid rental rate'
-        )
+        assert(vehicle.type == 'automobile' or vehicle.type == 'bike', 'Rental vehicle type must be automobile or bike')
+        assert(type(vehicle.rate) == 'number' and vehicle.rate > 0 and vehicle.rate <= 1000000, 'Invalid rental rate')
     end
 
     for branchId, branch in pairs(Config.Branches) do
         assert(Rental.key(branchId) and #branch.spawns > 0, 'Invalid rental branch')
-        assert(
-            type(branch.bucket) == 'number' and branch.bucket >= 0 and branch.bucket % 1 == 0,
-            'Invalid rental routing bucket'
-        )
+        assert(type(branch.bucket) == 'number' and branch.bucket >= 0 and branch.bucket % 1 == 0, 'Invalid rental routing bucket')
 
         for _, model in ipairs(branch.vehicles) do
             assert(Config.Vehicles[model], 'Unknown model in rental branch')
         end
     end
 
-    assert(
-        Config.InteractDistance > 0 and Config.InteractDistance <= 10,
-        'Invalid rental interaction distance'
-    )
-    assert(
-        Config.ReturnDistance > 0 and Config.ReturnDistance <= 15,
-        'Invalid rental return distance'
-    )
-    assert(
-        Config.SpawnTimeout > 0 and Config.SpawnTimeout <= 15000,
-        'Invalid vehicle spawn timeout'
-    )
+    assert(Config.InteractDistance > 0 and Config.InteractDistance <= 10, 'Invalid rental interaction distance')
+    assert(Config.ReturnDistance > 0 and Config.ReturnDistance <= 15, 'Invalid rental return distance')
+    assert(Config.SpawnTimeout > 0 and Config.SpawnTimeout <= 15000, 'Invalid vehicle spawn timeout')
 end
 
 local function syncPlayer(playerId)
@@ -156,10 +129,7 @@ end)
 function Rental.initialize()
     local oldState = GetResourceState('esx_vehiclerental')
 
-    assert(
-        oldState ~= 'started' and oldState ~= 'starting',
-        'Stop the retired esx_vehiclerental resource'
-    )
+    assert(oldState ~= 'started' and oldState ~= 'starting', 'Stop the retired esx_vehiclerental resource')
     validateConfiguration()
     Rental.DB.initialize()
     Rental.ready = true
@@ -179,20 +149,12 @@ CreateThread(function()
             for identifier, lease in pairs(Rental.leases) do
                 local remaining = lease.expires - os.time()
 
-                if
-                    remaining <= Config.ExpiryWarningSeconds
-                    and remaining > 0
-                    and not lease.warned
-                then
+                if remaining <= Config.ExpiryWarningSeconds and remaining > 0 and not lease.warned then
                     lease.warned = true
                     Rental.notify(lease, 'rental_warning')
                 end
 
-                if
-                    (remaining <= 0 or lease.closing)
-                    and not Rental.locks[identifier]
-                    and (not lease.retryAt or os.time() >= lease.retryAt)
-                then
+                if (remaining <= 0 or lease.closing) and not Rental.locks[identifier] and (not lease.retryAt or os.time() >= lease.retryAt) then
                     Rental.locks[identifier] = true
 
                     CreateThread(function()
@@ -201,11 +163,7 @@ CreateThread(function()
                         Rental.locks[identifier] = nil
 
                         if not ok then
-                            print(
-                                ('[esx_vehicleshop:rentals] Expiry cleanup failed: %s'):format(
-                                    tostring(err)
-                                )
-                            )
+                            print(('[esx_vehicleshop:rentals] Expiry cleanup failed: %s'):format(tostring(err)))
                             lease.retryAt = os.time() + 30
                         end
                     end)

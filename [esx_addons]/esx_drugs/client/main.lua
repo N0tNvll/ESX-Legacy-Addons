@@ -6,124 +6,133 @@ local licenseRequest = nil
 local inZoneDrugShop = false
 local inRangeMarkerDrugShop = false
 local dealerTextUIShown = false
-local cfgMarker = Config.Marker;
+local cfgMarker = Config.Marker
 
 --slow loop
 CreateThread(function()
-	while true do
-		local playerPed = PlayerPedId()
-		local coords = GetEntityCoords(playerPed)
-		local distDrugShop = #(coords - Config.CircleZones.DrugDealer.coords)
+    while true do
+        local playerPed = PlayerPedId()
+        local coords = GetEntityCoords(playerPed)
+        local distDrugShop = #(coords - Config.CircleZones.DrugDealer.coords)
 
-		inRangeMarkerDrugShop = false
-		if(distDrugShop <= Config.Marker.Distance) then
-			inRangeMarkerDrugShop = true
-		end
+        inRangeMarkerDrugShop = false
 
-		if distDrugShop < 1 then
-			inZoneDrugShop = true
-		else
-			inZoneDrugShop = false
-			if menuOpen then
-				menuOpen=false
-			end
-		end
+        if distDrugShop <= Config.Marker.Distance then
+            inRangeMarkerDrugShop = true
+        end
 
-		Wait(500)
-	end
+        if distDrugShop < 1 then
+            inZoneDrugShop = true
+        else
+            inZoneDrugShop = false
+
+            if menuOpen then
+                menuOpen = false
+            end
+        end
+
+        Wait(500)
+    end
 end)
 
 --drawk marker
 CreateThread(function()
-	while true do 
-		local Sleep = 1500
-		if(inRangeMarkerDrugShop) then
-			Sleep = 0
-			local coordsMarker = Config.CircleZones.DrugDealer.coords
-			local color = cfgMarker.Color
-			DrawMarker(cfgMarker.Type, coordsMarker.x, coordsMarker.y,coordsMarker.z - 1.0,
-			0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 
-			cfgMarker.Size, color.r,color.g,color.b,color.a,
-			false, true, 2, false, nil, nil, false)
-		end
-		Wait(Sleep)
-	end
+    while true do
+        local Sleep = 1500
+
+        if inRangeMarkerDrugShop then
+            Sleep = 0
+
+            local coordsMarker = Config.CircleZones.DrugDealer.coords
+            local color = cfgMarker.Color
+
+            DrawMarker(cfgMarker.Type, coordsMarker.x, coordsMarker.y, coordsMarker.z - 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, cfgMarker.Size, color.r, color.g, color.b, color.a, false, true, 2, false, nil, nil, false)
+        end
+
+        Wait(Sleep)
+    end
 end)
 
 --main loop
-CreateThread(function ()
-	while true do 
-		local Sleep = 1500
-		if inZoneDrugShop and not menuOpen and ESX.PlayerLoaded and not ESX.PlayerData.dead then
-			Sleep = 0
-			if not dealerTextUIShown then
-				ESX.TextUI(TranslateCap('dealer_prompt'))
-				dealerTextUIShown = true
-			end
-			if IsControlJustPressed(0, 38) then
-				OpenDrugShop()
-			end
-		elseif dealerTextUIShown then
-			ESX.HideUI()
-			dealerTextUIShown = false
-		end
-	Wait(Sleep)
-	end
+CreateThread(function()
+    while true do
+        local Sleep = 1500
+
+        if inZoneDrugShop and not menuOpen and ESX.PlayerLoaded and not ESX.PlayerData.dead then
+            Sleep = 0
+
+            if not dealerTextUIShown then
+                ESX.TextUI(TranslateCap('dealer_prompt'))
+                dealerTextUIShown = true
+            end
+
+            if IsControlJustPressed(0, 38) then
+                OpenDrugShop()
+            end
+        elseif dealerTextUIShown then
+            ESX.HideUI()
+            dealerTextUIShown = false
+        end
+
+        Wait(Sleep)
+    end
 end)
 
 function OpenDrugShop()
-	local elements = {
-		{unselectable = true, icon = "fas fa-cannabis", title = TranslateCap('dealer_title')}
-	}
-	menuOpen = true
+    local elements = {
+        { unselectable = true, icon = 'fas fa-cannabis', title = TranslateCap('dealer_title') },
+    }
+    menuOpen = true
 
-	for k, v in pairs(ESX.GetPlayerData().inventory) do
-		local price = Config.DrugDealerItems[v.name]
+    for k, v in pairs(ESX.GetPlayerData().inventory) do
+        local price = Config.DrugDealerItems[v.name]
 
-		if price and v.count > 0 then
-			elements[#elements+1] = {
-				icon = "fas fa-shopping-basket",
-				title = ('%s - <span style="color:green;">%s</span>'):format(v.label, TranslateCap('dealer_item', ESX.Math.GroupDigits(price))),
-				name = v.name,
-				price = price,
-			}
-		end
-	end
+        if price and v.count > 0 then
+            elements[#elements + 1] = {
+                icon = 'fas fa-shopping-basket',
+                title = ('%s - <span style="color:green;">%s</span>'):format(v.label, TranslateCap('dealer_item', ESX.Math.GroupDigits(price))),
+                name = v.name,
+                price = price,
+            }
+        end
+    end
 
-	ESX.OpenContext("right", elements, function(menu,element)
-		local elements2 = {
-			{unselectable = true, icon = "fas fa-shopping-basket", title = element.title},
-			{icon = "fas fa-shopping-basket", title = "Amount", input = true, inputType = "number", inputPlaceholder = "Amount you want to sell", inputValue=0, inputMin = Config.SellMenu.Min, inputMax = Config.SellMenu.Max},
-			{icon = "fas fa-check-double", title = "Confirm", val = "confirm"}
-		}
+    ESX.OpenContext('right', elements, function(menu, element)
+        local elements2 = {
+            { unselectable = true, icon = 'fas fa-shopping-basket', title = element.title },
+            { icon = 'fas fa-shopping-basket', title = 'Amount', input = true, inputType = 'number', inputPlaceholder = 'Amount you want to sell', inputValue = 0, inputMin = Config.SellMenu.Min, inputMax = Config.SellMenu.Max },
+            { icon = 'fas fa-check-double', title = 'Confirm', val = 'confirm' },
+        }
 
-		ESX.OpenContext("right", elements2, function(menu2,element2)
-			ESX.CloseContext()
-			local count = tonumber(menu2.eles[2].inputValue)
+        ESX.OpenContext('right', elements2, function(menu2, element2)
+            ESX.CloseContext()
 
-			if count < 1 then
-				return
-			end
+            local count = tonumber(menu2.eles[2].inputValue)
 
-			TriggerServerEvent('esx_drugs:sellDrug',tostring(element.name), count)
-		end, function(menu)
-			menuOpen = false
-		end)
-	end, function(menu)
-		menuOpen = false
-	end)
+            if count < 1 then
+                return
+            end
+
+            TriggerServerEvent('esx_drugs:sellDrug', tostring(element.name), count)
+        end, function(menu)
+            menuOpen = false
+        end)
+    end, function(menu)
+        menuOpen = false
+    end)
 end
 
 AddEventHandler('onResourceStop', function(resource)
-	if resource == GetCurrentResourceName() then
-		if dealerTextUIShown then
-			ESX.HideUI()
-			dealerTextUIShown = false
-		end
-		if menuOpen then
-			ESX.CloseContext()
-		end
-	end
+    if resource == GetCurrentResourceName() then
+        if dealerTextUIShown then
+            ESX.HideUI()
+            dealerTextUIShown = false
+        end
+
+        if menuOpen then
+            ESX.CloseContext()
+        end
+    end
 end)
 
 function OpenBuyLicenseMenu(licenseName)
@@ -134,34 +143,38 @@ function OpenBuyLicenseMenu(licenseName)
     end
 
     local request = {}
+
     licenseRequest = request
     menuOpen = true
 
-    PaymentGateway.Pay({
-        amount = license.price,
-        title = license.label,
-    }, 'esx_drugs:buyLicense', function(boughtLicense, paymentFailure)
-        if licenseRequest ~= request then
-            return
-        end
+    PaymentGateway.Pay(
+        {
+            amount = license.price,
+            title = license.label,
+        },
+        'esx_drugs:buyLicense',
+        function(boughtLicense, paymentFailure)
+            if licenseRequest ~= request then
+                return
+            end
 
-        licenseRequest = nil
-        menuOpen = false
+            licenseRequest = nil
+            menuOpen = false
 
-        if boughtLicense then
-            ESX.ShowNotification(TranslateCap('license_bought', license.label, ESX.Math.GroupDigits(license.price)))
-        else
-            PaymentGateway.NotifyFailure(
-                paymentFailure,
-                TranslateCap('license_bought_fail', license.label)
-            )
-        end
-    end, licenseName)
+            if boughtLicense then
+                ESX.ShowNotification(TranslateCap('license_bought', license.label, ESX.Math.GroupDigits(license.price)))
+            else
+                PaymentGateway.NotifyFailure(paymentFailure, TranslateCap('license_bought_fail', license.label))
+            end
+        end,
+        licenseName
+    )
 end
 
 ESX.SecureNetEvent('esx:onPlayerLogout', function()
     licenseRequest = nil
     menuOpen = false
+
     if dealerTextUIShown then
         ESX.HideUI()
         dealerTextUIShown = false
@@ -169,30 +182,30 @@ ESX.SecureNetEvent('esx:onPlayerLogout', function()
 end)
 
 function CreateBlipCircle(coords, text, radius, color, sprite)
-	if radius then
-		xLib.blips.create({
-			coords = coords,
-			radius = radius,
-			highDetail = true,
-			color = 1,
-			alpha = 128,
-			shortRange = true
-		})
-	end
+    if radius then
+        xLib.blips.create({
+            coords = coords,
+            radius = radius,
+            highDetail = true,
+            color = 1,
+            alpha = 128,
+            shortRange = true,
+        })
+    end
 
-	xLib.blips.create({
-		coords = coords,
-		highDetail = true,
-		sprite = sprite,
-		scale = 1.0,
-		color = color,
-		shortRange = true,
-		label = text
-	})
+    xLib.blips.create({
+        coords = coords,
+        highDetail = true,
+        sprite = sprite,
+        scale = 1.0,
+        color = color,
+        shortRange = true,
+        label = text,
+    })
 end
 
 CreateThread(function()
-	for k,zone in pairs(Config.CircleZones) do
-		CreateBlipCircle(zone.coords, zone.name, zone.radius, zone.color, zone.sprite)
-	end
+    for k, zone in pairs(Config.CircleZones) do
+        CreateBlipCircle(zone.coords, zone.name, zone.radius, zone.color, zone.sprite)
+    end
 end)

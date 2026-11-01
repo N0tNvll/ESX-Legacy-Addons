@@ -5,37 +5,38 @@
 ---@param source number Player source
 ---@return table|nil xPlayer ESX player object or nil
 function ValidatePlayer(source)
-	if not Verify(source, {'number', 'string'}) then
-		DebugPrint(_U('invalid_player', 'unknown'))
-		return nil
-	end
+    if not Verify(source, { 'number', 'string' }) then
+        DebugPrint(_U('invalid_player', 'unknown'))
+        return nil
+    end
 
-	local xPlayer = ESX.GetPlayerFromId(source)
-	if not xPlayer then
-		DebugPrint(_U('invalid_player', source))
-	end
-	return xPlayer
+    local xPlayer = ESX.GetPlayerFromId(source)
+
+    if not xPlayer then
+        DebugPrint(_U('invalid_player', source))
+    end
+    return xPlayer
 end
 
 ---Returns the inventory backend this resource should use.
 ---@return string backend
 function GetShopInventoryBackend()
-	local configured = Config.Inventory or 'esx'
+    local configured = Config.Inventory or 'esx'
 
-	if configured == 'ox' then
-		configured = 'ox_inventory'
-	end
+    if configured == 'ox' then
+        configured = 'ox_inventory'
+    end
 
-	if configured == 'auto' then
-		return GetResourceState('ox_inventory') == 'started' and 'ox_inventory' or 'esx'
-	end
+    if configured == 'auto' then
+        return GetResourceState('ox_inventory') == 'started' and 'ox_inventory' or 'esx'
+    end
 
-	if configured == 'ox_inventory' and GetResourceState('ox_inventory') ~= 'started' then
-		DebugPrint('[esx_shops] ox_inventory is configured but not started, falling back to ESX inventory')
-		return 'esx'
-	end
+    if configured == 'ox_inventory' and GetResourceState('ox_inventory') ~= 'started' then
+        DebugPrint('[esx_shops] ox_inventory is configured but not started, falling back to ESX inventory')
+        return 'esx'
+    end
 
-	return configured
+    return configured
 end
 
 ---Validates zone exists
@@ -43,15 +44,16 @@ end
 ---@param source number Player source for logging
 ---@return boolean valid
 function ValidateZone(zone, source)
-	if not Verify(zone, 'string') then
-		DebugPrint(_U('invalid_zone', source or 'unknown', tostring(zone)))
-		return false
-	end
-	if not Config.Zones[zone] then
-		DebugPrint(_U('invalid_zone', source or 'unknown', zone))
-		return false
-	end
-	return true
+    if not Verify(zone, 'string') then
+        DebugPrint(_U('invalid_zone', source or 'unknown', tostring(zone)))
+        return false
+    end
+
+    if not Config.Zones[zone] then
+        DebugPrint(_U('invalid_zone', source or 'unknown', zone))
+        return false
+    end
+    return true
 end
 
 ---Validates payment method
@@ -59,11 +61,11 @@ end
 ---@param source number Player source for logging
 ---@return boolean valid
 function ValidatePaymentMethod(method, source)
-	if not Verify(method, 'string') or (method ~= 'cash' and method ~= 'money' and method ~= 'bank') then
-		DebugPrint(_U('invalid_payment_method', source or 'unknown', tostring(method)))
-		return false
-	end
-	return true
+    if not Verify(method, 'string') or (method ~= 'cash' and method ~= 'money' and method ~= 'bank') then
+        DebugPrint(_U('invalid_payment_method', source or 'unknown', tostring(method)))
+        return false
+    end
+    return true
 end
 
 ---Checks if player is within interaction distance of any shop in the zone
@@ -71,30 +73,37 @@ end
 ---@param zone string Zone name
 ---@return boolean isNearby
 function ValidatePlayerDistance(source, zone)
-	if not Verify(source, {'number', 'string'}) or not Verify(zone, 'string') then
-		return false
-	end
+    if not Verify(source, { 'number', 'string' }) or not Verify(zone, 'string') then
+        return false
+    end
 
-	local zoneData = Config.Zones[zone]
-	if not zoneData then return false end
+    local zoneData = Config.Zones[zone]
 
-	local ped = GetPlayerPed(source)
-	if not ped or ped == 0 then return false end
+    if not zoneData then
+        return false
+    end
 
-	local playerCoords = GetEntityCoords(ped)
-	local posCount = #zoneData.Pos
-	local maxDist = 5.0
+    local ped = GetPlayerPed(source)
 
-	for i = 1, posCount do
-		local pos = zoneData.Pos[i]
-		local dist = #(playerCoords - pos)
-		if dist < maxDist then
-			return true
-		end
-	end
+    if not ped or ped == 0 then
+        return false
+    end
 
-	DebugPrint(('[^3WARNING^7] Player ^5%s^7 too far from shop ^5%s^7'):format(source, zone))
-	return false
+    local playerCoords = GetEntityCoords(ped)
+    local posCount = #zoneData.Pos
+    local maxDist = 5.0
+
+    for i = 1, posCount do
+        local pos = zoneData.Pos[i]
+        local dist = #(playerCoords - pos)
+
+        if dist < maxDist then
+            return true
+        end
+    end
+
+    DebugPrint(('[^3WARNING^7] Player ^5%s^7 too far from shop ^5%s^7'):format(source, zone))
+    return false
 end
 
 ---Checks if player has enough money for the actual total (after tax)
@@ -104,19 +113,19 @@ end
 ---@return boolean hasEnough
 ---@return number missingAmount
 function CheckPlayerMoney(xPlayer, paymentMethod, total)
-	local currentMoney = 0
+    local currentMoney = 0
 
-	if paymentMethod == 'cash' or paymentMethod == 'money' then
-		currentMoney = xPlayer.getMoney()
-	elseif paymentMethod == 'bank' then
-		local bankAccount = xPlayer.getAccount('bank')
-		currentMoney = bankAccount and bankAccount.money or 0
-	end
+    if paymentMethod == 'cash' or paymentMethod == 'money' then
+        currentMoney = xPlayer.getMoney()
+    elseif paymentMethod == 'bank' then
+        local bankAccount = xPlayer.getAccount('bank')
 
-	local hasEnough = currentMoney >= total
-	local missingAmount = hasEnough and 0 or (total - currentMoney)
+        currentMoney = bankAccount and bankAccount.money or 0
+    end
 
-	return hasEnough, missingAmount
+    local hasEnough = currentMoney >= total
+    local missingAmount = hasEnough and 0 or (total - currentMoney)
+    return hasEnough, missingAmount
 end
 
 ---Deducts money from player
@@ -125,7 +134,6 @@ end
 ---@param amount number Amount to deduct
 function DeductMoney(xPlayer, paymentMethod, amount)
     local account = paymentMethod == 'cash' and 'money' or paymentMethod
-
     return PaymentGateway.Charge(xPlayer, account, amount, 'Shop Purchase')
 end
 
@@ -135,6 +143,5 @@ end
 ---@param amount number Amount to refund
 function RefundMoney(xPlayer, paymentMethod, amount)
     local account = paymentMethod == 'cash' and 'money' or paymentMethod
-
     return PaymentGateway.Refund(xPlayer, account, amount, 'Shop Refund')
 end

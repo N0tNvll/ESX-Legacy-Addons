@@ -1,7 +1,6 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
-
 Locales['tr'] = {
     ['save_failed'] = 'Kıyafetlerin kaydedilemedi. Satın alma iptal edildi. Lütfen tekrar dene.',
     ['yes'] = 'Evet',

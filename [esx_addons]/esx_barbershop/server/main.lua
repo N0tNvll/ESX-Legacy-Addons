@@ -7,12 +7,16 @@ local limiter = xLib.rateLimiter({ capacity = 2, refill = 1, interval = 2000 })
 local function isNearBarberShop(source)
     local ped = GetPlayerPed(source)
 
-    if ped <= 0 then return false end
+    if ped <= 0 then
+        return false
+    end
 
     local coords = GetEntityCoords(ped)
 
     for i = 1, #Config.Shops do
-        if #(coords - Config.Shops[i]) <= (Config.ShopDistance or 3.0) then return true end
+        if #(coords - Config.Shops[i]) <= (Config.ShopDistance or 3.0) then
+            return true
+        end
     end
 
     return false
@@ -21,19 +25,31 @@ end
 local function payHaircut(source, cb, skin, account)
     local player = ESX.GetPlayerFromId(source)
 
-    if not player then return cb(false, 'player_unavailable') end
+    if not player then
+        return cb(false, 'player_unavailable')
+    end
 
-    if not limiter:consume(source) then return cb(false, 'rate_limited') end
+    if not limiter:consume(source) then
+        return cb(false, 'rate_limited')
+    end
 
-    if not isNearBarberShop(source) then return cb(false, 'not_near_shop') end
+    if not isNearBarberShop(source) then
+        return cb(false, 'not_near_shop')
+    end
 
-    if type(skin) ~= 'table' then return cb(false, 'invalid_appearance:payload:expected_table') end
+    if type(skin) ~= 'table' then
+        return cb(false, 'invalid_appearance:payload:expected_table')
+    end
 
-    if payments[player.identifier] then return cb(false, 'payment_pending') end
+    if payments[player.identifier] then
+        return cb(false, 'payment_pending')
+    end
 
     local identifier = player.identifier
 
-    if player.beginAccountOperation() ~= true then return cb(false, 'player_unavailable') end
+    if player.beginAccountOperation() ~= true then
+        return cb(false, 'player_unavailable')
+    end
 
     payments[identifier] = true
 
@@ -48,7 +64,9 @@ local function payHaircut(source, cb, skin, account)
     local finished = false
 
     local function finish(saved, reason)
-        if finished then return end
+        if finished then
+            return
+        end
 
         finished = true
         payments[identifier] = nil
@@ -91,13 +109,18 @@ xLib.callback.registerCompat('esx_barbershop:pay', payHaircut)
 
 xLib.callback.registerCompat('esx_barbershop:checkMoney', function(source, cb)
     local player = ESX.GetPlayerFromId(source)
+
     cb(player and isNearBarberShop(source) and player.getMoney() >= Config.Price or false)
 end)
 
 AddEventHandler('onResourceStop', function(resource)
-    if resource ~= GetCurrentResourceName() then return end
+    if resource ~= GetCurrentResourceName() then
+        return
+    end
 
     for _, finish in pairs(payments) do
-        if type(finish) == 'function' then finish(false, 'resource_stopped') end
+        if type(finish) == 'function' then
+            finish(false, 'resource_stopped')
+        end
     end
 end)

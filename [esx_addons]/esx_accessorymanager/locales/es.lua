@@ -23,5 +23,5 @@ Locales['es'] = {
     radial_blocked = 'Ahora no puedes cambiar los accesorios.',
     radial_busy = 'Espera un momento.',
     radial_failed = 'No se pudo actualizar el accesorio.',
-    radial_disconnected = 'El juego no ha respondido. Inténtalo de nuevo.'
+    radial_disconnected = 'El juego no ha respondido. Inténtalo de nuevo.',
 }

@@ -69,5 +69,5 @@ Locales['en'] = {
     ['ui_no_response'] = 'The server did not respond. Please try again.',
     ['ui_location_marked'] = 'Job location marked on your map.',
     ['ui_location_unavailable'] = 'Location unavailable.',
-    ['ui_location_failed'] = 'Unable to mark the location.'
+    ['ui_location_failed'] = 'Unable to mark the location.',
 }

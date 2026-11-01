@@ -18,12 +18,7 @@ local Rental = VehicleShopTimedRentals
 Rental.translate = Config.translate
 
 function Rental.current(playerId, player)
-    return not Rental.stopping
-        and player
-        and player.source == playerId
-        and player.isCurrent
-        and player.isCurrent() == true
-        and GetPlayerName(playerId) ~= nil
+    return not Rental.stopping and player and player.source == playerId and player.isCurrent and player.isCurrent() == true and GetPlayerName(playerId) ~= nil
 end
 
 function Rental.error(code)
@@ -35,13 +30,7 @@ function Rental.key(value)
 end
 
 function Rental.near(playerId, branch, returning)
-    return branch
-        and GetPlayerRoutingBucket(playerId) == branch.bucket
-        and xLib.player.isNearCoords(
-            playerId,
-            returning and branch.returnCoords or branch.coords,
-            returning and Config.ReturnDistance or Config.InteractDistance
-        )
+    return branch and GetPlayerRoutingBucket(playerId) == branch.bucket and xLib.player.isNearCoords(playerId, returning and branch.returnCoords or branch.coords, returning and Config.ReturnDistance or Config.InteractDistance)
 end
 
 function Rental.cost(vehicle, plan)
@@ -61,10 +50,7 @@ end
 
 function Rental.removeEntity(lease)
     if GetResourceState('esx_garage') == 'started' then
-        assert(
-            exports['esx_garage']:releaseRentalVehicle(lease.identifier, lease.plate),
-            'Unable to remove rental vehicle'
-        )
+        assert(exports['esx_garage']:releaseRentalVehicle(lease.identifier, lease.plate), 'Unable to remove rental vehicle')
     end
 
     lease.entity = nil
@@ -78,7 +64,6 @@ function Rental.publicLease(lease)
 
     local vehicle = Config.Vehicles[lease.model]
     local branch = Config.Branches[lease.branch]
-
     return {
         model = lease.model,
         label = vehicle and vehicle.label or lease.model,

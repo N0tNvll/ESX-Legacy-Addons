@@ -12,7 +12,7 @@ Features
  - Color picker that allows you to customize the interface
  - Settings panel for additional settings
  - Different speedo layouts depending on vehicle type(LAND,AIR)
- - Seatbelt system with sound effect (Required script: esx_cruisecontrol)
+ - Integrated seatbelt and cruise control with HUD indicators and seatbelt sound
 
 ## HUD UI
 While GTA replay recording is active, character status and location move temporarily
@@ -42,6 +42,27 @@ normal layout when recording ends. Saved HUD preferences are not changed.
 ```
 ensure esx_hud
 ```
+
+## Driving controls
+
+Cruise control and the seatbelt are part of `esx_hud`. Configure them in
+`shared/config.lua`, under `Config.Driving`. The default keys remain Caps Lock
+for cruise control, numpad + / - for its target speed, and B for the seatbelt.
+Existing keybind command names are retained so saved bindings keep working.
+`EjectCheckSpeed` is measured in MPH and `RagdollTime` in seconds.
+
+Stop and remove the old `esx_cruisecontrol` resource and its `ensure` entry before
+deploying the updated HUD. Copy the complete HUD, including `client/driving`
+and `shared/driving_locales.lua`. Cruise control and seatbelt settings are data
+inside the HUD configuration; a second HUD export configuration is unnecessary.
+
+`exports.esx_hud:isSeatbeltOn()` returns the actual seatbelt state. The old
+`esx_cruisecontrol` seatbelt export remains available as a compatibility alias.
+`CruiseControlState` and `SeatbeltState` exports retain their existing HUD API.
+Vehicle exit, logout and resource stop clear the controller and the native
+seatbelt flags. The driving features also work when the speedometer is hidden.
+
+No database migration or frontend rebuild is required for this consolidation.
 
 # Legal
 ### License

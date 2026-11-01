@@ -69,5 +69,5 @@ Locales['zh-cn'] = {
     ['ui_no_response'] = '服务器未响应，请重试。',
     ['ui_location_marked'] = '工作地点已标记在地图上。',
     ['ui_location_unavailable'] = '地点不可用。',
-    ['ui_location_failed'] = '无法标记地点。'
+    ['ui_location_failed'] = '无法标记地点。',
 }

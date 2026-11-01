@@ -18,11 +18,7 @@ end
 
 function GeneratePlate()
     for _ = 1, 100 do
-        local plate = string.upper(
-            GetRandomLetter(Config.PlateLetters)
-                .. (Config.PlateUseSpace and ' ' or '')
-                .. GetRandomNumber(Config.PlateNumbers)
-        )
+        local plate = string.upper(GetRandomLetter(Config.PlateLetters) .. (Config.PlateUseSpace and ' ' or '') .. GetRandomNumber(Config.PlateNumbers))
 
         if not IsPlateTaken(plate) then
             return plate
@@ -45,9 +41,7 @@ end
 
 function GetRandomNumber(length)
     Wait(0)
-    return length > 0
-            and GetRandomNumber(length - 1) .. NumberCharset[math.random(1, #NumberCharset)]
-        or ''
+    return length > 0 and GetRandomNumber(length - 1) .. NumberCharset[math.random(1, #NumberCharset)] or ''
 end
 
 function GetRandomLetter(length)

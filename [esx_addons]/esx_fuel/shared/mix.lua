@@ -10,14 +10,14 @@ FuelMix = {}
 ---@param kind "petrol"|"diesel"|"electric"
 ---@return FuelMixData
 function FuelMix.default(kind)
-    return { diesel = kind == "diesel" and 1.0 or 0.0, octane = Config.DefaultOctane }
+    return { diesel = kind == 'diesel' and 1.0 or 0.0, octane = Config.DefaultOctane }
 end
 
 ---@param mix any
 ---@param kind "petrol"|"diesel"|"electric"
 ---@return FuelMixData
 function FuelMix.sanitize(mix, kind)
-    if type(mix) ~= "table" then
+    if type(mix) ~= 'table' then
         return FuelMix.default(kind)
     end
 
@@ -44,16 +44,15 @@ function FuelMix.add(mix, currentLiters, addedLiters, fuel)
     currentLiters = math.max(0.0, currentLiters)
     addedLiters = math.max(0.0, addedLiters)
 
-    if fuel.kind == "electric" or addedLiters <= 0.0 then
+    if fuel.kind == 'electric' or addedLiters <= 0.0 then
         return mix
     end
 
     local total = currentLiters + addedLiters
-    local addedDiesel = fuel.kind == "diesel" and addedLiters or 0.0
+    local addedDiesel = fuel.kind == 'diesel' and addedLiters or 0.0
     local diesel = (currentLiters * mix.diesel + addedDiesel) / total
-
     local currentPetrol = currentLiters * (1.0 - mix.diesel)
-    local addedPetrol = fuel.kind == "petrol" and addedLiters or 0.0
+    local addedPetrol = fuel.kind == 'petrol' and addedLiters or 0.0
     local octane = mix.octane
 
     if currentPetrol + addedPetrol > 0.0 and addedPetrol > 0.0 then
@@ -67,11 +66,11 @@ end
 ---@param kind "petrol"|"diesel"|"electric"
 ---@return number share of fuel the engine does not run on, 0 to 1
 function FuelMix.wrongShare(mix, kind)
-    if kind == "petrol" then
+    if kind == 'petrol' then
         return mix.diesel
     end
 
-    if kind == "diesel" then
+    if kind == 'diesel' then
         return 1.0 - mix.diesel
     end
 
@@ -82,5 +81,5 @@ end
 ---@param kind "petrol"|"diesel"|"electric"
 ---@return boolean
 function FuelMix.isClean(mix, kind)
-    return FuelMix.wrongShare(mix, kind) < 0.001 and (kind ~= "petrol" or math.abs(mix.octane - Config.DefaultOctane) < 0.05)
+    return FuelMix.wrongShare(mix, kind) < 0.001 and (kind ~= 'petrol' or math.abs(mix.octane - Config.DefaultOctane) < 0.05)
 end

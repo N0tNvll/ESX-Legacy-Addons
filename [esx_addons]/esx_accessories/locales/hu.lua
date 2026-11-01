@@ -1,20 +1,20 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
-Locales ['hu'] = {
-  ['helmet'] = 'sisak / kalap',
-  ['glasses'] = 'szemüveg',
-  ['mask'] = 'maszk',
-  ['ears'] = 'fül tartozékok',
-  ['shop'] = '%s bolt',
-  ['set_unset'] = 'Felvenni / Levenni',
-  ['not_enough_money'] = 'Nincsen elég pénzed',
-  ['press_access'] = 'Nyomj [E] hogy megnyisd a kiegészítöket',
-  ['accessories_blip'] = 'Kiegészítők',
-  ['no_ears'] = 'Nincsen fülbevalód',
-  ['no_glasses'] = 'Nincsen szemüveged',
-  ['no_helmet'] = 'Nincsen sapkád',
-  ['no_mask'] = 'Nincsen maszkod',
-  ['you_paid'] = 'Fizettél $%s',
-  ['keymap'] = 'Open Accessory Menu', --not translated
+Locales['hu'] = {
+    ['helmet'] = 'sisak / kalap',
+    ['glasses'] = 'szemüveg',
+    ['mask'] = 'maszk',
+    ['ears'] = 'fül tartozékok',
+    ['shop'] = '%s bolt',
+    ['set_unset'] = 'Felvenni / Levenni',
+    ['not_enough_money'] = 'Nincsen elég pénzed',
+    ['press_access'] = 'Nyomj [E] hogy megnyisd a kiegészítöket',
+    ['accessories_blip'] = 'Kiegészítők',
+    ['no_ears'] = 'Nincsen fülbevalód',
+    ['no_glasses'] = 'Nincsen szemüveged',
+    ['no_helmet'] = 'Nincsen sapkád',
+    ['no_mask'] = 'Nincsen maszkod',
+    ['you_paid'] = 'Fizettél $%s',
+    ['keymap'] = 'Open Accessory Menu', --not translated
 }

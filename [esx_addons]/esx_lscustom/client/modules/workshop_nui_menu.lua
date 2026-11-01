@@ -24,7 +24,7 @@ local function addElement(elements, item, menuKey, menuConfig, vehiclePrice, cur
         price = price,
         installed = installed,
         disabled = item.value == 'noop',
-        selected = item.modType and currentMods and currentMods[item.modType] == item.modNum
+        selected = item.modType and currentMods and currentMods[item.modType] == item.modNum,
     }
 end
 
@@ -39,8 +39,7 @@ function WorkshopNuiMenu.Build(data, D)
     local myCar = D.GetMyCar()
 
     if vehicle and vehicle ~= 0 then
-        if data.value == 'modSpeakers' or data.value == 'modTrunk' or data.value == 'modHydrolic' or data.value ==
-            'modEngineBlock' or data.value == 'modAirFilter' or data.value == 'modStruts' or data.value == 'modTank' then
+        if data.value == 'modSpeakers' or data.value == 'modTrunk' or data.value == 'modHydrolic' or data.value == 'modEngineBlock' or data.value == 'modAirFilter' or data.value == 'modStruts' or data.value == 'modTank' then
             SetVehicleDoorOpen(vehicle, 4, false)
             SetVehicleDoorOpen(vehicle, 5, false)
         elseif data.value == 'modDoorSpeaker' then
@@ -79,49 +78,60 @@ function WorkshopNuiMenu.Build(data, D)
                 if v.modType == 14 then
                     for j = 0, 51 do
                         local label = j == currentMods.modHorns and (GetHornName(j) .. ' - ' .. TranslateCap('installed')) or GetHornName(j)
+
                         addElement(elements, { label = label, modType = k, modNum = j }, k, v, vehiclePrice, currentMods, D)
                     end
                 elseif v.modType == 'plateIndex' then
                     local maxJ = D.GetGameBuild() >= 3095 and 12 or 5
+
                     for j = 0, maxJ do
                         local label = j == currentMods.plateIndex and (GetPlatesName(j) .. ' - ' .. TranslateCap('installed')) or GetPlatesName(j)
+
                         addElement(elements, { label = label, modType = k, modNum = j }, k, v, vehiclePrice, currentMods, D)
                     end
                 elseif v.modType == 22 then
                     local label = currentMods.modXenon and (v.label .. ' - ' .. TranslateCap('installed')) or v.label
+
                     addElement(elements, { label = label, modType = k, modNum = true }, k, v, vehiclePrice, currentMods, D)
                 elseif v.modType == 'xenonColor' then
                     local xenonColors = GetXenonColors()
+
                     for i = 1, #xenonColors do
                         addElement(elements, { label = xenonColors[i].label, modType = k, modNum = xenonColors[i].index }, k, v, vehiclePrice, currentMods, D)
                     end
                 elseif v.modType == 'neonColor' or v.modType == 'tyreSmokeColor' then
                     local neons = GetNeons()
+
                     for i = 1, #neons do
                         addElement(elements, { label = neons[i].label, modType = k, modNum = { neons[i].r, neons[i].g, neons[i].b } }, k, v, vehiclePrice, currentMods, D)
                     end
                 elseif v.modType == 'color1' or v.modType == 'color2' or v.modType == 'pearlescentColor' or v.modType == 'wheelColor' then
                     local colors = GetColors(data.color)
+
                     for j = 1, #colors do
                         addElement(elements, { label = colors[j].label, modType = k, modNum = colors[j].index }, k, v, vehiclePrice, currentMods, D)
                     end
                 elseif v.modType == 'windowTint' then
                     for j = 1, 5 do
                         local label = j == currentMods.windowTint and (GetWindowName(j) .. ' - ' .. TranslateCap('installed')) or GetWindowName(j)
+
                         addElement(elements, { label = label, modType = k, modNum = j }, k, v, vehiclePrice, currentMods, D)
                     end
                 elseif v.modType == 23 or v.modType == 24 then
                     if vehicle and vehicle ~= 0 then
                         xLib.game.setVehicleProperties(vehicle, { wheels = v.wheelType })
+
                         local modType = v.modType == 24 and 'modBackWheels' or 'modFrontWheels'
                         local currentWheel = v.modType == 24 and currentMods.modBackWheels or currentMods.modFrontWheels
                         local modCount = GetNumVehicleMods(vehicle, v.modType)
 
                         for j = 0, modCount do
                             local modName = GetModTextLabel(vehicle, v.modType, j)
+
                             if modName then
                                 local name = GetLabelText(modName)
                                 local label = j == currentWheel and (name .. ' - ' .. TranslateCap('installed')) or name
+
                                 addElement(elements, { label = label, modType = modType, modNum = j, wheelType = v.wheelType, price = v.price }, k, v, vehiclePrice, currentMods, D)
                             end
                         end
@@ -129,53 +139,66 @@ function WorkshopNuiMenu.Build(data, D)
                 elseif D.IsPerformanceMod(v.modType) then
                     if vehicle and vehicle ~= 0 then
                         SetVehicleModKit(vehicle, 0)
+
                         local modCount = GetNumVehicleMods(vehicle, v.modType)
+
                         for j = 0, modCount - 1 do
                             local label = j == currentMods[k] and (TranslateCap('level', j + 1) .. ' - ' .. TranslateCap('installed')) or TranslateCap('level', j + 1)
+
                             addElement(elements, { label = label, modType = k, modNum = j }, k, v, vehiclePrice, currentMods, D)
                         end
                     end
                 elseif D.IsTurboMod(v.modType) then
                     local label = currentMods[k] and ('Turbo - ' .. TranslateCap('installed')) or 'Turbo'
+
                     addElement(elements, { label = label, modType = k, modNum = true }, k, v, vehiclePrice, currentMods, D)
                 else
                     if vehicle and vehicle ~= 0 then
                         local modCount = GetNumVehicleMods(vehicle, v.modType)
+
                         for j = 0, modCount do
                             local modName = GetModTextLabel(vehicle, v.modType, j)
+
                             if modName then
                                 local name = GetLabelText(modName)
                                 local label = j == currentMods[k] and (name .. ' - ' .. TranslateCap('installed')) or name
+
                                 addElement(elements, { label = label, modType = k, modNum = j }, k, v, vehiclePrice, currentMods, D)
                             end
                         end
                     end
                 end
-            elseif data.value == 'primaryRespray' or data.value == 'secondaryRespray' or data.value ==
-                'pearlescentRespray' or data.value == 'modFrontWheelsColor' then
+            elseif data.value == 'primaryRespray' or data.value == 'secondaryRespray' or data.value == 'pearlescentRespray' or data.value == 'modFrontWheelsColor' then
                 for i = 1, #Config.Colors do
                     local value = data.value == 'primaryRespray' and 'color1' or data.value == 'secondaryRespray' and 'color2' or data.value == 'pearlescentRespray' and 'pearlescentColor' or 'wheelColor'
+
                     elements[#elements + 1] = {
                         label = Config.Colors[i].label,
                         value = value,
                         color = Config.Colors[i].value,
-                        action = 'menu'
+                        action = 'menu',
                     }
                 end
             else
                 for l, w in pairs(v) do
                     if l ~= 'label' and l ~= 'parent' then
                         local action = 'menu'
-                        if l == 'cartCheckout' then action = 'checkout'
-                        elseif l == 'cartClear' then action = 'clear'
-                        elseif l == 'vehicleStats' then action = 'stats'
-                        elseif l == 'cameraMenu' then action = 'camera' end
+
+                        if l == 'cartCheckout' then
+                            action = 'checkout'
+                        elseif l == 'cartClear' then
+                            action = 'clear'
+                        elseif l == 'vehicleStats' then
+                            action = 'stats'
+                        elseif l == 'cameraMenu' then
+                            action = 'camera'
+                        end
 
                         elements[#elements + 1] = {
                             label = D.CleanMenuLabel(w),
                             value = l,
                             action = action,
-                            disabled = action == 'checkout' and D.GetCartTotal() <= 0
+                            disabled = action == 'checkout' and D.GetCartTotal() <= 0,
                         }
                     end
                 end
@@ -193,6 +216,6 @@ function WorkshopNuiMenu.Build(data, D)
         id = menuName,
         title = D.CleanMenuLabel(menuTitle),
         parent = parent,
-        elements = elements
+        elements = elements,
     }
 end

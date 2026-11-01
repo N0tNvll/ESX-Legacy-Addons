@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
-Locales ['tr'] = {
+Locales['tr'] = {
     ['helmet'] = 'Kask / Şapka',
     ['glasses'] = 'Gözlük',
     ['mask'] = 'Maske',
@@ -17,6 +17,4 @@ Locales ['tr'] = {
     ['no_mask'] = 'Masken yok',
     ['you_paid'] = 'Ödeme yaptın: $%s',
     ['keymap'] = 'Aksesuar Menüsünü Aç',
-    
-  }
-  
+}

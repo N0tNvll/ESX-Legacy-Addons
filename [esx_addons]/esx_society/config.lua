@@ -9,13 +9,12 @@ Config.MaxSalary = 3500
 Config.MaxJobGradeLabelLength = 40
 -- Minimum delay (ms) between salary/label updates from the same boss.
 Config.JobGradeUpdateCooldown = 1500
-Config.BossGrades =
-    { -- Uncomment and/or add additional grades you want to have access to the boss menu.
-        ['boss'] = true,
-        --['staff1'] = false,
-        --['staff2'] = false,
-        --['staff3'] = false,
-    }
+Config.BossGrades = { -- Uncomment and/or add additional grades you want to have access to the boss menu.
+    ['boss'] = true,
+    --['staff1'] = false,
+    --['staff2'] = false,
+    --['staff3'] = false,
+}
 
 -- Enable per job through OpenBossMenu options, or set true globally if your server uses skinchanger
 -- job uniforms everywhere.

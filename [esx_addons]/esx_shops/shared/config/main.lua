@@ -27,8 +27,8 @@ Config.DefaultItemWeight = 1
 -- If an item doesn't have an 'image' field, it will auto-generate as:
 -- {DefaultImagePath}/{itemName}.{DefaultImageFormat}
 -- Set to nil or empty string to disable auto-generation
-Config.DefaultImagePath = "nui://esx_shops/web/images"
-Config.DefaultImageFormat = "png" -- png, webp, jpg, etc.
+Config.DefaultImagePath = 'nui://esx_shops/web/images'
+Config.DefaultImageFormat = 'png' -- png, webp, jpg, etc.
 
 -- ════════════════════════════════════════════════════════════════
 -- TAX SYSTEM CONFIGURATION
@@ -56,8 +56,8 @@ Config.EnableTaxExemptions = true
 -- Only used if Config.EnableTaxExemptions = true
 -- These jobs see 0% tax rate with special message in UI
 Config.TaxExemptJobs = {
-	'police',      -- Law enforcement
-	'ambulance',   -- Emergency medical services
+    'police', -- Law enforcement
+    'ambulance', -- Emergency medical services
 }
 
 -- ════════════════════════════════════════════════════════════════
@@ -65,9 +65,9 @@ Config.TaxExemptJobs = {
 -- ════════════════════════════════════════════════════════════════
 
 Config.DrawDistance = 7.5
-Config.MarkerSize = {x = 1.1, y = 0.7, z = 1.1}
+Config.MarkerSize = { x = 1.1, y = 0.7, z = 1.1 }
 Config.MarkerType = 29
-Config.MarkerColor = {r = 50, g = 200, b = 50, a = 200}
+Config.MarkerColor = { r = 50, g = 200, b = 50, a = 200 }
 
 -- ════════════════════════════════════════════════════════════════
 -- PERFORMANCE CONFIGURATION
@@ -77,9 +77,9 @@ Config.MarkerColor = {r = 50, g = 200, b = 50, a = 200}
 Config.MovementThreshold = 5.0
 
 -- Sleep times for marker thread (ms)
-Config.SleepNear = 0        -- Within 50m
-Config.SleepMedium = 500    -- 50-100m away
-Config.SleepFar = 1500      -- Far away
+Config.SleepNear = 0 -- Within 50m
+Config.SleepMedium = 500 -- 50-100m away
+Config.SleepFar = 1500 -- Far away
 
 -- ════════════════════════════════════════════════════════════════
 -- SECURITY CONFIGURATION

@@ -8,18 +8,24 @@ local function propsEqual(left, right)
         return true
     end
 
-    if type(left) ~= type(right) then return false end
+    if type(left) ~= type(right) then
+        return false
+    end
 
     if type(left) ~= 'table' then
         return left == right
     end
 
     for key, value in pairs(left) do
-        if key ~= 'n' and not propsEqual(value, right[key]) then return false end
+        if key ~= 'n' and not propsEqual(value, right[key]) then
+            return false
+        end
     end
 
     for key in pairs(right) do
-        if key ~= 'n' and left[key] == nil then return false end
+        if key ~= 'n' and left[key] == nil then
+            return false
+        end
     end
 
     return true
@@ -32,7 +38,7 @@ local function getWatchedVehicleProps()
         modBackWheels = true,
         modSmokeEnabled = true,
         neonEnabled = true,
-        modXenon = true
+        modXenon = true,
     }
 
     for key, menu in pairs(Config.Menus) do
@@ -60,9 +66,13 @@ local function getPaidVehicleProps(cart)
     for i = 1, #cart do
         local item = cart[i]
         local normalized, invalidField = WorkshopPricing.NormalizeCartItem(item)
-        if not normalized then return nil, invalidField end
+
+        if not normalized then
+            return nil, invalidField
+        end
 
         local modType = normalized.modType
+
         paid[modType] = true
 
         if modType == 'modFrontWheels' or modType == 'modBackWheels' then
@@ -80,7 +90,9 @@ local function getPaidVehicleProps(cart)
 end
 
 function WorkshopValidation.WatchedVehiclePropsEqual(left, right)
-    if type(left) ~= 'table' or type(right) ~= 'table' then return false end
+    if type(left) ~= 'table' or type(right) ~= 'table' then
+        return false
+    end
 
     for key in pairs(WatchedVehicleProps) do
         if not propsEqual(left[key], right[key]) then
@@ -97,7 +109,10 @@ function WorkshopValidation.VehiclePropsMatchPaidCart(originalProps, paidProps, 
     end
 
     local paidKeys, invalidField = getPaidVehicleProps(cart)
-    if not paidKeys then return false, invalidField end
+
+    if not paidKeys then
+        return false, invalidField
+    end
 
     for key in pairs(WatchedVehicleProps) do
         if not paidKeys[key] and not propsEqual(originalProps[key], paidProps[key]) then
@@ -112,7 +127,10 @@ function WorkshopValidation.CartValuesMatchVehicleProps(paidProps, cart, origina
     for i = 1, #cart do
         local item = cart[i]
         local normalized, invalidField = WorkshopPricing.NormalizeCartItem(item)
-        if not normalized then return false, invalidField end
+
+        if not normalized then
+            return false, invalidField
+        end
 
         local modType = normalized.modType
 
@@ -128,21 +146,27 @@ function WorkshopValidation.CartValuesMatchVehicleProps(paidProps, cart, origina
             if not propsEqual(paidProps.neonColor, item.modNum) then
                 return false, modType
             end
+
             local allOff = item.modNum and item.modNum[1] == 0 and item.modNum[2] == 0 and item.modNum[3] == 0
+
             if allOff then
-                if propsEqual(paidProps.neonEnabled, {true, true, true, true}) then
+                if propsEqual(paidProps.neonEnabled, { true, true, true, true }) then
                     return false, 'neonEnabled'
                 end
-            elseif not propsEqual(paidProps.neonEnabled, {true, true, true, true}) then
+            elseif not propsEqual(paidProps.neonEnabled, { true, true, true, true }) then
                 return false, 'neonEnabled'
             end
         elseif modType == 'tyreSmokeColor' then
             if not propsEqual(paidProps.tyreSmokeColor, item.modNum) then
                 return false, modType
             end
+
             local allOff = item.modNum and item.modNum[1] == 0 and item.modNum[2] == 0 and item.modNum[3] == 0
+
             if paidProps.modSmokeEnabled == true then
-                if allOff then return false, modType end
+                if allOff then
+                    return false, modType
+                end
             elseif not allOff then
                 return false, modType
             end

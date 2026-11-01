@@ -42,9 +42,7 @@ function GarageCategories.allowed(location)
 
     if configured == nil then
         -- Compatibility for old definitions; unspecified garages are land garages.
-        configured = location.type == 'boat' and { 'boat' }
-            or location.type == 'aircraft' and { 'helicopter', 'plane' }
-            or { 'ground' }
+        configured = location.type == 'boat' and { 'boat' } or location.type == 'aircraft' and { 'helicopter', 'plane' } or { 'ground' }
     end
 
     if type(configured) ~= 'table' or #configured == 0 then
@@ -76,13 +74,11 @@ end
 
 local function modelOf(row)
     local ok, props = pcall(json.decode, row.vehicle or '')
-
     return ok and type(props) == 'table' and props.model or nil
 end
 
 local function modelValue(model)
     local numeric = tonumber(model)
-
     return numeric and tostring(math.floor(numeric)) or tostring(model):lower()
 end
 
@@ -110,13 +106,11 @@ end
 
 function GarageCategories.accepts(location, row)
     local category = GarageCategories.resolve(row)
-
     return category ~= nil and GarageCategories.allowed(location)[category] == true
 end
 
 function GarageCategories.acceptsEntity(location, entity)
     local category = GarageCategories.fromType(GetVehicleType(entity))
-
     return category ~= nil and GarageCategories.allowed(location)[category] == true
 end
 
@@ -127,9 +121,7 @@ function GarageCategories.models(location, source)
 
     local models = location.models
 
-    if
-        type(models) == 'function' or (ESX.IsFunctionReference and ESX.IsFunctionReference(models))
-    then
+    if type(models) == 'function' or (ESX.IsFunctionReference and ESX.IsFunctionReference(models)) then
         local ok, result = pcall(models, source)
 
         models = ok and result or {}
@@ -148,7 +140,6 @@ end
 
 function GarageCategories.acceptsModel(location, row, source)
     local allowed = GarageCategories.models(location, source)
-
     return allowed == nil or allowed[modelValue(modelOf(row))] == true
 end
 
@@ -166,14 +157,7 @@ function GarageCategories.condition(location, source)
         end
 
         params[#params + 1] = category
-        cases[#cases + 1] = (
-            (
-                'WHEN LOWER(CASE WHEN JSON_VALID(`vehicle`) THEN '
-                .. "JSON_UNQUOTE(JSON_EXTRACT(`vehicle`, '$.model')) ELSE '' END) "
-                .. 'IN (%s) THEN '
-                .. '?'
-            )
-        ):format(table.concat(placeholders, ','))
+        cases[#cases + 1] = (('WHEN LOWER(CASE WHEN JSON_VALID(`vehicle`) THEN ' .. "JSON_UNQUOTE(JSON_EXTRACT(`vehicle`, '$.model')) ELSE '' END) " .. 'IN (%s) THEN ' .. '?')):format(table.concat(placeholders, ','))
     end
 
     local typeCases = {}
@@ -186,9 +170,7 @@ function GarageCategories.condition(location, source)
         end
     end
 
-    local expression = "CASE COALESCE(LOWER(`type`), '') "
-        .. table.concat(typeCases, ' ')
-        .. ' ELSE NULL END'
+    local expression = "CASE COALESCE(LOWER(`type`), '') " .. table.concat(typeCases, ' ') .. ' ELSE NULL END'
 
     if #cases > 0 then
         expression = 'CASE ' .. table.concat(cases, ' ') .. ' ELSE ' .. expression .. ' END'
@@ -220,15 +202,7 @@ function GarageCategories.condition(location, source)
             return '0 = 1', {}
         end
 
-        condition = condition
-            .. (
-                (
-                    ' AND LOWER(CASE WHEN JSON_VALID(`vehicle`) THEN '
-                    .. "JSON_UNQUOTE(JSON_EXTRACT(`vehicle`, '$.model')) ELSE '' "
-                    .. 'END) IN '
-                    .. '(%s)'
-                )
-            ):format(table.concat(modelPlaceholders, ','))
+        condition = condition .. ((' AND LOWER(CASE WHEN JSON_VALID(`vehicle`) THEN ' .. "JSON_UNQUOTE(JSON_EXTRACT(`vehicle`, '$.model')) ELSE '' " .. 'END) IN ' .. '(%s)')):format(table.concat(modelPlaceholders, ','))
     end
 
     return condition, params
@@ -249,8 +223,5 @@ function GarageCategories.impound(row, preferred)
 end
 
 function GarageCategories.validate(location)
-    assert(
-        next(GarageCategories.allowed(location)),
-        'A garage/impound needs valid vehicleCategories'
-    )
+    assert(next(GarageCategories.allowed(location)), 'A garage/impound needs valid vehicleCategories')
 end

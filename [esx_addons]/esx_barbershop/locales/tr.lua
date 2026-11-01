@@ -2,8 +2,8 @@
 -- Copyright (C) 2022-2026 ESX Framework
 
 Locales['tr'] = {
-  ['not_enough_money'] = 'Yeterli paran yok',
-  ['press_access'] = 'Kuaför Salonuna girmek için ~b~[E]~s~ tuşuna bas.',
-  ['barber_blip'] = 'Kuaför Salonu',
-  ['you_paid'] = 'Ödeme yaptınız: $%s',
+    ['not_enough_money'] = 'Yeterli paran yok',
+    ['press_access'] = 'Kuaför Salonuna girmek için ~b~[E]~s~ tuşuna bas.',
+    ['barber_blip'] = 'Kuaför Salonu',
+    ['you_paid'] = 'Ödeme yaptınız: $%s',
 }

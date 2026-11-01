@@ -33,24 +33,17 @@ function OpenAmbulanceActionsMenu()
         }
     end
 
-    OpenAmbulanceMenu(
-        'default',
-        'ambulance_actions',
-        TranslateCap('ambulance'),
-        elements,
-        function(data, menu)
-            if data.current.value == 'cloakroom' then
-                OpenCloakroomMenu()
-            elseif data.current.value == 'boss_actions' then
-                TriggerEvent('esx_society:openBossMenu', 'ambulance', function(data2, menu2)
-                    menu2.close()
-                end, { wash = false, uniforms = true })
-            end
-        end,
-        function(data, menu)
-            menu.close()
+    OpenAmbulanceMenu('default', 'ambulance_actions', TranslateCap('ambulance'), elements, function(data, menu)
+        if data.current.value == 'cloakroom' then
+            OpenCloakroomMenu()
+        elseif data.current.value == 'boss_actions' then
+            TriggerEvent('esx_society:openBossMenu', 'ambulance', function(data2, menu2)
+                menu2.close()
+            end, { wash = false, uniforms = true })
         end
-    )
+    end, function(data, menu)
+        menu.close()
+    end)
 end
 
 function OpenMobileAmbulanceActionsMenu()
@@ -58,155 +51,91 @@ function OpenMobileAmbulanceActionsMenu()
         { label = TranslateCap('ems_menu'), value = 'citizen_interaction' },
     }
 
-    OpenAmbulanceMenu(
-        'default',
-        'mobile_ambulance_actions',
-        TranslateCap('ambulance'),
-        elements,
-        function(data, menu)
-            if data.current.value == 'citizen_interaction' then
-                local elements2 = {
-                    { label = TranslateCap('ems_menu_revive'), value = 'revive' },
-                    { label = TranslateCap('ems_menu_small'), value = 'small' },
-                    { label = TranslateCap('ems_menu_big'), value = 'big' },
-                    { label = TranslateCap('ems_menu_putincar'), value = 'put_in_vehicle' },
-                    { label = TranslateCap('ems_menu_search'), value = 'search' },
-                }
+    OpenAmbulanceMenu('default', 'mobile_ambulance_actions', TranslateCap('ambulance'), elements, function(data, menu)
+        if data.current.value == 'citizen_interaction' then
+            local elements2 = {
+                { label = TranslateCap('ems_menu_revive'), value = 'revive' },
+                { label = TranslateCap('ems_menu_small'), value = 'small' },
+                { label = TranslateCap('ems_menu_big'), value = 'big' },
+                { label = TranslateCap('ems_menu_putincar'), value = 'put_in_vehicle' },
+                { label = TranslateCap('ems_menu_search'), value = 'search' },
+            }
 
-                OpenAmbulanceMenu(
-                    'default',
-                    'citizen_interaction',
-                    TranslateCap('ems_menu'),
-                    elements2,
-                    function(data2, menu2)
-                        if isBusy then
-                            return
-                        end
+            OpenAmbulanceMenu('default', 'citizen_interaction', TranslateCap('ems_menu'), elements2, function(data2, menu2)
+                if isBusy then
+                    return
+                end
 
-                        local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
+                local closestPlayer, closestDistance = xLib.game.getClosestPlayer()
 
-                        if data2.current.value == 'search' then
-                            TriggerServerEvent('esx_ambulancejob:svsearch')
-                        elseif closestPlayer == -1 or closestDistance > 1.0 then
-                            ESX.ShowNotification(TranslateCap('no_players'))
-                        else
-                            if data2.current.value == 'revive' then
-                                revivePlayer(closestPlayer)
-                            elseif data2.current.value == 'small' then
-                                xLib.callback(
-                                    'esx_ambulancejob:getItemAmount',
-                                    false,
-                                    function(quantity)
-                                        if quantity > 0 then
-                                            local closestPlayerPed = GetPlayerPed(closestPlayer)
-                                            local health = GetEntityHealth(closestPlayerPed)
+                if data2.current.value == 'search' then
+                    TriggerServerEvent('esx_ambulancejob:svsearch')
+                elseif closestPlayer == -1 or closestDistance > 1.0 then
+                    ESX.ShowNotification(TranslateCap('no_players'))
+                else
+                    if data2.current.value == 'revive' then
+                        revivePlayer(closestPlayer)
+                    elseif data2.current.value == 'small' then
+                        xLib.callback('esx_ambulancejob:getItemAmount', false, function(quantity)
+                            if quantity > 0 then
+                                local closestPlayerPed = GetPlayerPed(closestPlayer)
+                                local health = GetEntityHealth(closestPlayerPed)
 
-                                            if health > 0 then
-                                                local playerPed = PlayerPedId()
+                                if health > 0 then
+                                    local playerPed = PlayerPedId()
 
-                                                isBusy = true
-                                                ESX.ShowNotification(
-                                                    TranslateCap('heal_inprogress')
-                                                )
-                                                TaskStartScenarioInPlace(
-                                                    playerPed,
-                                                    'CODE_HUMAN_MEDIC_TEND_TO_DEAD',
-                                                    0,
-                                                    true
-                                                )
-                                                Wait(10000)
-                                                ClearPedTasks(playerPed)
+                                    isBusy = true
+                                    ESX.ShowNotification(TranslateCap('heal_inprogress'))
+                                    TaskStartScenarioInPlace(playerPed, 'CODE_HUMAN_MEDIC_TEND_TO_DEAD', 0, true)
+                                    Wait(10000)
+                                    ClearPedTasks(playerPed)
 
-                                                TriggerServerEvent(
-                                                    'esx_ambulancejob:heal',
-                                                    GetPlayerServerId(closestPlayer),
-                                                    'small'
-                                                )
-                                                ESX.ShowNotification(
-                                                    TranslateCap(
-                                                        'heal_complete',
-                                                        GetPlayerName(closestPlayer)
-                                                    )
-                                                )
-                                                isBusy = false
-                                            else
-                                                ESX.ShowNotification(
-                                                    TranslateCap('player_not_conscious')
-                                                )
-                                            end
-                                        else
-                                            ESX.ShowNotification(TranslateCap('not_enough_bandage'))
-                                        end
-                                    end,
-                                    'bandage'
-                                )
-
-                            elseif data2.current.value == 'big' then
-                                xLib.callback(
-                                    'esx_ambulancejob:getItemAmount',
-                                    false,
-                                    function(quantity)
-                                        if quantity > 0 then
-                                            local closestPlayerPed = GetPlayerPed(closestPlayer)
-                                            local health = GetEntityHealth(closestPlayerPed)
-
-                                            if health > 0 then
-                                                local playerPed = PlayerPedId()
-
-                                                isBusy = true
-                                                ESX.ShowNotification(
-                                                    TranslateCap('heal_inprogress')
-                                                )
-                                                TaskStartScenarioInPlace(
-                                                    playerPed,
-                                                    'CODE_HUMAN_MEDIC_TEND_TO_DEAD',
-                                                    0,
-                                                    true
-                                                )
-                                                Wait(10000)
-                                                ClearPedTasks(playerPed)
-
-                                                TriggerServerEvent(
-                                                    'esx_ambulancejob:heal',
-                                                    GetPlayerServerId(closestPlayer),
-                                                    'big'
-                                                )
-                                                ESX.ShowNotification(
-                                                    TranslateCap(
-                                                        'heal_complete',
-                                                        GetPlayerName(closestPlayer)
-                                                    )
-                                                )
-                                                isBusy = false
-                                            else
-                                                ESX.ShowNotification(
-                                                    TranslateCap('player_not_conscious')
-                                                )
-                                            end
-                                        else
-                                            ESX.ShowNotification(TranslateCap('not_enough_medikit'))
-                                        end
-                                    end,
-                                    'medikit'
-                                )
-                            elseif data2.current.value == 'put_in_vehicle' then
-                                TriggerServerEvent(
-                                    'esx_ambulancejob:putInVehicle',
-                                    GetPlayerServerId(closestPlayer)
-                                )
+                                    TriggerServerEvent('esx_ambulancejob:heal', GetPlayerServerId(closestPlayer), 'small')
+                                    ESX.ShowNotification(TranslateCap('heal_complete', GetPlayerName(closestPlayer)))
+                                    isBusy = false
+                                else
+                                    ESX.ShowNotification(TranslateCap('player_not_conscious'))
+                                end
+                            else
+                                ESX.ShowNotification(TranslateCap('not_enough_bandage'))
                             end
-                        end
-                    end,
-                    function(data2, menu2)
-                        menu2.close()
+                        end, 'bandage')
+                    elseif data2.current.value == 'big' then
+                        xLib.callback('esx_ambulancejob:getItemAmount', false, function(quantity)
+                            if quantity > 0 then
+                                local closestPlayerPed = GetPlayerPed(closestPlayer)
+                                local health = GetEntityHealth(closestPlayerPed)
+
+                                if health > 0 then
+                                    local playerPed = PlayerPedId()
+
+                                    isBusy = true
+                                    ESX.ShowNotification(TranslateCap('heal_inprogress'))
+                                    TaskStartScenarioInPlace(playerPed, 'CODE_HUMAN_MEDIC_TEND_TO_DEAD', 0, true)
+                                    Wait(10000)
+                                    ClearPedTasks(playerPed)
+
+                                    TriggerServerEvent('esx_ambulancejob:heal', GetPlayerServerId(closestPlayer), 'big')
+                                    ESX.ShowNotification(TranslateCap('heal_complete', GetPlayerName(closestPlayer)))
+                                    isBusy = false
+                                else
+                                    ESX.ShowNotification(TranslateCap('player_not_conscious'))
+                                end
+                            else
+                                ESX.ShowNotification(TranslateCap('not_enough_medikit'))
+                            end
+                        end, 'medikit')
+                    elseif data2.current.value == 'put_in_vehicle' then
+                        TriggerServerEvent('esx_ambulancejob:putInVehicle', GetPlayerServerId(closestPlayer))
                     end
-                )
-            end
-        end,
-        function(data, menu)
-            menu.close()
+                end
+            end, function(data2, menu2)
+                menu2.close()
+            end)
         end
-    )
+    end, function(data, menu)
+        menu.close()
+    end)
 end
 
 function revivePlayer(closestPlayer)
@@ -227,19 +156,7 @@ function revivePlayer(closestPlayer)
                     Wait(900)
 
                     xLib.streaming.requestAnimDict(lib, function()
-                        TaskPlayAnim(
-                            playerPed,
-                            lib,
-                            anim,
-                            8.0,
-                            -8.0,
-                            -1,
-                            0,
-                            0.0,
-                            false,
-                            false,
-                            false
-                        )
+                        TaskPlayAnim(playerPed, lib, anim, 8.0, -8.0, -1, 0, 0.0, false, false, false)
                         RemoveAnimDict(lib)
                     end)
                 end
@@ -291,34 +208,10 @@ CreateThread(function()
 
                     if distance < Config.DrawDistance then
                         sleep = 0
-                        DrawMarker(
-                            Config.Marker.type,
-                            v,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            Config.Marker.x,
-                            Config.Marker.y,
-                            Config.Marker.z,
-                            Config.Marker.r,
-                            Config.Marker.g,
-                            Config.Marker.b,
-                            Config.Marker.a,
-                            false,
-                            false,
-                            2,
-                            Config.Marker.rotate,
-                            nil,
-                            nil,
-                            false
-                        )
+                        DrawMarker(Config.Marker.type, v, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Config.Marker.x, Config.Marker.y, Config.Marker.z, Config.Marker.r, Config.Marker.g, Config.Marker.b, Config.Marker.a, false, false, 2, Config.Marker.rotate, nil, nil, false)
 
                         if distance < Config.Marker.x then
-                            isInMarker, currentHospital, currentPart, currentPartNum =
-                                true, hospitalNum, 'AmbulanceActions', k
+                            isInMarker, currentHospital, currentPart, currentPartNum = true, hospitalNum, 'AmbulanceActions', k
                         end
                     end
                 end
@@ -329,34 +222,10 @@ CreateThread(function()
 
                     if distance < Config.DrawDistance then
                         sleep = 0
-                        DrawMarker(
-                            Config.Marker.type,
-                            v,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            Config.Marker.x,
-                            Config.Marker.y,
-                            Config.Marker.z,
-                            Config.Marker.r,
-                            Config.Marker.g,
-                            Config.Marker.b,
-                            Config.Marker.a,
-                            false,
-                            false,
-                            2,
-                            Config.Marker.rotate,
-                            nil,
-                            nil,
-                            false
-                        )
+                        DrawMarker(Config.Marker.type, v, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Config.Marker.x, Config.Marker.y, Config.Marker.z, Config.Marker.r, Config.Marker.g, Config.Marker.b, Config.Marker.a, false, false, 2, Config.Marker.rotate, nil, nil, false)
 
                         if distance < Config.Marker.x then
-                            isInMarker, currentHospital, currentPart, currentPartNum =
-                                true, hospitalNum, 'Pharmacy', k
+                            isInMarker, currentHospital, currentPart, currentPartNum = true, hospitalNum, 'Pharmacy', k
                         end
                     end
                 end
@@ -367,34 +236,10 @@ CreateThread(function()
 
                     if distance < Config.DrawDistance then
                         sleep = 0
-                        DrawMarker(
-                            v.Marker.type,
-                            v.Spawner,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            v.Marker.x,
-                            v.Marker.y,
-                            v.Marker.z,
-                            v.Marker.r,
-                            v.Marker.g,
-                            v.Marker.b,
-                            v.Marker.a,
-                            false,
-                            false,
-                            2,
-                            v.Marker.rotate,
-                            nil,
-                            nil,
-                            false
-                        )
+                        DrawMarker(v.Marker.type, v.Spawner, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, v.Marker.x, v.Marker.y, v.Marker.z, v.Marker.r, v.Marker.g, v.Marker.b, v.Marker.a, false, false, 2, v.Marker.rotate, nil, nil, false)
 
                         if distance < v.Marker.x then
-                            isInMarker, currentHospital, currentPart, currentPartNum =
-                                true, hospitalNum, 'Vehicles', k
+                            isInMarker, currentHospital, currentPart, currentPartNum = true, hospitalNum, 'Vehicles', k
                         end
                     end
                 end
@@ -405,34 +250,10 @@ CreateThread(function()
 
                     if distance < Config.DrawDistance then
                         sleep = 0
-                        DrawMarker(
-                            v.Marker.type,
-                            v.Spawner,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            v.Marker.x,
-                            v.Marker.y,
-                            v.Marker.z,
-                            v.Marker.r,
-                            v.Marker.g,
-                            v.Marker.b,
-                            v.Marker.a,
-                            false,
-                            false,
-                            2,
-                            v.Marker.rotate,
-                            nil,
-                            nil,
-                            false
-                        )
+                        DrawMarker(v.Marker.type, v.Spawner, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, v.Marker.x, v.Marker.y, v.Marker.z, v.Marker.r, v.Marker.g, v.Marker.b, v.Marker.a, false, false, 2, v.Marker.rotate, nil, nil, false)
 
                         if distance < v.Marker.x then
-                            isInMarker, currentHospital, currentPart, currentPartNum =
-                                true, hospitalNum, 'Helicopters', k
+                            isInMarker, currentHospital, currentPart, currentPartNum = true, hospitalNum, 'Helicopters', k
                         end
                     end
                 end
@@ -443,87 +264,30 @@ CreateThread(function()
 
                     if distance < Config.DrawDistance then
                         sleep = 0
-                        DrawMarker(
-                            v.Marker.type,
-                            v.From,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            v.Marker.x,
-                            v.Marker.y,
-                            v.Marker.z,
-                            v.Marker.r,
-                            v.Marker.g,
-                            v.Marker.b,
-                            v.Marker.a,
-                            false,
-                            false,
-                            2,
-                            v.Marker.rotate,
-                            nil,
-                            nil,
-                            false
-                        )
+                        DrawMarker(v.Marker.type, v.From, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, v.Marker.x, v.Marker.y, v.Marker.z, v.Marker.r, v.Marker.g, v.Marker.b, v.Marker.a, false, false, 2, v.Marker.rotate, nil, nil, false)
 
                         if distance < v.Marker.x then
-                            isInMarker, currentHospital, currentPart, currentPartNum =
-                                true, hospitalNum, 'FastTravelsPrompt', k
+                            isInMarker, currentHospital, currentPart, currentPartNum = true, hospitalNum, 'FastTravelsPrompt', k
                         end
                     end
                 end
             end
 
             -- Logic for exiting & entering markers
-            if
-                isInMarker and not HasAlreadyEnteredMarker
-                or (
-                    isInMarker
-                    and (
-                        LastHospital ~= currentHospital
-                        or LastPart ~= currentPart
-                        or LastPartNum ~= currentPartNum
-                    )
-                )
-            then
-                if
-                    (LastHospital ~= nil and LastPart ~= nil and LastPartNum ~= nil)
-                    and (
-                        LastHospital ~= currentHospital
-                        or LastPart ~= currentPart
-                        or LastPartNum ~= currentPartNum
-                    )
-                then
-                    TriggerEvent(
-                        'esx_ambulancejob:hasExitedMarker',
-                        LastHospital,
-                        LastPart,
-                        LastPartNum
-                    )
+            if isInMarker and not HasAlreadyEnteredMarker or (isInMarker and (LastHospital ~= currentHospital or LastPart ~= currentPart or LastPartNum ~= currentPartNum)) then
+                if (LastHospital ~= nil and LastPart ~= nil and LastPartNum ~= nil) and (LastHospital ~= currentHospital or LastPart ~= currentPart or LastPartNum ~= currentPartNum) then
+                    TriggerEvent('esx_ambulancejob:hasExitedMarker', LastHospital, LastPart, LastPartNum)
                     hasExited = true
                 end
 
-                HasAlreadyEnteredMarker, LastHospital, LastPart, LastPartNum =
-                    true, currentHospital, currentPart, currentPartNum
+                HasAlreadyEnteredMarker, LastHospital, LastPart, LastPartNum = true, currentHospital, currentPart, currentPartNum
 
-                TriggerEvent(
-                    'esx_ambulancejob:hasEnteredMarker',
-                    currentHospital,
-                    currentPart,
-                    currentPartNum
-                )
+                TriggerEvent('esx_ambulancejob:hasEnteredMarker', currentHospital, currentPart, currentPartNum)
             end
 
             if not hasExited and not isInMarker and HasAlreadyEnteredMarker then
                 HasAlreadyEnteredMarker = false
-                TriggerEvent(
-                    'esx_ambulancejob:hasExitedMarker',
-                    LastHospital,
-                    LastPart,
-                    LastPartNum
-                )
+                TriggerEvent('esx_ambulancejob:hasExitedMarker', LastHospital, LastPart, LastPartNum)
             end
         end
 
@@ -582,19 +346,9 @@ CreateThread(function()
                 elseif CurrentAction == 'Pharmacy' then
                     OpenPharmacyMenu()
                 elseif CurrentAction == 'Vehicles' then
-                    OpenVehicleShopMenu(
-                        'car',
-                        CurrentActionData.hospital,
-                        CurrentAction,
-                        CurrentActionData.partNum
-                    )
+                    OpenVehicleShopMenu('car', CurrentActionData.hospital, CurrentAction, CurrentActionData.partNum)
                 elseif CurrentAction == 'Helicopters' then
-                    OpenVehicleShopMenu(
-                        'helicopter',
-                        CurrentActionData.hospital,
-                        CurrentAction,
-                        CurrentActionData.partNum
-                    )
+                    OpenVehicleShopMenu('helicopter', CurrentActionData.hospital, CurrentAction, CurrentActionData.partNum)
                 elseif CurrentAction == 'FastTravelsPrompt' then
                     FastTravel(CurrentActionData.to, CurrentActionData.heading)
                 end
@@ -612,30 +366,7 @@ CreateThread(function()
 
                 if distance < Config.DrawDistance then
                     sleep = 0
-                    DrawMarker(
-                        v.Marker.type,
-                        v.From,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        0.0,
-                        v.Marker.x,
-                        v.Marker.y,
-                        v.Marker.z,
-                        v.Marker.r,
-                        v.Marker.g,
-                        v.Marker.b,
-                        v.Marker.a,
-                        false,
-                        false,
-                        2,
-                        v.Marker.rotate,
-                        nil,
-                        nil,
-                        false
-                    )
+                    DrawMarker(v.Marker.type, v.From, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, v.Marker.x, v.Marker.y, v.Marker.z, v.Marker.r, v.Marker.g, v.Marker.b, v.Marker.a, false, false, 2, v.Marker.rotate, nil, nil, false)
 
                     if distance < v.Marker.x then
                         FastTravel(v.To.coords, v.To.heading)
@@ -649,11 +380,7 @@ CreateThread(function()
 end)
 
 RegisterCommand('ambulance', function(src)
-    if
-        ESX.PlayerData.job
-        and ESX.PlayerData.job.name == 'ambulance'
-        and not ESX.PlayerData.dead
-    then
+    if ESX.PlayerData.job and ESX.PlayerData.job.name == 'ambulance' and not ESX.PlayerData.dead then
         OpenMobileAmbulanceActionsMenu()
     end
 end)
@@ -687,58 +414,47 @@ function OpenCloakroomMenu()
         { label = TranslateCap('ems_clothes_ems'), value = 'ambulance_wear' },
     }
 
-    OpenAmbulanceMenu(
-        'default',
-        'cloakroom',
-        TranslateCap('cloakroom'),
-        elements,
-        function(data, menu)
-            if data.current.value == 'citizen_wear' then
-                xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
-                    TriggerEvent('skinchanger:loadSkin', skin)
-                    isOnDuty = false
+    OpenAmbulanceMenu('default', 'cloakroom', TranslateCap('cloakroom'), elements, function(data, menu)
+        if data.current.value == 'citizen_wear' then
+            xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
+                TriggerEvent('skinchanger:loadSkin', skin)
+                isOnDuty = false
 
-                    for playerId, v in pairs(deadPlayerBlips) do
-                        RemoveBlip(v)
-                        deadPlayerBlips[playerId] = nil
-                    end
+                for playerId, v in pairs(deadPlayerBlips) do
+                    RemoveBlip(v)
+                    deadPlayerBlips[playerId] = nil
+                end
 
-                    deadPlayers = {}
+                deadPlayers = {}
 
-                    if Config.Debug then
-                        print('[^2INFO^7] Off Duty')
-                    end
+                if Config.Debug then
+                    print('[^2INFO^7] Off Duty')
+                end
+            end)
+        elseif data.current.value == 'ambulance_wear' then
+            xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
+                if skin.sex == 0 then
+                    TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_male)
+                else
+                    TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_female)
+                end
+
+                isOnDuty = true
+                xLib.callback('esx_ambulancejob:getDeadPlayers', false, function(_deadPlayers, locations)
+                    TriggerEvent('esx_ambulancejob:setDeadPlayers', _deadPlayers, locations)
                 end)
-            elseif data.current.value == 'ambulance_wear' then
-                xLib.callback('esx_skin:getPlayerSkin', false, function(skin, jobSkin)
-                    if skin.sex == 0 then
-                        TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_male)
-                    else
-                        TriggerEvent('skinchanger:loadClothes', skin, jobSkin.skin_female)
-                    end
 
-                    isOnDuty = true
-                    xLib.callback(
-                        'esx_ambulancejob:getDeadPlayers',
-                        false,
-                        function(_deadPlayers, locations)
-                            TriggerEvent('esx_ambulancejob:setDeadPlayers', _deadPlayers, locations)
-                        end
-                    )
-
-                    if Config.Debug then
-                        print('[^2INFO^7] Player Sex |^5' .. tostring(skin.sex) .. '^7')
-                        print('[^2INFO^7] On Duty')
-                    end
-                end)
-            end
-
-            menu.close()
-        end,
-        function(data, menu)
-            menu.close()
+                if Config.Debug then
+                    print('[^2INFO^7] Player Sex |^5' .. tostring(skin.sex) .. '^7')
+                    print('[^2INFO^7] On Duty')
+                end
+            end)
         end
-    )
+
+        menu.close()
+    end, function(data, menu)
+        menu.close()
+    end)
 end
 
 function OpenPharmacyMenu()
@@ -751,40 +467,29 @@ function OpenPharmacyMenu()
         }
     end
 
-    OpenAmbulanceMenu(
-        'default',
-        'pharmacy',
-        TranslateCap('pharmacy_menu_title'),
-        elements,
-        function(data, menu)
-            local selectedItem = data.current.item
+    OpenAmbulanceMenu('default', 'pharmacy', TranslateCap('pharmacy_menu_title'), elements, function(data, menu)
+        local selectedItem = data.current.item
 
-            OpenAmbulanceMenu('dialog', 'pharmacy_amount', 'Amount', nil, function(data2, menu2)
-                local amount = tonumber(data2.value)
+        OpenAmbulanceMenu('dialog', 'pharmacy_amount', 'Amount', nil, function(data2, menu2)
+            local amount = tonumber(data2.value)
 
-                if not amount or amount <= 0 then
-                    ESX.ShowNotification('Invalid quantity')
-                else
-                    menu2.close()
-
-                    if Config.Debug then
-                        print(
-                            '[^2INFO^7] Attempting to Give Item - ^5'
-                                .. tostring(selectedItem)
-                                .. '^7'
-                        )
-                    end
-
-                    TriggerServerEvent('esx_ambulancejob:giveItem', selectedItem, amount)
-                end
-            end, function(data2, menu2)
+            if not amount or amount <= 0 then
+                ESX.ShowNotification('Invalid quantity')
+            else
                 menu2.close()
-            end)
-        end,
-        function(data, menu)
-            menu.close()
-        end
-    )
+
+                if Config.Debug then
+                    print('[^2INFO^7] Attempting to Give Item - ^5' .. tostring(selectedItem) .. '^7')
+                end
+
+                TriggerServerEvent('esx_ambulancejob:giveItem', selectedItem, amount)
+            end
+        end, function(data2, menu2)
+            menu2.close()
+        end)
+    end, function(data, menu)
+        menu.close()
+    end)
 end
 
 RegisterNetEvent('esx_ambulancejob:heal')
@@ -866,11 +571,7 @@ AddEventHandler('esx_ambulancejob:setDeadPlayers', function(_deadPlayers, locati
 
             if status == 'distress' then
                 if Config.Debug then
-                    print(
-                        '[^2INFO^7] Creating Distress Blip for Player - ^5'
-                            .. tostring(playerId)
-                            .. '^7'
-                    )
+                    print('[^2INFO^7] Creating Distress Blip for Player - ^5' .. tostring(playerId) .. '^7')
                 end
 
                 local coords = locations and (locations[playerId] or locations[tostring(playerId)])

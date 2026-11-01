@@ -12,4 +12,4 @@ Locales['da'] = {
     ['no_money'] = 'du har ikke penge nok til at betale denne regning',
     ['target_no_money'] = 'spilleren ~r~har ikke penge nok til at betale regningen!',
     ['keymap_showbills'] = 'åbne regninger menu',
-  }
+}

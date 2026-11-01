@@ -5,61 +5,63 @@
 ---@param source number Player source
 ---@return table|nil xPlayer ESX player object or nil
 function ValidatePlayer(source)
-	local xPlayer = ESX.Player(source)
-	if not xPlayer then
-		return nil
-	end
-	return xPlayer
+    local xPlayer = ESX.Player(source)
+
+    if not xPlayer then
+        return nil
+    end
+    return xPlayer
 end
 
 ---Normalizes money values to positive finite integers
 ---@param amount any
 ---@return number|nil amount
 function NormalizeMoneyAmount(amount)
-	local value = tonumber(amount)
+    local value = tonumber(amount)
 
-	if not value or value ~= value or value == math.huge or value == -math.huge or value <= 0 then
-		return nil
-	end
+    if not value or value ~= value or value == math.huge or value == -math.huge or value <= 0 then
+        return nil
+    end
 
-	local integerValue = math.floor(value)
-	if integerValue ~= value or integerValue <= 0 then
-		return nil
-	end
+    local integerValue = math.floor(value)
 
-	return integerValue
+    if integerValue ~= value or integerValue <= 0 then
+        return nil
+    end
+
+    return integerValue
 end
 
 local function GetCashBalance(xPlayer)
-	if not xPlayer or type(xPlayer.getMoney) ~= 'function' then
-		return nil
-	end
+    if not xPlayer or type(xPlayer.getMoney) ~= 'function' then
+        return nil
+    end
 
-	local ok, money = pcall(function()
-		return xPlayer.getMoney()
-	end)
+    local ok, money = pcall(function()
+        return xPlayer.getMoney()
+    end)
 
-	return ok and tonumber(money) or nil
+    return ok and tonumber(money) or nil
 end
 
 local function GetAccountBalance(xPlayer, accountName)
-	if not xPlayer or type(xPlayer.getAccount) ~= 'function' then
-		return nil
-	end
+    if not xPlayer or type(xPlayer.getAccount) ~= 'function' then
+        return nil
+    end
 
-	local ok, account = pcall(function()
-		return xPlayer.getAccount(accountName)
-	end)
+    local ok, account = pcall(function()
+        return xPlayer.getAccount(accountName)
+    end)
 
-	return ok and account and tonumber(account.money) or nil
+    return ok and account and tonumber(account.money) or nil
 end
 
 local function GetPaymentBalance(xPlayer, isBlackMarket)
-	if isBlackMarket then
-		return GetAccountBalance(xPlayer, 'black_money')
-	end
+    if isBlackMarket then
+        return GetAccountBalance(xPlayer, 'black_money')
+    end
 
-	return GetCashBalance(xPlayer)
+    return GetCashBalance(xPlayer)
 end
 
 ---Checks if player has required funds for the purchase
@@ -87,7 +89,7 @@ function CanPayForWeapon(xPlayer, isBlackMarket, price, account)
         return false
     end
 
-	return true
+    return true
 end
 
 function TakeWeaponPayment(xPlayer, isBlackMarket, price, reason, account)

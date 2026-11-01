@@ -12,7 +12,6 @@ Locales['it'] = {
     ['chat_cleared'] = 'La chat è stata svuotata.',
     ['display_mode_set'] = 'Visualizzazione chat: %s',
     ['display_mode_usage'] = 'Uso: /chatmode [always|onMessage|hidden]',
-
     ['title_system'] = 'SISTEMA',
     ['title_ooc'] = 'OOC | %s',
     ['title_environment'] = 'AMBIENTE | %s',
@@ -24,21 +23,18 @@ Locales['it'] = {
     ['title_pm_in'] = '[MP] %s → Tu',
     ['title_pm_out'] = '[MP] Tu → %s',
     ['title_report'] = 'SEGNALAZIONE #%s · %s',
-
     ['dice_result'] = 'ha tirato un %s.',
     ['try_result'] = '%s: %s',
     ['try_success'] = 'SUCCESSO',
     ['try_failure'] = 'FALLIMENTO',
-
     ['arg_action'] = 'azione',
     ['arg_message'] = 'messaggio',
     ['arg_player'] = 'id giocatore',
-
-    ['command_me'] = 'Eseguire un\'azione',
+    ['command_me'] = "Eseguire un'azione",
     ['command_do'] = 'Descrivere i dintorni',
-    ['command_environment'] = 'Descrivere l\'ambiente',
+    ['command_environment'] = "Descrivere l'ambiente",
     ['command_dice'] = 'Tirare un dado',
-    ['command_try'] = 'Tentare un\'azione',
+    ['command_try'] = "Tentare un'azione",
     ['command_ooc'] = 'Chat fuori dal gioco',
     ['command_twt'] = 'Inviare un tweet',
     ['command_anontwt'] = 'Inviare un tweet anonimo',
@@ -49,7 +45,6 @@ Locales['it'] = {
     ['command_chatmode'] = 'Cambiare la visualizzazione della chat',
     ['command_clear'] = 'Svuotare la tua chat',
     ['key_open'] = 'Aprire la chat',
-
     ['ui_tab_ooc'] = 'OOC',
     ['ui_tab_rp'] = 'RP',
     ['ui_tab_job'] = 'Lavoro',

@@ -19,7 +19,7 @@ function Utils.CreateBlip(coords, sprite, scale, color, name)
         scale = scale,
         color = color,
         shortRange = true,
-        label = name
+        label = name,
     })
 end
 
@@ -42,6 +42,7 @@ function Utils.SpawnFrozenPed(model, coords, snapToGround)
 
         for _ = 1, PED_GROUND_RETRIES do
             local success, groundZ = GetGroundZFor_3dCoord(coords.x, coords.y, coords.z + 2.0, false)
+
             if success then
                 spawnZ = groundZ
                 break
@@ -52,6 +53,7 @@ function Utils.SpawnFrozenPed(model, coords, snapToGround)
     end
 
     local ped = CreatePed(0, model_hash, coords.x, coords.y, spawnZ, heading, false, true)
+
     if not ped or ped == 0 then
         SetModelAsNoLongerNeeded(model_hash)
         return
@@ -71,6 +73,7 @@ function Utils.SpawnFrozenPed(model, coords, snapToGround)
     if shouldSnap then
         for _ = 1, 10 do
             local success, groundZ = GetGroundZFor_3dCoord(coords.x, coords.y, spawnZ + 2.0, false)
+
             if success then
                 spawnZ = groundZ
                 break

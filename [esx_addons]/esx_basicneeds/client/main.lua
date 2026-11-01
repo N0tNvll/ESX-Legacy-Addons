@@ -13,12 +13,12 @@ AddEventHandler('esx_basicneeds:resetStatus', function()
     setPlayerNeeds(500000, 500000)
 end)
 
-
 RegisterNetEvent('esx_basicneeds:healPlayer')
 AddEventHandler('esx_basicneeds:healPlayer', function()
     setPlayerNeeds(1000000, 1000000)
 
     local playerPed = PlayerPedId()
+
     SetEntityHealth(playerPed, GetEntityMaxHealth(playerPed))
 end)
 
@@ -28,17 +28,19 @@ end)
 
 AddEventHandler('esx:onPlayerSpawn', function()
     if IsDead then
-		setPlayerNeeds(500000, 500000)
+        setPlayerNeeds(500000, 500000)
     end
+
     IsDead = false
 end)
 
 local function registerNeeds()
     local function registerStatus(name, color, removalRate)
-        TriggerEvent('esx_status:registerStatus', name, 1000000, color, 
-            function() return Config.Visible end,
-            function(status) status.remove(removalRate) end
-        )
+        TriggerEvent('esx_status:registerStatus', name, 1000000, color, function()
+            return Config.Visible
+        end, function(status)
+            status.remove(removalRate)
+        end)
     end
 
     registerStatus('hunger', '#CFAD0F', 100)
@@ -61,6 +63,7 @@ AddEventHandler('esx_status:onTick', function(statuses)
     for _, status in pairs(statuses) do
         if status.percent == 0 then
             local damage = (prevHealth <= 150) and 5 or 1
+
             if status.name == 'hunger' or status.name == 'thirst' then
                 newHealth = newHealth - damage
             end
@@ -86,12 +89,7 @@ local function isValidOffset(offset)
     for i = 1, #OFFSET_AXES do
         local value = offset[OFFSET_AXES[i]]
 
-        if
-            type(value) ~= 'number'
-            or value ~= value
-            or value == math.huge
-            or value == -math.huge
-        then
+        if type(value) ~= 'number' or value ~= value or value == math.huge or value == -math.huge then
             return false
         end
     end
@@ -129,14 +127,7 @@ local function handleAnimation(itemType, propName, anim, pos, rot)
         }
     end
 
-    if
-        type(anim) ~= 'table'
-        or type(anim.dict) ~= 'string'
-        or anim.dict == ''
-        or type(anim.name) ~= 'string'
-        or anim.name == ''
-        or type(anim.settings) ~= 'table'
-    then
+    if type(anim) ~= 'table' or type(anim.dict) ~= 'string' or anim.dict == '' or type(anim.name) ~= 'string' or anim.name == '' or type(anim.settings) ~= 'table' then
         return
     end
 
@@ -144,12 +135,7 @@ local function handleAnimation(itemType, propName, anim, pos, rot)
         local value = anim.settings[i]
 
         if i <= 5 or type(value) ~= 'boolean' then
-            if
-                type(value) ~= 'number'
-                or value ~= value
-                or value == math.huge
-                or value == -math.huge
-            then
+            if type(value) ~= 'number' or value ~= value or value == math.huge or value == -math.huge then
                 return
             end
         end
@@ -169,7 +155,6 @@ local function handleAnimation(itemType, propName, anim, pos, rot)
         local prop
         local model
         local animationLoaded = false
-
         local ok, err = pcall(function()
             model = xLib.streaming.requestModel(propName)
 
@@ -184,6 +169,7 @@ local function handleAnimation(itemType, propName, anim, pos, rot)
             end
 
             local coords = GetEntityCoords(playerPed)
+
             prop = CreateObject(model, coords.x, coords.y, coords.z + 0.2, true, true, true)
             SetModelAsNoLongerNeeded(model)
             model = nil
@@ -194,12 +180,7 @@ local function handleAnimation(itemType, propName, anim, pos, rot)
 
             local boneIndex = GetPedBoneIndex(playerPed, 18905)
 
-            AttachEntityToEntity(
-                prop, playerPed, boneIndex,
-                pos.x, pos.y, pos.z,
-                rot.x, rot.y, rot.z,
-                true, true, false, true, 1, true
-            )
+            AttachEntityToEntity(prop, playerPed, boneIndex, pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, true, true, false, true, 1, true)
 
             TaskPlayAnim(playerPed, anim.dict, anim.name, table.unpack(anim.settings, 1, 8))
             RemoveAnimDict(anim.dict)
@@ -239,6 +220,7 @@ end)
 
 local function warnDeprecated(eventName, itemType, propName)
     local invokingResource = GetInvokingResource()
+
     print(('[^3WARNING^7] ^5%s^7 used ^5%s^7, which is deprecated. Refer to ESX documentation for updates.'):format(invokingResource, eventName))
     TriggerEvent('esx_basicneeds:onUse', itemType, propName)
 end

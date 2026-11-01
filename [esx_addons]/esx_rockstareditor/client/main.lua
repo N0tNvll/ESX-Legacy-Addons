@@ -84,10 +84,7 @@ local function authorize(action, callback)
 
         if not ok or type(result) ~= 'table' or result.ok ~= true then
             local reason = ok and type(result) == 'table' and result.reason or 'request_failed'
-            local known = reason == 'access_denied'
-                or reason == 'busy'
-                or reason == 'invalid_action'
-                or reason == 'replays_disabled'
+            local known = reason == 'access_denied' or reason == 'busy' or reason == 'invalid_action' or reason == 'replays_disabled'
 
             current.finish({ ok = false, message = Translate(known and reason or 'request_failed') })
             return
@@ -236,13 +233,7 @@ RegisterNUICallback('action', function(data, cb)
             state = Recorder.State(),
         })
 
-        if
-            ok
-            and action == 'start'
-            and Config.CloseOnRecord
-            and result.requestId == requestId
-            and menuOpen
-        then
+        if ok and action == 'start' and Config.CloseOnRecord and result.requestId == requestId and menuOpen then
             closeMenu()
             ESX.ShowNotification(Translate(reason), 'success')
         end
@@ -282,10 +273,7 @@ CreateThread(function()
         if ESX.PlayerLoaded then
             local message = stateMessage('state')
 
-            if
-                menuOpen
-                or (Config.ShowRecordingIndicator and (message.state.recording or wasRecording))
-            then
+            if menuOpen or (Config.ShowRecordingIndicator and (message.state.recording or wasRecording)) then
                 SendNUIMessage(message)
             end
 
@@ -296,13 +284,7 @@ end)
 
 CreateThread(function()
     while not stopping do
-        if
-            Config.ShowRecordingIndicator
-            and Config.HideGameFeedWhileRecording
-            and ESX.PlayerLoaded
-            and type(ThefeedHideThisFrame) == 'function'
-            and Recorder.IsRecording()
-        then
+        if Config.ShowRecordingIndicator and Config.HideGameFeedWhileRecording and ESX.PlayerLoaded and type(ThefeedHideThisFrame) == 'function' and Recorder.IsRecording() then
             ThefeedHideThisFrame()
             Wait(0)
         else

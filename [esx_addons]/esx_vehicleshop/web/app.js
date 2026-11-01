@@ -59,7 +59,6 @@ const dictionaries = {
             'El vehículo queda registrado y disponible en su garaje si la ' +
             'entrega no se ha ' +
             'realizado.',
-        help: 'ESC para cerrar · Los precios y permisos se validan al confirmar.',
         return: 'Devolver alquiler',
         resale: 'Vender vehículo',
         items: 'Objetos',
@@ -94,6 +93,52 @@ const dictionaries = {
         session_closing: 'La sesión está cerrándose. Vuelve a entrar antes de continuar.',
         invalid_account: 'Selecciona un método de pago válido.',
         rentConfirm: 'Aceptar alquiler',
+        selection: 'Vehículo seleccionado',
+        category: 'Categoría',
+        type: 'Tipo',
+        delivery: 'Entrega',
+        garage: 'Disponible en tu garaje',
+        pickup: 'Recogida en el concesionario',
+        explore: 'Ver en exposición',
+        noMatches: 'No encontramos vehículos con estos filtros.',
+        noVehicles: 'No hay vehículos disponibles en este concesionario.',
+        adjustSearch: 'Prueba otra categoría o cambia la búsqueda.',
+        reloadCatalog: 'Actualiza el catálogo para consultar la disponibilidad.',
+        details: 'Consultar vehículo',
+        car: 'Automóvil',
+        motorcycle: 'Motocicleta',
+        bicycle: 'Bicicleta',
+        truck: 'Camión',
+        emergency: 'Emergencias',
+        boat: 'Embarcación',
+        helicopter: 'Helicóptero',
+        plane: 'Avión',
+        dealership: 'Concesionario de vehículos',
+        dealer_car: 'Concesionario de automóviles',
+        dealer_motorcycle: 'Concesionario de motocicletas',
+        dealer_bicycle: 'Concesionario de bicicletas',
+        dealer_truck: 'Concesionario de camiones',
+        dealer_emergency: 'Concesionario de emergencias',
+        dealer_boat: 'Concesionario náutico',
+        dealer_helicopter: 'Concesionario de helicópteros',
+        dealer_plane: 'Concesionario de aviones',
+        dealer_aircraft: 'Concesionario de aeronaves',
+        color: 'Color de carrocería',
+        original: 'De fábrica',
+        restoreColor: 'Restaurar color de fábrica',
+        close: 'Cerrar',
+        customColor: 'Color personalizado',
+        testDrive: 'Probar vehículo',
+        testDuration: 'Prueba de',
+        testActive: 'Prueba de conducción',
+        finishTest: 'Finalizar prueba',
+        backCatalog: 'Volver al catálogo',
+        invalid_color: 'Selecciona un color válido.',
+        test_active: 'Ya tienes una prueba en curso. Espera un momento antes de repetirla.',
+        test_unavailable: 'La prueba no está disponible en este momento.',
+        leave_vehicle: 'Baja de tu vehículo para comenzar la prueba.',
+        spawn_blocked: 'La zona de salida está ocupada. Espera a que quede libre.',
+        spawn_failed: 'No se pudo preparar el vehículo de prueba.',
     },
     en: {
         catalog: 'Catalog',
@@ -152,7 +197,6 @@ const dictionaries = {
             'The vehicle is registered and remains available in its garage ' +
             'if delivery could not ' +
             'finish.',
-        help: 'ESC to close · Prices and permissions are checked on confirmation.',
         return: 'Return rental',
         resale: 'Sell vehicle',
         items: 'Items',
@@ -187,9 +231,78 @@ const dictionaries = {
         session_closing: 'Your session is closing. Log in again to continue.',
         invalid_account: 'Select a valid payment method.',
         rentConfirm: 'Accept rental',
+        selection: 'Selected vehicle',
+        category: 'Category',
+        type: 'Type',
+        delivery: 'Delivery',
+        garage: 'Available in your garage',
+        pickup: 'Collect at the dealership',
+        explore: 'View in showroom',
+        noMatches: 'No vehicles match these filters.',
+        noVehicles: 'No vehicles are available at this dealership.',
+        adjustSearch: 'Try another category or change your search.',
+        reloadCatalog: 'Refresh the catalog to check availability.',
+        details: 'View vehicle details',
+        car: 'Car',
+        motorcycle: 'Motorcycle',
+        bicycle: 'Bicycle',
+        truck: 'Truck',
+        emergency: 'Emergency',
+        boat: 'Boat',
+        helicopter: 'Helicopter',
+        plane: 'Plane',
+        dealership: 'Vehicle dealership',
+        dealer_car: 'Car dealership',
+        dealer_motorcycle: 'Motorcycle dealership',
+        dealer_bicycle: 'Bicycle dealership',
+        dealer_truck: 'Truck dealership',
+        dealer_emergency: 'Emergency vehicle dealership',
+        dealer_boat: 'Boat dealership',
+        dealer_helicopter: 'Helicopter dealership',
+        dealer_plane: 'Plane dealership',
+        dealer_aircraft: 'Aircraft dealership',
+        color: 'Body color',
+        original: 'Factory',
+        restoreColor: 'Restore factory color',
+        close: 'Close',
+        customColor: 'Custom color',
+        testDrive: 'Test drive',
+        testDuration: 'Test for',
+        testActive: 'Test drive',
+        finishTest: 'End test drive',
+        backCatalog: 'Back to catalog',
+        invalid_color: 'Select a valid color.',
+        test_active: 'You already have a test drive. Wait a moment before trying again.',
+        test_unavailable: 'A test drive is currently unavailable.',
+        leave_vehicle: 'Leave your vehicle before starting a test drive.',
+        spawn_blocked: 'The exit area is occupied. Wait until it is clear.',
+        spawn_failed: 'The test vehicle could not be prepared.',
     },
 };
-let lang = 'es',
+function detectLanguage(value) {
+    const supported = Object.keys(dictionaries);
+    const language = typeof value === 'string' ? value.trim().toLowerCase().split(/[-_]/)[0] : '';
+
+    if (language && !['auto', 'custom', 'invalid'].includes(language)) {
+        return supported.includes(language) ? language : 'en';
+    }
+
+    const browserLanguages = navigator.languages?.length
+        ? navigator.languages
+        : [navigator.language];
+
+    for (const candidate of browserLanguages) {
+        const code = candidate.toLowerCase().split(/[-_]/)[0];
+
+        if (supported.includes(code)) {
+            return code;
+        }
+    }
+
+    return 'en';
+}
+
+let lang = detectLanguage(),
     snapshot = null,
     tab = 'catalog',
     quote = null,
@@ -198,10 +311,248 @@ let lang = 'es',
     generation = 0,
     search = '',
     category = '',
+    selected = null,
+    previewMode = false,
     target = '',
     page = 1;
 const t = (key) => dictionaries[lang][key] || dictionaries[lang].operation_failed;
 const money = (value) => '$' + new Intl.NumberFormat(lang).format(Number(value) || 0);
+const colors = new Map();
+const palette = [
+    '#f2f2f2',
+    '#161616',
+    '#969696',
+    '#c0392b',
+    '#2874a6',
+    '#24754e',
+    '#fb9b04',
+    '#f3c947',
+];
+
+document.documentElement.lang = lang;
+
+function selectedColor(model) {
+    return colors.get(`${snapshot.shop.id}:${model}`);
+}
+
+function setPreviewMode(value) {
+    previewMode = value;
+    $('shop').classList.toggle('preview-mode', value);
+}
+
+function readSnapshot(value) {
+    const result = { ...value };
+
+    for (const key of ['vehicles', 'stock', 'rentals', 'sales', 'orders']) {
+        result[key] = Array.isArray(value[key]) ? value[key] : [];
+    }
+
+    return result;
+}
+
+function vehicleImage(vehicle) {
+    const frame = node('div', undefined, 'vehicle-media');
+    const image = node('img');
+    const model = /^[a-z\d_-]+$/i.test(vehicle.model) ? vehicle.model.toLowerCase() : 'fallback';
+    const base = 'https://cfx-nui-esx_garage/web/dist/vehicleImages/';
+
+    image.alt = vehicle.name;
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    image.src = `${base}${model}.webp`;
+    image.onerror = () => {
+        image.onerror = () => {
+            image.hidden = true;
+        };
+        image.src = `${base}fallback.webp`;
+    };
+    frame.append(image);
+    return frame;
+}
+
+async function preview(vehicle, expand = false) {
+    const g = generation;
+    const r = await rpc('preview', { model: vehicle.model, color: selectedColor(vehicle.model) });
+
+    if (g !== generation) {
+        return;
+    }
+
+    if (!r.success) {
+        notice(t(r.error));
+    } else if (expand) {
+        setPreviewMode(true);
+        showVehicle(vehicle);
+    }
+}
+
+function colorPicker(vehicle) {
+    const section = node('section', undefined, 'color-picker');
+    const label = node('div', undefined, 'color-label');
+    const value = node('span', selectedColor(vehicle.model) || t('original'));
+    const swatches = node('div', undefined, 'swatches');
+    const custom = node('input');
+    const customControl = node('label', undefined, 'custom-color');
+    const key = `${snapshot.shop.id}:${vehicle.model}`;
+
+    label.append(node('span', t('color')), value);
+
+    function choose(color) {
+        colors.set(key, color);
+        value.textContent = color || t('original');
+        custom.value = color || '#f2f2f2';
+        customControl.classList.toggle('selected', !!color && !palette.includes(color));
+        swatches.querySelectorAll('button').forEach((button) => {
+            button.setAttribute('aria-pressed', String(button.dataset.color === (color || '')));
+        });
+        preview(vehicle);
+    }
+
+    const original = button('', () => choose(undefined), 'original-color');
+
+    original.title = t('restoreColor');
+    original.setAttribute('aria-label', t('restoreColor'));
+    original.dataset.color = '';
+    swatches.append(original);
+
+    for (const color of palette) {
+        const swatch = button('', () => choose(color), 'color-swatch');
+
+        swatch.style.setProperty('--swatch', color);
+        swatch.dataset.color = color;
+        swatch.setAttribute('aria-label', `${t('color')} ${color}`);
+        swatches.append(swatch);
+    }
+
+    swatches.querySelectorAll('button').forEach((button) => {
+        button.setAttribute(
+            'aria-pressed',
+            String(button.dataset.color === (selectedColor(vehicle.model) || '')),
+        );
+    });
+    custom.type = 'color';
+    custom.value = selectedColor(vehicle.model) || '#f2f2f2';
+    custom.setAttribute('aria-label', t('customColor'));
+    custom.onchange = () => choose(custom.value);
+
+    const plus = node('span', '+');
+
+    plus.setAttribute('aria-hidden', 'true');
+    customControl.title = t('customColor');
+    customControl.classList.toggle(
+        'selected',
+        !!selectedColor(vehicle.model) && !palette.includes(selectedColor(vehicle.model)),
+    );
+    customControl.append(custom, plus);
+    swatches.append(customControl);
+    section.append(label, swatches);
+    return section;
+}
+
+async function testDrive(vehicle, control) {
+    if (busy || pending) {
+        notice(t('pending'));
+        return;
+    }
+
+    busy = true;
+    control.disabled = true;
+
+    const g = generation;
+    const r = await rpc('testDrive', { model: vehicle.model, color: selectedColor(vehicle.model) });
+
+    if (g !== generation) {
+        return;
+    }
+
+    busy = false;
+    control.disabled = false;
+
+    if (!r.success) {
+        notice(t(r.error));
+    }
+}
+
+function showVehicle(vehicle) {
+    const root = $('details');
+
+    root.replaceChildren();
+
+    if (!vehicle) {
+        root.append(node('p', t(snapshot.vehicles.length ? 'noMatches' : 'noVehicles'), 'empty'));
+        return;
+    }
+
+    selected = vehicle.model;
+    document.querySelectorAll('.card').forEach((card) => {
+        card.classList.toggle('selected', card.dataset.model === selected);
+    });
+    const overview = node('div', undefined, 'vehicle-overview');
+    const controls = node('div', undefined, 'vehicle-controls');
+
+    overview.append(
+        node('span', t('selection'), 'eyebrow'),
+        node('h2', vehicle.name),
+        node('span', vehicle.model.toUpperCase(), 'model-code'),
+        vehicleImage(vehicle),
+        node('div', money(vehicle.price), 'detail-price'),
+    );
+
+    const specs = node('dl', undefined, 'specifications');
+    const entries = [
+        ['category', vehicle.categoryLabel || vehicle.category],
+        ['type', dictionaries[lang][vehicle.type] || vehicle.type],
+        ['stock', vehicle.stock < 0 ? t('unlimited') : `${vehicle.stock} ${t('units')}`],
+        ['delivery', t(snapshot.shop.delivery ? 'pickup' : 'garage')],
+        ...(vehicle.license ? [['license', vehicle.license]] : []),
+        ...(vehicle.minGrade ? [['grade', vehicle.minGrade]] : []),
+    ];
+
+    for (const [key, value] of entries) {
+        const row = node('div');
+
+        row.append(node('dt', t(key)), node('dd', value));
+        specs.append(row);
+    }
+
+    overview.append(specs);
+    controls.append(
+        colorPicker(vehicle),
+        button(
+            t(previewMode ? 'backCatalog' : 'explore'),
+            async () => {
+                if (previewMode) {
+                    const g = generation;
+
+                    setPreviewMode(false);
+                    await rpc('clearPreview');
+
+                    if (g === generation) {
+                        showVehicle(vehicle);
+                    }
+                } else {
+                    preview(vehicle, true);
+                }
+            },
+            'detail-preview',
+        ),
+    );
+
+    if (snapshot.shop.testDrive !== false) {
+        const test = button(t('testDrive'), () => testDrive(vehicle, test), 'primary test-drive');
+
+        controls.append(
+            test,
+            node(
+                'p',
+                `${t('testDuration')} ${snapshot.shop.testDriveDuration || 60} s`,
+                'test-duration',
+            ),
+        );
+    }
+
+    root.append(overview, controls);
+}
 
 function node(tag, text, cls) {
     const n = document.createElement(tag);
@@ -253,7 +604,7 @@ async function refresh() {
     }
 
     if (r.success) {
-        snapshot = r.data;
+        snapshot = readSnapshot(r.data);
         render();
     } else {
         notice(t(r.error));
@@ -265,6 +616,7 @@ function close() {
     snapshot = null;
     quote = null;
     $('shop').hidden = true;
+    setPreviewMode(false);
 
     if ($('checkout').open) {
         $('checkout').close();
@@ -290,9 +642,7 @@ function table(headers, rows) {
         for (const cell of row) {
             const td = node('td');
 
-            td.append(
-                cell instanceof Node ? cell : document.createTextNode(String(cell ?? '')),
-            );
+            td.append(cell instanceof Node ? cell : document.createTextNode(String(cell ?? '')));
             tr.append(td);
         }
 
@@ -314,6 +664,10 @@ async function requestQuote(data) {
     }
 
     busy = true;
+
+    if (data.model && (data.kind === 'purchase' || data.kind === 'rent')) {
+        data.color = selectedColor(data.model);
+    }
 
     const g = generation;
     const r = await rpc('quote', data);
@@ -348,20 +702,29 @@ function showQuote(value) {
     }
 
     quote = value;
+    $('quoteColor').hidden = !value.color;
+    $('quoteColor').replaceChildren();
+
+    if (value.color && /^#[a-f\d]{6}$/i.test(value.color)) {
+        const swatch = node('span', undefined, 'quote-swatch');
+
+        swatch.style.background = value.color;
+        $('quoteColor').append(swatch, node('span', `${t('color')}: ${value.color}`));
+    }
     $('confirmTitle').textContent =
         value.kind === 'rent'
             ? t('rentConfirm')
             : t(
-                    value.kind === 'purchase'
-                        ? 'buy'
-                        : value.kind === 'stock'
+                  value.kind === 'purchase'
+                      ? 'buy'
+                      : value.kind === 'stock'
                         ? 'procure'
                         : value.kind === 'provider'
-                            ? 'supplier'
-                            : value.kind === 'license'
+                          ? 'supplier'
+                          : value.kind === 'license'
                             ? 'getLicense'
                             : value.kind,
-                );
+              );
     $('summary').textContent = [
         value.name || value.model || '',
         money(value.amount),
@@ -418,9 +781,7 @@ async function execute() {
         $('checkout').close();
         notice(
             t('success') +
-                (r.data.kind === 'purchase' || r.data.kind === 'rent'
-                    ? ' ' + t('stored')
-                    : ''),
+                (r.data.kind === 'purchase' || r.data.kind === 'rent' ? ' ' + t('stored') : ''),
         );
         await refresh();
         return;
@@ -507,6 +868,8 @@ function catalog(root) {
         input = node('input');
 
     input.placeholder = t('search');
+    input.setAttribute('aria-label', t('search'));
+    input.type = 'search';
     input.value = search;
     input.oninput = () => {
         search = input.value;
@@ -520,13 +883,15 @@ function catalog(root) {
     select.append(all);
 
     for (const c of [...new Set(snapshot.vehicles.map((v) => v.category))].sort()) {
-        const op = node('option', c);
+        const label = snapshot.vehicles.find((v) => v.category === c)?.categoryLabel || c;
+        const op = node('option', label);
 
         op.value = c;
         select.append(op);
     }
 
     select.value = category;
+    select.setAttribute('aria-label', t('category'));
     select.onchange = () => {
         category = select.value;
         drawCards();
@@ -556,22 +921,29 @@ function catalog(root) {
     function drawCards() {
         cards.replaceChildren();
 
-        for (const v of snapshot.vehicles.filter(
+        const filtered = snapshot.vehicles.filter(
             (v) =>
                 (!category || v.category === category) &&
                 `${v.name} ${v.model}`.toLowerCase().includes(search.toLowerCase()),
-        )) {
+        );
+
+        for (const v of filtered) {
             const card = node('article', undefined, 'card');
+            const heading = button(v.name, () => showVehicle(v), 'vehicle-title');
+            const title = node('h3');
+            const image = vehicleImage(v);
+
+            card.dataset.model = v.model;
+            title.append(heading);
+            image.onclick = () => showVehicle(v);
+            heading.title = t('details');
 
             card.append(
-                node('h3', v.name),
-                node('div', v.model, 'muted'),
+                node('span', v.categoryLabel || v.category, 'vehicle-category'),
+                title,
+                image,
                 node('div', money(v.price), 'price'),
-                node(
-                    'span',
-                    v.stock < 0 ? t('unlimited') : `${v.stock} ${t('units')}`,
-                    'badge',
-                ),
+                node('span', v.stock < 0 ? t('unlimited') : `${v.stock} ${t('units')}`, 'badge'),
             );
 
             if (v.license) {
@@ -585,12 +957,9 @@ function catalog(root) {
             const actions = node('div', undefined, 'actions');
 
             actions.append(
-                button(t('preview'), async () => {
-                    const r = await rpc('preview', { model: v.model });
-
-                    if (!r.success) {
-                        notice(t(r.error));
-                    }
+                button(t('preview'), () => {
+                    showVehicle(v);
+                    preview(v);
                 }),
             );
 
@@ -612,9 +981,7 @@ function catalog(root) {
 
             if (snapshot.shop.employee) {
                 actions.append(
-                    button(t('procure'), () =>
-                        requestQuote({ kind: 'stock', model: v.model }),
-                    ),
+                    button(t('procure'), () => requestQuote({ kind: 'stock', model: v.model })),
                 );
 
                 if (snapshot.shop.rentals) {
@@ -636,8 +1003,16 @@ function catalog(root) {
         }
 
         if (!cards.children.length) {
-            cards.append(node('p', t('empty'), 'empty'));
+            const empty = node('div', undefined, 'empty');
+
+            empty.append(
+                node('h3', t(snapshot.vehicles.length ? 'noMatches' : 'noVehicles')),
+                node('p', t(snapshot.vehicles.length ? 'adjustSearch' : 'reloadCatalog')),
+            );
+            cards.append(empty);
         }
+
+        showVehicle(filtered.find((v) => v.model === selected) || filtered[0]);
     }
 
     drawCards();
@@ -670,6 +1045,24 @@ function paging(root) {
     root.append(actions);
 }
 
+function dealershipType(shop) {
+    const types = new Set(
+        Array.isArray(shop.vehicleTypes)
+            ? shop.vehicleTypes
+            : snapshot.vehicles.map((vehicle) => vehicle.type),
+    );
+
+    if (types.size === 1) {
+        return dictionaries[lang][`dealer_${[...types][0]}`] || t('dealership');
+    }
+
+    if (types.size > 0 && [...types].every((type) => ['plane', 'helicopter'].includes(type))) {
+        return t('dealer_aircraft');
+    }
+
+    return t('dealership');
+}
+
 function render() {
     if (!snapshot) {
         return;
@@ -678,6 +1071,10 @@ function render() {
     const shop = snapshot.shop;
 
     $('title').textContent = shop.name;
+    $('brand').textContent = dealershipType(shop);
+    $('close').setAttribute('aria-label', t('close'));
+    $('workspace').classList.toggle('catalog-view', tab === 'catalog');
+    $('details').hidden = tab !== 'catalog';
 
     const logo = $('logo');
 
@@ -694,10 +1091,10 @@ function render() {
     };
     document.documentElement.style.setProperty(
         '--accent',
-        /^#[a-f\d]{6}$/i.test(shop.color || '') ? shop.color : '#ffac00',
+        /^#[a-f\d]{6}$/i.test(shop.color || '') ? shop.color : '#fb9b04',
     );
-    $('refresh').textContent = t('refresh');
-    $('help').textContent = t('help');
+    $('refresh').setAttribute('aria-label', t('refresh'));
+    $('refresh').title = t('refresh');
     $('tabs').replaceChildren();
 
     const tabs = [
@@ -711,18 +1108,19 @@ function render() {
     }
 
     for (const key of tabs) {
-        $('tabs').append(
-            button(
-                t(key),
-                () => {
-                    tab = key;
-                    page = 1;
-                    render();
-                    refresh();
-                },
-                key === tab ? 'active' : '',
-            ),
+        const item = button(
+            t(key),
+            () => {
+                tab = key;
+                page = 1;
+                render();
+                refresh();
+            },
+            key === tab ? 'active' : '',
         );
+
+        item.setAttribute('aria-pressed', String(key === tab));
+        $('tabs').append(item);
     }
 
     const root = $('content');
@@ -740,10 +1138,10 @@ function render() {
                 (snapshot.stock || []).map((s) => [
                     s.vehicle,
                     money(s.price),
-                    s.available === 1
+                    s.available === true || Number(s.available) === 1
                         ? button(t('supplier'), () =>
-                                requestQuote({ kind: 'provider', stockId: s.id }),
-                            )
+                              requestQuote({ kind: 'provider', stockId: s.id }),
+                          )
                         : t('stockWaiting'),
                 ]),
             ),
@@ -918,6 +1316,7 @@ window.addEventListener('message', (event) => {
         generation++;
         snapshot = null;
         $('shop').hidden = true;
+        setPreviewMode(false);
 
         if ($('checkout').open) {
             $('checkout').close();
@@ -926,6 +1325,7 @@ window.addEventListener('message', (event) => {
 
     if (type === 'open') {
         generation++;
+        setPreviewMode(false);
 
         if ($('checkout').open) {
             $('checkout').close();
@@ -933,13 +1333,15 @@ window.addEventListener('message', (event) => {
 
         busy = false;
         $('cancel').disabled = false;
-        lang = data.locale?.startsWith('es') ? 'es' : 'en';
-        snapshot = data.snapshot;
+        lang = detectLanguage(data.locale);
+        document.documentElement.lang = lang;
+        snapshot = readSnapshot(data.snapshot);
         pending = data.pending;
         quote = null;
         tab = 'catalog';
         search = '';
         category = '';
+        selected = null;
         page = 1;
         notice(pending ? t('pending') : '');
         $('shop').hidden = false;
@@ -952,6 +1354,25 @@ window.addEventListener('message', (event) => {
 
     if (type === 'quote') {
         showQuote(data);
+    }
+
+    if (type === 'selectVehicle' && snapshot) {
+        const vehicle = snapshot.vehicles.find((v) => v.model === data.model);
+
+        if (vehicle) {
+            showVehicle(vehicle);
+        }
+    }
+
+    if (type === 'testDrive') {
+        $('testDriveHud').hidden = !data.active;
+        $('testDriveLabel').textContent = t('testActive');
+        $('testDriveFinish').textContent = t('finishTest');
+
+        const seconds = Math.max(0, Math.ceil(Number(data.remaining) || 0));
+
+        $('testDriveTime').textContent =
+            `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
     }
 });
 $('close').onclick = close;

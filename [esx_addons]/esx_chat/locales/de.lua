@@ -12,7 +12,6 @@ Locales['de'] = {
     ['chat_cleared'] = 'Der Chat wurde geleert.',
     ['display_mode_set'] = 'Chat-Anzeige: %s',
     ['display_mode_usage'] = 'Verwendung: /chatmode [always|onMessage|hidden]',
-
     ['title_system'] = 'SYSTEM',
     ['title_ooc'] = 'OOC | %s',
     ['title_environment'] = 'UMGEBUNG | %s',
@@ -24,16 +23,13 @@ Locales['de'] = {
     ['title_pm_in'] = '[PN] %s → Du',
     ['title_pm_out'] = '[PN] Du → %s',
     ['title_report'] = 'MELDUNG #%s · %s',
-
     ['dice_result'] = 'hat eine %s gewürfelt.',
     ['try_result'] = '%s: %s',
     ['try_success'] = 'ERFOLG',
     ['try_failure'] = 'FEHLSCHLAG',
-
     ['arg_action'] = 'Aktion',
     ['arg_message'] = 'Nachricht',
     ['arg_player'] = 'Spieler-ID',
-
     ['command_me'] = 'Eine Aktion ausführen',
     ['command_do'] = 'Die Umgebung beschreiben',
     ['command_environment'] = 'Das Umfeld beschreiben',
@@ -49,7 +45,6 @@ Locales['de'] = {
     ['command_chatmode'] = 'Chat-Anzeige ändern',
     ['command_clear'] = 'Deinen Chat leeren',
     ['key_open'] = 'Chat öffnen',
-
     ['ui_tab_ooc'] = 'OOC',
     ['ui_tab_rp'] = 'RP',
     ['ui_tab_job'] = 'Job',

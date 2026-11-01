@@ -36,13 +36,11 @@ Locales['de'] = {
     ['error_society_no_money'] = 'Der Tankstellenbesitzer kann die Lieferung nicht bezahlen.',
     ['error_not_owner'] = 'Du verwaltest diese Tankstelle nicht.',
     ['error_price_range'] = 'Der Preis muss zwischen 50 und 200 %% liegen.',
-
     ['fuel_regular'] = 'Normal',
     ['fuel_plus'] = 'Plus',
     ['fuel_premium'] = 'Premium',
     ['fuel_diesel'] = 'Diesel',
     ['fuel_electric'] = 'Elektrisch',
-
     ['ui_price_per_liter'] = 'PREIS PRO EINHEIT',
     ['ui_quantity'] = 'MENGE',
     ['ui_vehicle_fuel'] = 'TANK',

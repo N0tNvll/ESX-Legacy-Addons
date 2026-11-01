@@ -27,7 +27,6 @@ local function storedData(value)
     end
 
     local ok, decoded = pcall(json.decode, value)
-
     return ok and type(decoded) == 'table' and decoded or {}
 end
 
@@ -53,23 +52,22 @@ end
 
 MySQL.ready(function()
     do
-        local dataStore = MySQL.query.await(
-            'SELECT * FROM datastore_data LEFT JOIN datastore ON datastore_data.name = datastore.name UNION SELECT * FROM datastore_data RIGHT JOIN datastore ON datastore_data.name = datastore.name'
-        )
-
+        local dataStore = MySQL.query.await('SELECT * FROM datastore_data LEFT JOIN datastore ON datastore_data.name = datastore.name UNION SELECT * FROM datastore_data RIGHT JOIN datastore ON datastore_data.name = datastore.name')
         local newData = {}
+
         for i = 1, #dataStore do
             local data = dataStore[i]
+
             if data.shared == 0 then
                 if not DataStores[data.name] then
                     DataStoresIndex[#DataStoresIndex + 1] = data.name
                     DataStores[data.name] = {}
                 end
+
                 addDataStore(data.name, data.owner, storedData(data.data))
             else
                 if data.data then
-                    SharedDataStores[data.name] =
-                        CreateDataStore(data.name, nil, storedData(data.data))
+                    SharedDataStores[data.name] = CreateDataStore(data.name, nil, storedData(data.data))
                 else
                     newData[#newData + 1] = { data.name, '{}' }
                 end
@@ -78,12 +76,15 @@ MySQL.ready(function()
 
         if next(newData) then
             MySQL.prepare('INSERT INTO datastore_data (name, data) VALUES (?, ?)', newData)
+
             for i = 1, #newData do
                 local new = newData[i]
+
                 SharedDataStores[new[1]] = CreateDataStore(new[1], nil, {})
             end
         end
     end
+
     catalogsReady = true
 
     if catalogRefreshPending then
@@ -131,10 +132,7 @@ AddEventHandler('esx:playerLoaded', function(playerId, xPlayer)
         local dataStore = GetDataStore(name, xPlayer.identifier)
 
         if not dataStore then
-            MySQL.insert(
-                'INSERT INTO datastore_data (name, owner, data) VALUES (?, ?, ?)',
-                { name, xPlayer.identifier, '{}' }
-            )
+            MySQL.insert('INSERT INTO datastore_data (name, owner, data) VALUES (?, ?, ?)', { name, xPlayer.identifier, '{}' })
 
             addDataStore(name, xPlayer.identifier, {})
         end
@@ -161,10 +159,7 @@ refreshCatalogs = function()
 
                 if definition.shared == 1 then
                     if not SharedDataStores[name] then
-                        local row = MySQL.single.await(
-                            'SELECT data FROM datastore_data WHERE name = ? AND owner IS NULL LIMIT 1',
-                            { name }
-                        )
+                        local row = MySQL.single.await('SELECT data FROM datastore_data WHERE name = ? AND owner IS NULL LIMIT 1', { name })
 
                         if not row then
                             MySQL.insert.await(
@@ -173,18 +168,14 @@ refreshCatalogs = function()
                             )
                         end
 
-                        SharedDataStores[name] =
-                            CreateDataStore(name, nil, row and storedData(row.data) or {})
+                        SharedDataStores[name] = CreateDataStore(name, nil, row and storedData(row.data) or {})
                     end
                 else
                     if not DataStores[name] then
                         DataStores[name] = {}
                         DataStoresIndex[#DataStoresIndex + 1] = name
 
-                        local rows = MySQL.query.await(
-                            'SELECT owner, data FROM datastore_data WHERE name = ? AND owner IS NOT NULL',
-                            { name }
-                        )
+                        local rows = MySQL.query.await('SELECT owner, data FROM datastore_data WHERE name = ? AND owner IS NOT NULL', { name })
 
                         for _, row in ipairs(rows) do
                             addDataStore(name, row.owner, storedData(row.data))
@@ -193,15 +184,12 @@ refreshCatalogs = function()
 
                     for _, player in pairs(ESX.GetExtendedPlayers()) do
                         if not GetDataStore(name, player.identifier) then
-                            MySQL.insert.await(
-                                "INSERT INTO datastore_data (name, owner, data) SELECT ?, ?, '{}' FROM (SELECT COUNT(*) AS matches FROM datastore_data WHERE name = ? AND owner = ?) AS existing WHERE existing.matches = 0",
-                                {
-                                    name,
-                                    player.identifier,
-                                    name,
-                                    player.identifier,
-                                }
-                            )
+                            MySQL.insert.await("INSERT INTO datastore_data (name, owner, data) SELECT ?, ?, '{}' FROM (SELECT COUNT(*) AS matches FROM datastore_data WHERE name = ? AND owner = ?) AS existing WHERE existing.matches = 0", {
+                                name,
+                                player.identifier,
+                                name,
+                                player.identifier,
+                            })
 
                             addDataStore(name, player.identifier, {})
                         end

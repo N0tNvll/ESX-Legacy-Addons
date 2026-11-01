@@ -18,6 +18,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
+
 local function Log(title, color, fields, Level)
     if Level <= Config.Logs.LogLevel then
         local webHook = Config.Logs.Webhook
@@ -38,13 +39,7 @@ local function Log(title, color, fields, Level)
             },
         }
 
-        PerformHttpRequest(
-            webHook,
-            function(err, text, headers) end,
-            'POST',
-            json.encode({ username = 'ESX-Framework', embeds = embedData }),
-            { ['Content-Type'] = 'application/json' }
-        )
+        PerformHttpRequest(webHook, function(err, text, headers) end, 'POST', json.encode({ username = 'ESX-Framework', embeds = embedData }), { ['Content-Type'] = 'application/json' })
     end
 end
 
@@ -58,7 +53,6 @@ local pendingVehicleStores = {}
 local storedVehiclePlateOwners = {}
 local indexedVehiclePlates = {}
 local updateVehiclePlateIndex
-
 local PropertyActionDistance = 6.0
 local PropertySaleOfferDuration = 30000
 local PropertyRaidCooldown = 30000
@@ -86,7 +80,11 @@ local function SavePropertiesToSQL(Reason, changesOnly)
     end
 
     saveRequested = true
-    if not changesOnly then fullSaveRequested = true end
+
+    if not changesOnly then
+        fullSaveRequested = true
+    end
+
     while refreshInProgress do
         Wait(0)
     end
@@ -104,16 +102,26 @@ local function SavePropertiesToSQL(Reason, changesOnly)
     end
 
     saveInProgress = true
+
     repeat
         saveRequested = false
+
         local snapshot, full = dirtyProperties, fullSaveRequested
+
         dirtyProperties, fullSaveRequested = {}, false
+
         local ok, saved, err = pcall(PropertyStorage.save, Properties, not full and snapshot or nil)
+
         lastSaveSucceeded = ok and saved == true
+
         if not lastSaveSucceeded then
             saveRequested = true
             fullSaveRequested = fullSaveRequested or full
-            for id in pairs(snapshot) do dirtyProperties[id] = true end
+
+            for id in pairs(snapshot) do
+                dirtyProperties[id] = true
+            end
+
             print(('[esx_property] SQL save failed; changes remain pending: %s'):format(tostring(ok and err or saved)))
             break
         end
@@ -126,6 +134,7 @@ local function SavePropertiesToSQL(Reason, changesOnly)
             saveRetryScheduled = true
             SetTimeout(5000, function()
                 saveRetryScheduled = false
+
                 if not propertyStopping then
                     SavePropertiesToSQL('Retry pending SQL save', true)
                 end
@@ -190,7 +199,13 @@ local saveScheduled = false
 
 local function SchedulePropertiesSave(reason, propertyId)
     saveRequested = true
-    if propertyId then dirtyProperties[propertyId] = true else fullSaveRequested = true end
+
+    if propertyId then
+        dirtyProperties[propertyId] = true
+    else
+        fullSaveRequested = true
+    end
+
     if saveInProgress then
         return
     end
@@ -209,6 +224,7 @@ end
 
 local function SyncPropertiesAndSave(Reason, propertyId)
     updateVehiclePlateIndex(propertyId and Properties[propertyId] or nil)
+
     for _, xPlayer in pairs(ESX.GetExtendedPlayers()) do
         if propertyId then
             TriggerClientEvent('esx_property:syncProperty', xPlayer.source, propertyId, PropertyForPlayer(Properties[propertyId], xPlayer))
@@ -242,7 +258,6 @@ end
 
 local function getBankMoney(xPlayer)
     local account = xPlayer and xPlayer.getAccount and xPlayer.getAccount('bank')
-
     return account and tonumber(account.money) or 0
 end
 
@@ -278,19 +293,27 @@ end
 updateVehiclePlateIndex = function(property)
     if not property then
         storedVehiclePlateOwners, indexedVehiclePlates = {}, {}
-        for _, item in pairs(Properties) do updateVehiclePlateIndex(item) end
+
+        for _, item in pairs(Properties) do
+            updateVehiclePlateIndex(item)
+        end
         return
     end
 
     for plate in pairs(indexedVehiclePlates[property] or {}) do
-        if storedVehiclePlateOwners[plate] == property then storedVehiclePlateOwners[plate] = nil end
+        if storedVehiclePlateOwners[plate] == property then
+            storedVehiclePlateOwners[plate] = nil
+        end
     end
 
     local plates = {}
 
     for _, item in pairs(property.garage and property.garage.StoredVehicles or {}) do
         local plate = item.vehicle and normalizePlate(item.vehicle.plate)
-        if plate then plates[plate], storedVehiclePlateOwners[plate] = true, property end
+
+        if plate then
+            plates[plate], storedVehiclePlateOwners[plate] = true, property
+        end
     end
 
     indexedVehiclePlates[property] = plates
@@ -298,7 +321,6 @@ end
 
 local function isNearCoords(source, coords, maxDistance)
     local nearby = xLib.player.isNearCoords(source, coords, maxDistance)
-
     return nearby
 end
 
@@ -324,7 +346,6 @@ end
 
 local function isRestoringLastProperty(xPlayer, PropertyId)
     local lastProperty = xPlayer and xPlayer.get and xPlayer.get('lastProperty')
-
     return lastProperty and tonumber(lastProperty.id) == PropertyId
 end
 
@@ -401,24 +422,32 @@ local function copyVehiclePayload(value)
     local function visit(item, depth)
         entries = entries + 1
 
-        if entries > 2048 or depth > 8 then return false end
+        if entries > 2048 or depth > 8 then
+            return false
+        end
 
         local kind = type(item)
 
         if kind == 'table' then
-            if seen[item] then return false end
+            if seen[item] then
+                return false
+            end
+
             seen[item] = true
 
             for key, child in pairs(item) do
-                if (type(key) ~= 'string' and type(key) ~= 'number')
-                    or not visit(key, depth + 1) or not visit(child, depth + 1) then return false end
+                if (type(key) ~= 'string' and type(key) ~= 'number') or not visit(key, depth + 1) or not visit(child, depth + 1) then
+                    return false
+                end
             end
 
             seen[item] = nil
         elseif kind == 'string' then
             bytes = bytes + #item + 5
         elseif kind == 'number' then
-            if not finite(item, 9007199254740991) then return false end
+            if not finite(item, 9007199254740991) then
+                return false
+            end
 
             bytes = bytes + 24
         elseif kind == 'boolean' then
@@ -430,13 +459,17 @@ local function copyVehiclePayload(value)
         return bytes <= 32768
     end
 
-    if not visit(value, 0) then return nil end
+    if not visit(value, 0) then
+        return nil
+    end
 
     local ok, encoded = pcall(json.encode, value)
-    if not ok or #encoded > 32768 then return nil end
+
+    if not ok or #encoded > 32768 then
+        return nil
+    end
 
     local decodedOk, decoded = pcall(json.decode, encoded)
-
     return decodedOk and decoded or nil
 end
 
@@ -465,10 +498,7 @@ local function registerPropertyCallback(name, handler)
 
             property.Keys = property.Keys or {}
 
-            if
-                name == 'esx_property:SetPropertyName'
-                and (type(args[2]) ~= 'string' or #args[2] == 0 or #args[2] > Config.MaxNameLength or args[2]:find('[%c]'))
-            then
+            if name == 'esx_property:SetPropertyName' and (type(args[2]) ~= 'string' or #args[2] == 0 or #args[2] > Config.MaxNameLength or args[2]:find('[%c]')) then
                 return reject()
             end
 
@@ -479,9 +509,11 @@ local function registerPropertyCallback(name, handler)
             if name == 'esx_property:buyFurniture' and (not validCoords(args[5]) or not finite(args[6], 360)) then
                 return reject()
             end
+
             if name == 'esx_property:editFurniture' and (not validCoords(args[3]) or not finite(args[4], 360)) then
                 return reject()
             end
+
             if name == 'esx_property:buyFurniture' then
                 args[5] = { x = args[5].x, y = args[5].y, z = args[5].z }
             elseif name == 'esx_property:editFurniture' then
@@ -494,6 +526,7 @@ local function registerPropertyCallback(name, handler)
                 if type(angles) ~= 'table' or not validCoords(angles.rot) or not finite(angles.maxleft, 360) or not finite(angles.maxright, 360) then
                     return reject()
                 end
+
                 args[2] = { rot = { x = angles.rot.x, y = angles.rot.y, z = angles.rot.z }, maxleft = angles.maxleft, maxright = angles.maxright }
             end
 
@@ -505,21 +538,15 @@ local function registerPropertyCallback(name, handler)
                 return reject()
             end
 
-            if
-                name == 'esx_property:ChangeEntrance'
-                or name == 'esx_property:SetInventoryPosition'
-                or (name == 'esx_property:SetWardrobePosition' and not args[3])
-            then
+            if name == 'esx_property:ChangeEntrance' or name == 'esx_property:SetInventoryPosition' or (name == 'esx_property:SetWardrobePosition' and not args[3]) then
                 if not validCoords(args[2]) then
                     return reject()
                 end
+
                 args[2] = { x = args[2].x, y = args[2].y, z = args[2].z }
             end
 
-            if
-                name == 'esx_property:KnockOnDoor'
-                and (GetPlayerRoutingBucket(playerId) ~= 0 or not isNearCoords(playerId, property.Entrance, PropertyActionDistance))
-            then
+            if name == 'esx_property:KnockOnDoor' and (GetPlayerRoutingBucket(playerId) ~= 0 or not isNearCoords(playerId, property.Entrance, PropertyActionDistance)) then
                 return reject()
             end
         end
@@ -539,7 +566,9 @@ local function isNearPropertyGarage(source, Property)
 end
 
 local function isVehicleAlreadyStored(Property, plate)
-    if storedVehiclePlateOwners[plate] then return true end
+    if storedVehiclePlateOwners[plate] then
+        return true
+    end
 
     if not Property or not Property.garage or not Property.garage.StoredVehicles then
         return false
@@ -584,30 +613,52 @@ end
 
 local function PrepareProperties(properties)
     for id, property in ipairs(properties) do
-        assert(type(property.Name) == 'string' and type(property.Interior) == 'string'
-            and GetInteriorValues(property.Interior) and validCoords(property.Entrance)
-            and finite(property.Price, 2147483647) and property.Price >= 0, ('Invalid core data for property %d'):format(id))
+        assert(type(property.Name) == 'string' and type(property.Interior) == 'string' and GetInteriorValues(property.Interior) and validCoords(property.Entrance) and finite(property.Price, 2147483647) and property.Price >= 0, ('Invalid core data for property %d'):format(id))
 
-        if property.Keys == nil then property.Keys = {} end
+        if property.Keys == nil then
+            property.Keys = {}
+        end
+
         assert(type(property.Keys) == 'table', ('Invalid keys for property %d'):format(id))
 
-        if property.Owner == nil then property.Owner = '' end
-        if property.Owned == nil then property.Owned = false end
-        if property.Locked == nil then property.Locked = false end
-        assert(type(property.Owner) == 'string' and type(property.Owned) == 'boolean' and type(property.Locked) == 'boolean',
-            ('Invalid ownership data for property %d'):format(id))
+        if property.Owner == nil then
+            property.Owner = ''
+        end
 
-        if property.furniture == nil then property.furniture = {} end
-        if property.cctv == nil then property.cctv = { enabled = false } end
-        if property.garage == nil then property.garage = { enabled = false } end
+        if property.Owned == nil then
+            property.Owned = false
+        end
+
+        if property.Locked == nil then
+            property.Locked = false
+        end
+
+        assert(type(property.Owner) == 'string' and type(property.Owned) == 'boolean' and type(property.Locked) == 'boolean', ('Invalid ownership data for property %d'):format(id))
+
+        if property.furniture == nil then
+            property.furniture = {}
+        end
+
+        if property.cctv == nil then
+            property.cctv = { enabled = false }
+        end
+
+        if property.garage == nil then
+            property.garage = { enabled = false }
+        end
+
         assert(type(property.garage) == 'table', ('Invalid garage for property %d'):format(id))
-        
-        if property.garage.StoredVehicles == nil then property.garage.StoredVehicles = {} end
+
+        if property.garage.StoredVehicles == nil then
+            property.garage.StoredVehicles = {}
+        end
+
         assert(type(property.garage.StoredVehicles) == 'table', ('Invalid stored vehicles for property %d'):format(id))
         property.setName = property.setName or ''
 
         if not property.positions then
             local interior = assert(GetInteriorValues(property.Interior), ('Invalid interior for property %d'):format(id))
+
             property.positions = json.decode(json.encode(interior.positions))
         end
 
@@ -638,6 +689,7 @@ function PropertiesRefresh()
     end
 
     local previousSnapshot = json.encode(Properties)
+
     refreshInProgress = true
 
     local ok, nextProperties = pcall(function()
@@ -719,11 +771,7 @@ MySQL.ready(function()
     print('[esx_property] SQL storage ready')
 
     -- Check if datastore table exists before to insert values.
-    if
-        MySQL.scalar.await(
-            "SELECT EXISTS (SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME = 'datastore')"
-        ) > 0
-    then
+    if MySQL.scalar.await("SELECT EXISTS (SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME = 'datastore')") > 0 then
         MySQL.insert("INSERT IGNORE INTO `datastore` (name, label, shared) VALUES ('property', 'Property' , 1)", function(affectedRows)
             if affectedRows > 0 then
                 print('[^2INFO^7] Added ^5Property^7 into ^5datastore^7 table')
@@ -741,11 +789,7 @@ MySQL.ready(function()
     end
 
     if PM.Enabled then
-        if
-            MySQL.scalar.await(
-                "SELECT EXISTS (SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME = 'addon_account')"
-            ) > 0
-        then
+        if MySQL.scalar.await("SELECT EXISTS (SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' AND TABLE_NAME = 'addon_account')") > 0 then
             MySQL.insert('INSERT IGNORE INTO `addon_account` (name, label, shared) VALUES (?, ? , 1)', { PM.society, PM.joblabel }, function(affectedRows)
                 if affectedRows > 0 then
                     print('[^2INFO^7] Added ^5' .. PM.society .. ' - ' .. PM.joblabel .. '^7 into ^5addon_account^7 table')
@@ -782,14 +826,7 @@ MySQL.ready(function()
 
         Wait(10)
         ESX.RefreshJobs()
-        exports['esx_society']:registerSociety(
-            'realestateagent',
-            'realestateagent',
-            'society_realestateagent',
-            'society_realestateagent',
-            'society_realestateagent',
-            { type = 'private' }
-        )
+        exports['esx_society']:registerSociety('realestateagent', 'realestateagent', 'society_realestateagent', 'society_realestateagent', 'society_realestateagent', { type = 'private' })
     end
 end)
 
@@ -842,14 +879,7 @@ registerPropertyCallback('esx_property:buyProperty', function(source, cb, Proper
 
     local Property = PropertyId and Properties[PropertyId]
 
-    if
-        not xPlayer
-        or not Property
-        or PM.Enabled
-        or Property.Owned
-        or PropertyLocks[PropertyId]
-        or not isNearCoords(source, Property.Entrance, PropertyActionDistance)
-    then
+    if not xPlayer or not Property or PM.Enabled or Property.Owned or PropertyLocks[PropertyId] or not isNearCoords(source, Property.Entrance, PropertyActionDistance) then
         return cb(false)
     end
 
@@ -962,14 +992,7 @@ registerPropertyCallback('esx_property:attemptSellToPlayer', function(source, cb
         end
     end)
 
-    TriggerClientEvent(
-        'esx_property:receivePropertyOffer',
-        xTarget.source,
-        token,
-        xPlayer.getName(),
-        Property.setName ~= '' and Property.setName or Property.Name,
-        Price
-    )
+    TriggerClientEvent('esx_property:receivePropertyOffer', xTarget.source, token, xPlayer.getName(), Property.setName ~= '' and Property.setName or Property.Name, Price)
     xPlayer.showNotification('Property sale offer sent.', 'success')
     cb(true)
 end)
@@ -1006,14 +1029,7 @@ registerPropertyCallback('esx_property:respondToSaleOffer', function(source, cb,
         return cb(false)
     end
 
-    if
-        not xTarget
-        or not xSeller
-        or not Property
-        or offer.expires < GetGameTimer()
-        or Property.Owned
-        or (PropertyLocks[PropertyId] and PropertyLocks[PropertyId] ~= token)
-    then
+    if not xTarget or not xSeller or not Property or offer.expires < GetGameTimer() or Property.Owned or (PropertyLocks[PropertyId] and PropertyLocks[PropertyId] ~= token) then
         if PropertyLocks[offer.propertyId] == token then
             PropertyLocks[offer.propertyId] = nil
         end
@@ -1049,8 +1065,7 @@ registerPropertyCallback('esx_property:respondToSaleOffer', function(source, cb,
 
     PropertyLocks[PropertyId] = true
 
-    if Property.Owned or PaymentGateway.Charge(xTarget, account, Price, 'Sold Property') ~= true
-    then
+    if Property.Owned or PaymentGateway.Charge(xTarget, account, Price, 'Sold Property') ~= true then
         PropertyLocks[PropertyId] = nil
         return cb(false)
     end
@@ -1123,8 +1138,14 @@ registerPropertyCallback('esx_property:buyFurniture', function(source, cb, Prope
     end
 
     local furnitureCount = 0
-    for _ in pairs(Property.furniture or {}) do furnitureCount = furnitureCount + 1 end
-    if furnitureCount >= (Config.MaxFurniturePerProperty or 500) then return cb(false) end
+
+    for _ in pairs(Property.furniture or {}) do
+        furnitureCount = furnitureCount + 1
+    end
+
+    if furnitureCount >= (Config.MaxFurniturePerProperty or 500) then
+        return cb(false)
+    end
 
     if PaymentGateway.Charge(xPlayer, account, Price, 'Furniture') ~= true then
         return cb(false)
@@ -1175,13 +1196,7 @@ registerPropertyCallback('esx_property:sellProperty', function(source, cb, Prope
 
     local Property = PropertyId and Properties[PropertyId]
 
-    if
-        not xPlayer
-        or not Property
-        or Property.Owner ~= xPlayer.identifier
-        or PropertyLocks[PropertyId]
-        or not isNearCoords(source, Property.Entrance, PropertyActionDistance)
-    then
+    if not xPlayer or not Property or Property.Owner ~= xPlayer.identifier or PropertyLocks[PropertyId] or not isNearCoords(source, Property.Entrance, PropertyActionDistance) then
         return cb(false)
     end
 
@@ -1250,11 +1265,7 @@ registerPropertyCallback('esx_property:toggleLock', function(source, cb, Propert
     local xPlayer = ESX.GetPlayerFromId(source)
     local Owner = Properties[PropertyId].Owner
 
-    if
-        xPlayer.identifier == Owner
-        or IsPlayerAdmin(source, 'ToggleLock')
-        or (Properties[PropertyId].Keys and Properties[PropertyId].Keys[xPlayer.identifier])
-    then
+    if xPlayer.identifier == Owner or IsPlayerAdmin(source, 'ToggleLock') or (Properties[PropertyId].Keys and Properties[PropertyId].Keys[xPlayer.identifier]) then
         Properties[PropertyId].Locked = not Properties[PropertyId].Locked
         SyncPropertiesAndSave('Property lock toggled', PropertyId)
     end
@@ -1323,9 +1334,7 @@ registerPropertyCallback('esx_property:SetGaragePos', function(source, cb, Prope
         local PlayerPed = GetPlayerPed(source)
         local PlayerPos = GetEntityCoords(PlayerPed)
         local Property = Properties[PropertyId]
-        local Original = Properties[PropertyId].garage.pos
-                and Properties[PropertyId].garage.pos.x .. ', ' .. Properties[PropertyId].garage.pos.y .. ', ' .. Properties[PropertyId].garage.pos.z
-            or 'N/A'
+        local Original = Properties[PropertyId].garage.pos and Properties[PropertyId].garage.pos.x .. ', ' .. Properties[PropertyId].garage.pos.y .. ', ' .. Properties[PropertyId].garage.pos.z or 'N/A'
 
         Properties[PropertyId].garage.pos = PlayerPos
         Properties[PropertyId].garage.Heading = heading
@@ -1370,15 +1379,7 @@ registerPropertyCallback('esx_property:CCTV', function(source, cb, PropertyId)
     local player = ESX.GetPlayerFromId(source)
     local property = Properties[PropertyId]
 
-    if
-        not Config.CCTV.Enabled
-        or not property.cctv
-        or not property.cctv.enabled
-        or cctvSessions[source]
-        or not (hasPropertyAccess(player, property) or IsPlayerAdmin(source))
-        or not isPlayerInsideProperty(source, property)
-        or GetPlayerRoutingBucket(source) ~= PropertyId + 1
-    then
+    if not Config.CCTV.Enabled or not property.cctv or not property.cctv.enabled or cctvSessions[source] or not (hasPropertyAccess(player, property) or IsPlayerAdmin(source)) or not isPlayerInsideProperty(source, property) or GetPlayerRoutingBucket(source) ~= PropertyId + 1 then
         return cb(false)
     end
 
@@ -1411,13 +1412,7 @@ registerPropertyCallback('esx_property:ExitCCTV', function(source, cb, PropertyI
     local property = Properties[PropertyId]
     local session = cctvSessions[source]
 
-    if
-        not session
-        or session.id ~= PropertyId
-        or session.identifier ~= player.identifier
-        or GetPlayerRoutingBucket(source) ~= 0
-        or not isNearCoords(source, property.Entrance, 15.0)
-    then
+    if not session or session.id ~= PropertyId or session.identifier ~= player.identifier or GetPlayerRoutingBucket(source) ~= 0 or not isNearCoords(source, property.Entrance, 15.0) then
         return cb(false)
     end
 
@@ -1514,7 +1509,9 @@ end)
 registerPropertyCallback('esx_property:deleteProperty', function(source, cb, PropertyId)
     local xPlayer = ESX.GetPlayerFromId(source)
 
-    if next(PropertyLocks) then return cb(false) end
+    if next(PropertyLocks) then
+        return cb(false)
+    end
 
     if IsPlayerAdmin(source, 'DeleteProperty') then
         Log('Property Deleted', 16711680, {
@@ -1760,13 +1757,7 @@ registerPropertyCallback('esx_property:CanRaid', function(source, cb, PropertyId
 
     local Property = PropertyId and Properties[PropertyId]
 
-    if
-        not xPlayer
-        or not Property
-        or not Config.Raiding.Enabled
-        or PropertyLocks[PropertyId]
-        or not isNearCoords(source, Property.Entrance, PropertyActionDistance)
-    then
+    if not xPlayer or not Property or not Config.Raiding.Enabled or PropertyLocks[PropertyId] or not isNearCoords(source, Property.Entrance, PropertyActionDistance) then
         return cb(false)
     end
 
@@ -1884,12 +1875,7 @@ registerPropertyCallback('esx_property:SetInventoryPosition', function(source, c
                 { name = '**Player**', value = xPlayer.getName(), inline = true },
                 {
                     name = '**Has Access**',
-                    value = (
-                        IsPlayerAdmin(source, 'EditInteriorPositions')
-                        or (Property.Owner == xPlayer.identifier or Properties[PropertyId].Keys[xPlayer.identifier])
-                    )
-                            and 'Yes'
-                        or 'No',
+                    value = (IsPlayerAdmin(source, 'EditInteriorPositions') or (Property.Owner == xPlayer.identifier or Properties[PropertyId].Keys[xPlayer.identifier])) and 'Yes' or 'No',
                     inline = true,
                 },
                 { name = '**Reset?**', value = Reset and 'Yes' or 'No', inline = true },
@@ -1930,12 +1916,7 @@ registerPropertyCallback('esx_property:SetWardrobePosition', function(source, cb
                 { name = '**Player**', value = xPlayer.getName(), inline = true },
                 {
                     name = '**Has Access**',
-                    value = (
-                        IsPlayerAdmin(source, 'EditInteriorPositions')
-                        or (Property.Owner == xPlayer.identifier or Properties[PropertyId].Keys[xPlayer.identifier])
-                    )
-                            and 'Yes'
-                        or 'No',
+                    value = (IsPlayerAdmin(source, 'EditInteriorPositions') or (Property.Owner == xPlayer.identifier or Properties[PropertyId].Keys[xPlayer.identifier])) and 'Yes' or 'No',
                     inline = true,
                 },
                 { name = '**Reset?**', value = Reset and 'Yes' or 'No', inline = true },
@@ -2136,8 +2117,8 @@ registerPropertyCallback('esx_property:StoreVehicle', function(source, cb, Prope
     end
 
     VehicleProperties = copyVehiclePayload(VehicleProperties)
-    if not VehicleProperties or type(VehicleProperties.DisplayName) ~= 'string' or #VehicleProperties.DisplayName > 128
-        or #(Property.garage.StoredVehicles or {}) >= (Config.MaxVehiclesPerProperty or 100) then
+
+    if not VehicleProperties or type(VehicleProperties.DisplayName) ~= 'string' or #VehicleProperties.DisplayName > 128 or #(Property.garage.StoredVehicles or {}) >= (Config.MaxVehiclesPerProperty or 100) then
         return cb(false)
     end
 
@@ -2146,15 +2127,22 @@ registerPropertyCallback('esx_property:StoreVehicle', function(source, cb, Prope
     end
 
     local reservation = { player = source, cancelled = false }
+
     pendingVehicleStores[VehicleProperties.plate] = reservation
     PropertyLocks[PropertyId] = reservation
 
     local function done(success)
-        if pendingVehicleStores[VehicleProperties.plate] == reservation then pendingVehicleStores[VehicleProperties.plate] = nil end
-        if PropertyLocks[PropertyId] == reservation then PropertyLocks[PropertyId] = nil end
+        if pendingVehicleStores[VehicleProperties.plate] == reservation then
+            pendingVehicleStores[VehicleProperties.plate] = nil
+        end
+
+        if PropertyLocks[PropertyId] == reservation then
+            PropertyLocks[PropertyId] = nil
+        end
 
         cb(success)
     end
+
     SetTimeout(30000, function()
         if pendingVehicleStores[VehicleProperties.plate] == reservation and not reservation.committing then
             reservation.cancelled = true
@@ -2196,35 +2184,33 @@ registerPropertyCallback('esx_property:StoreVehicle', function(source, cb, Prope
         MySQL.single('SELECT `owner`, `vehicle` FROM `owned_vehicles` WHERE `plate` = ?', { VehicleProperties.plate }, function(result)
             local current = ESX.GetPlayerFromId(source)
 
-            if reservation.cancelled or not propertySchemaReady or not lastSaveSucceeded
-                or Properties[PropertyId] ~= Property or not current or current.identifier ~= xPlayer.identifier
-                or not hasPropertyAccess(current, Property) or not isNearPropertyGarage(source, Property)
-                or not getPlayerVehicleForProps(source, VehicleProperties) then return done(false) end
+            if reservation.cancelled or not propertySchemaReady or not lastSaveSucceeded or Properties[PropertyId] ~= Property or not current or current.identifier ~= xPlayer.identifier or not hasPropertyAccess(current, Property) or not isNearPropertyGarage(source, Property) or not getPlayerVehicleForProps(source, VehicleProperties) then
+                return done(false)
+            end
 
             if not result or not (result.owner == xPlayer.identifier or result.owner == Property.Owner or (Property.Keys and Property.Keys[result.owner])) then
                 return done(false)
             end
 
             local decoded, storedVehicle = pcall(json.decode, result.vehicle)
-            if not decoded or type(storedVehicle) ~= 'table' then return done(false) end
+
+            if not decoded or type(storedVehicle) ~= 'table' then
+                return done(false)
+            end
 
             if storedVehicle and tonumber(storedVehicle.model) and tonumber(storedVehicle.model) ~= tonumber(VehicleProperties.model) then
                 return done(false)
             end
 
             reservation.committing = true
-            MySQL.update(
-                'UPDATE `owned_vehicles` SET `stored` = ? WHERE `plate` = ? AND `owner` = ? AND `stored` = 0',
-                { 1, VehicleProperties.plate, result.owner },
-                function(rowsChanged)
-                    if rowsChanged and rowsChanged > 0 then
-                        finishStore(result.owner)
-                        return done(true)
-                    end
-
-                    done(false)
+            MySQL.update('UPDATE `owned_vehicles` SET `stored` = ? WHERE `plate` = ? AND `owner` = ? AND `stored` = 0', { 1, VehicleProperties.plate, result.owner }, function(rowsChanged)
+                if rowsChanged and rowsChanged > 0 then
+                    finishStore(result.owner)
+                    return done(true)
                 end
-            )
+
+                done(false)
+            end)
         end)
     else
         finishStore(xPlayer.identifier)
@@ -2391,8 +2377,10 @@ RegisterNetEvent('esx_property:enter', function(PropertyId)
     if not xPlayer or not Property or not canEnterProperty(xPlayer, Property) then
         return
     end
-    
-    if isPlayerInsideProperty(player, Property) then return end
+
+    if isPlayerInsideProperty(player, Property) then
+        return
+    end
 
     if not isRestoringLastProperty(xPlayer, PropertyId) and not isNearCoords(player, Property.Entrance, 6.0) then
         return
@@ -2482,7 +2470,10 @@ RegisterNetEvent('esx_property:leave', function(PropertyId)
 end)
 
 RegisterNetEvent('esx_property:SetVehicleOut', function(PropertyId, VehIndex)
-    if not propertySchemaReady or not lastSaveSucceeded or not propertyActionLimiter:consume(source) then return end
+    if not propertySchemaReady or not lastSaveSucceeded or not propertyActionLimiter:consume(source) then
+        return
+    end
+
     local player = source
     local xPlayer = ESX.GetPlayerFromId(player)
 
@@ -2495,7 +2486,10 @@ RegisterNetEvent('esx_property:SetVehicleOut', function(PropertyId, VehIndex)
 
     local Property = Properties[PropertyId]
 
-    if PropertyLocks[PropertyId] then return end
+    if PropertyLocks[PropertyId] then
+        return
+    end
+
     if not hasPropertyAccess(xPlayer, Property) or not Property.garage or not Property.garage.enabled or not isNearPropertyGarage(player, Property) then
         return
     end
@@ -2528,9 +2522,13 @@ end)
 
 AddEventHandler('playerDropped', function()
     local source = source
+
     propertyActionLimiter:reset(source)
+
     for _, reservation in pairs(pendingVehicleStores) do
-        if reservation.player == source and not reservation.committing then reservation.cancelled = true end
+        if reservation.player == source and not reservation.committing then
+            reservation.cancelled = true
+        end
     end
 
     for token, offer in pairs(PendingPropertySales) do
@@ -2577,13 +2575,7 @@ registerPropertyCallback('esx_property:CanAccessRealEstateMenu', function(source
         return cb(false)
     end
 
-    local Re = (
-        Config.PlayerManagement.Enabled
-        and xPlayer.job.name == Config.PlayerManagement.job
-        and xPlayer.job.grade >= Config.PlayerManagement.Permissions.ManagePropertiesFromQuickActions
-    )
-            and true
-        or false
+    local Re = (Config.PlayerManagement.Enabled and xPlayer.job.name == Config.PlayerManagement.job and xPlayer.job.grade >= Config.PlayerManagement.Permissions.ManagePropertiesFromQuickActions) and true or false
 
     cb(Re)
 end)
@@ -2592,43 +2584,22 @@ RegisterNetEvent('esx_property:server:createProperty', function(Property)
     local source = source
     local xPlayer = ESX.GetPlayerFromId(source)
 
-    if
-        not propertySchemaReady
-        or not lastSaveSucceeded
-        or not xPlayer
-        or not IsPlayerAdmin(source, 'CreateProperty')
-        or not propertyActionLimiter:consume(source)
-        or type(Property) ~= 'table'
-        or type(Property.garage) ~= 'table'
-        or type(Property.cctv) ~= 'table'
-        or type(Property.entrance) ~= 'table'
-    then
+    if not propertySchemaReady or not lastSaveSucceeded or not xPlayer or not IsPlayerAdmin(source, 'CreateProperty') or not propertyActionLimiter:consume(source) or type(Property) ~= 'table' or type(Property.garage) ~= 'table' or type(Property.cctv) ~= 'table' or type(Property.entrance) ~= 'table' then
         return
     end
 
-    if type(Property.interior) ~= 'string' then return end
+    if type(Property.interior) ~= 'string' then
+        return
+    end
+
     local Interior = GetInteriorValues(Property.interior)
     local Price = tonumber(Property.price)
 
-    if
-        not Interior
-        or not finite(Price, 2147483647)
-        or Price <= 0 or Price % 1 ~= 0
-        or type(Property.name) ~= 'string'
-        or Property.name == ''
-        or #Property.name > Config.MaxNameLength
-        or Property.name:find('[%c]')
-        or type(Property.garage.enabled) ~= 'boolean'
-        or type(Property.cctv.enabled) ~= 'boolean'
-        or not validCoords(Property.entrance)
-    then
+    if not Interior or not finite(Price, 2147483647) or Price <= 0 or Price % 1 ~= 0 or type(Property.name) ~= 'string' or Property.name == '' or #Property.name > Config.MaxNameLength or Property.name:find('[%c]') or type(Property.garage.enabled) ~= 'boolean' or type(Property.cctv.enabled) ~= 'boolean' or not validCoords(Property.entrance) then
         return
     end
 
-    if
-        Property.garage.enabled
-        and (not validCoords(Property.garage.pos) or not finite(Property.garage.heading, 360))
-    then
+    if Property.garage.enabled and (not validCoords(Property.garage.pos) or not finite(Property.garage.heading, 360)) then
         return
     end
 

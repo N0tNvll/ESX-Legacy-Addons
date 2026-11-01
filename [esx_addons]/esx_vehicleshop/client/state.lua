@@ -4,6 +4,13 @@ VehicleShopClient = { shops = {}, generation = 0, open = false, pending = nil }
 
 local S = VehicleShopClient
 
+function S.translate(key)
+    local locales = Locales or {}
+    local locale = (Config.Locale or 'en'):lower():gsub('_', '-')
+    local translations = locales[locale] or locales[locale:match('^%a+')] or {}
+    return translations[key] or (locales.en and locales.en[key]) or key
+end
+
 function S.request(name, ...)
     local ok, response = pcall(xLib.callback.await, 'esx_vehicleshop:' .. name, false, ...)
 
@@ -35,6 +42,10 @@ function S.close()
 end
 
 function S.openShop(id, offerId, action, plate)
+    if S.testDrive then
+        return false
+    end
+
     if S.closeTimedRental then
         S.closeTimedRental()
     end
@@ -49,11 +60,7 @@ function S.openShop(id, offerId, action, plate)
     end
 
     if not data then
-        ESX.ShowNotification(
-            err == 'not_ready' and 'El concesionario se está preparando.'
-                or 'No puedes acceder a este concesionario.',
-            'error'
-        )
+        ESX.ShowNotification(S.translate(err == 'not_ready' and 'dealership_loading' or 'dealership_access_denied'), 'error')
         return false
     end
 
@@ -105,7 +112,20 @@ nui('preview', function(data)
         return nil, 'not_near_shop'
     end
 
-    return S.preview(data.model)
+    return S.preview(data.model, data.color)
+end)
+
+nui('testDrive', function(data)
+    if not S.open or not S.shop then
+        return nil, 'not_near_shop'
+    end
+
+    return S.startTestDrive(data)
+end)
+
+nui('clearPreview', function()
+    S.clearPreview()
+    return true
 end)
 
 nui('refresh', function(data)
@@ -145,16 +165,7 @@ nui('status', function(data)
     local id = data.id or S.pending
     local result, failure = S.request('orderStatus', id)
 
-    if
-        result
-        and (
-            result.complete
-            or result.state == 'failed'
-            or result.expired
-            or result.state == 'quoted'
-        )
-        and S.pending == id
-    then
+    if result and (result.complete or result.state == 'failed' or result.expired or result.state == 'quoted') and S.pending == id then
         S.pending = nil
     end
 
@@ -181,13 +192,7 @@ nui('moveInventory', function(data)
         return nil, 'not_near_shop'
     end
 
-    return S.request(
-        'moveInventory',
-        S.shop.id,
-        data.item,
-        tonumber(data.count),
-        data.deposit == true
-    )
+    return S.request('moveInventory', S.shop.id, data.item, tonumber(data.count), data.deposit == true)
 end)
 
 nui('employees', function()
@@ -216,13 +221,7 @@ nui('invoice', function(data)
         return nil, 'buyer_unavailable'
     end
 
-    TriggerServerEvent(
-        'esx_billing:sendBill',
-        GetPlayerServerId(target),
-        S.shop.billingAccount,
-        S.shop.name,
-        amount
-    )
+    TriggerServerEvent('esx_billing:sendBill', GetPlayerServerId(target), S.shop.billingAccount, S.shop.name, amount)
     return true
 end)
 

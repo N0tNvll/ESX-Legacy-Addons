@@ -6,8 +6,7 @@ Config = {}
 -- How close do you need to be for the markers to be drawn (in GTA units).
 Config.DrawDistance = 10.0
 Config.ActionVehicleDistance = 2.0 -- How close a vehicle can be for police vehicle actions.
-Config.MarkerType =
-    { Cloakrooms = 20, Armories = 21, BossActions = 22, Vehicles = 36, Helicopters = 34 }
+Config.MarkerType = { Cloakrooms = 20, Armories = 21, BossActions = 22, Vehicles = 36, Helicopters = 34 }
 Config.MarkerSize = { x = 1.5, y = 1.5, z = 0.5 }
 Config.MarkerColor = { r = 50, g = 50, b = 204 }
 
@@ -37,9 +36,7 @@ Config.GarageIntegration = { minGrade = 0, shared = true, vehiclesPerModel = 4 }
 Config.OxInventory = ESX.GetConfig().OxInventory
 
 Config.PoliceStations = {
-
     LSPD = {
-
         Blip = {
             Coords = vector3(425.1, -979.5, 30.7),
             Sprite = 60,
@@ -47,15 +44,12 @@ Config.PoliceStations = {
             Scale = 1.2,
             Colour = 29,
         },
-
         Cloakrooms = {
             vector3(452.6, -992.8, 30.6),
         },
-
         Armories = {
             vector3(451.7, -980.1, 30.6),
         },
-
         Vehicles = {
             {
                 Spawner = vector3(454.6, -1017.4, 28.4),
@@ -67,7 +61,6 @@ Config.PoliceStations = {
                     { coords = vector3(450.9, -1016.5, 28.1), heading = 90.0, radius = 6.0 },
                 },
             },
-
             {
                 Spawner = vector3(473.3, -1018.8, 28.0),
                 InsideShop = vector3(228.5, -993.5, -99.0),
@@ -77,7 +70,6 @@ Config.PoliceStations = {
                 },
             },
         },
-
         Helicopters = {
             {
                 Spawner = vector3(461.1, -981.5, 43.6),
@@ -87,7 +79,6 @@ Config.PoliceStations = {
                 },
             },
         },
-
         BossActions = {
             vector3(448.4, -973.2, 30.6),
         },
@@ -101,7 +92,6 @@ Config.AuthorizedWeapons = {
         { weapon = 'WEAPON_STUNGUN', price = 1500 },
         { weapon = 'WEAPON_FLASHLIGHT', price = 80 },
     },
-
     officer = {
         { weapon = 'WEAPON_APPISTOL', components = { 0, 0, 1000, 4000, nil }, price = 10000 },
         {
@@ -113,7 +103,6 @@ Config.AuthorizedWeapons = {
         { weapon = 'WEAPON_STUNGUN', price = 500 },
         { weapon = 'WEAPON_FLASHLIGHT', price = 0 },
     },
-
     sergeant = {
         { weapon = 'WEAPON_APPISTOL', components = { 0, 0, 1000, 4000, nil }, price = 10000 },
         {
@@ -126,7 +115,6 @@ Config.AuthorizedWeapons = {
         { weapon = 'WEAPON_STUNGUN', price = 500 },
         { weapon = 'WEAPON_FLASHLIGHT', price = 0 },
     },
-
     lieutenant = {
         { weapon = 'WEAPON_APPISTOL', components = { 0, 0, 1000, 4000, nil }, price = 10000 },
         {
@@ -139,7 +127,6 @@ Config.AuthorizedWeapons = {
         { weapon = 'WEAPON_STUNGUN', price = 500 },
         { weapon = 'WEAPON_FLASHLIGHT', price = 0 },
     },
-
     boss = {
         { weapon = 'WEAPON_APPISTOL', components = { 0, 0, 1000, 4000, nil }, price = 10000 },
         {
@@ -157,35 +144,26 @@ Config.AuthorizedWeapons = {
 Config.AuthorizedVehicles = {
     car = {
         recruit = {},
-
         officer = {
             { model = 'police3', price = 20000 },
         },
-
         sergeant = {
             { model = 'policet', price = 18500 },
             { model = 'policeb', price = 30500 },
         },
-
         lieutenant = {
             { model = 'riot', price = 70000 },
             { model = 'fbi2', price = 60000 },
         },
-
         boss = {},
     },
-
     helicopter = {
         recruit = {},
-
         officer = {},
-
         sergeant = {},
-
         lieutenant = {
             { model = 'polmav', props = { modLivery = 0 }, price = 200000 },
         },
-
         boss = {
             { model = 'polmav', props = { modLivery = 0 }, price = 100000 },
         },
@@ -205,15 +183,10 @@ Config.CustomPeds = {
             femaleModel = 's_f_y_cop_01',
         },
     },
-
     recruit = {},
-
     officer = {},
-
     sergeant = {},
-
     lieutenant = {},
-
     boss = {
         {
             label = TranslateCap('s_m_y_swat_01'),
@@ -265,7 +238,6 @@ Config.Uniforms = {
             ears_2 = 0,
         },
     },
-
     officer = {
         male = {
             tshirt_1 = 58,
@@ -306,7 +278,6 @@ Config.Uniforms = {
             ears_2 = 0,
         },
     },
-
     sergeant = {
         male = {
             tshirt_1 = 58,
@@ -347,7 +318,6 @@ Config.Uniforms = {
             ears_2 = 0,
         },
     },
-
     lieutenant = {
         male = {
             tshirt_1 = 58,
@@ -388,7 +358,6 @@ Config.Uniforms = {
             ears_2 = 0,
         },
     },
-
     boss = {
         male = {
             tshirt_1 = 58,
@@ -429,7 +398,6 @@ Config.Uniforms = {
             ears_2 = 0,
         },
     },
-
     bullet_wear = {
         male = {
             bproof_1 = 11,
@@ -440,7 +408,6 @@ Config.Uniforms = {
             bproof_2 = 1,
         },
     },
-
     gilet_wear = {
         male = {
             tshirt_1 = 59,

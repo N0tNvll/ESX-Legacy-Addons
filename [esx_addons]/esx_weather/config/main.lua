@@ -22,19 +22,18 @@
 ---@field Time TimeConfig
 
 Config = {
-    debug       = false,
-    panelCommand = "weatherpanel",
+    debug = false,
+    panelCommand = 'weatherpanel',
     AdminGroups = {
         admin = true,
         moderator = true,
     },
-    Zones       = {
+    Zones = {
         [Shared.Enum.Zone.LOS_SANTOS] = vector2(-33.6997, -1102.0000),
         [Shared.Enum.Zone.SANDY_SHORES] = vector2(1728.2000, 3709.3000),
         [Shared.Enum.Zone.PALETO_BAY] = vector2(-220.2753, 6408.9116),
     },
-
-    Weather     = {
+    Weather = {
         ValidTypes = {
             Shared.Enum.WeatherType.CLEAR,
             Shared.Enum.WeatherType.CLOUDS,
@@ -44,7 +43,7 @@ Config = {
             Shared.Enum.WeatherType.RAIN,
             Shared.Enum.WeatherType.SMOG,
             Shared.Enum.WeatherType.THUNDER,
-	        Shared.Enum.WeatherType.CLEARING,
+            Shared.Enum.WeatherType.CLEARING,
             Shared.Enum.WeatherType.XMAS,
             Shared.Enum.WeatherType.SNOW,
             Shared.Enum.WeatherType.SNOWLIGHT,
@@ -59,14 +58,14 @@ Config = {
         dynamic = true, -- Rotates weather every cycleTimeSeconds. Set false to keep defaultType until changed from the panel.
         defaultType = Shared.Enum.WeatherType.CLEAR, -- Used when dynamic is false.
         persist = true, -- Restores the last weather after a restart. With dynamic, the rotation timer is kept too.
-        persistKey = "esx_weather_zones",
+        persistKey = 'esx_weather_zones',
     },
-    Time        = {
+    Time = {
         secondsPerGameMinute = 15,
         Zones = {
             [Shared.Enum.Zone.LOS_SANTOS] = 0,
             [Shared.Enum.Zone.SANDY_SHORES] = 1,
             [Shared.Enum.Zone.PALETO_BAY] = 2,
-        }
-    }
+        },
+    },
 } --[[@as Config]]

@@ -4,8 +4,8 @@
 --- Client entry: the export other resources open the payment dialog with. README.md documents
 --- it and EXAMPLES.md shows it in use.
 
-local Payment = require "client.module.payment.main"
-local Validate = require "shared.module.validate.main"
+local Payment = require('client.module.payment.main')
+local Validate = require('shared.module.validate.main')
 
 Validate.config()
 
@@ -16,25 +16,28 @@ Validate.config()
 ---@param onPay? fun(account: string): boolean|table, string|table|nil
 ---@return string|false account ESX account the player paid with
 ---@return string|nil reason
-exports("RequestPayment", function(request, onPay)
+exports('RequestPayment', function(request, onPay)
     return Payment.request(request, onPay, GetInvokingResource())
 end)
 
-AddEventHandler("esx:onPlayerDeath", function()
+AddEventHandler('esx:onPlayerDeath', function()
     Payment.cancel()
 end)
 
-ESX.SecureNetEvent("esx:onPlayerLogout", function()
+ESX.SecureNetEvent('esx:onPlayerLogout', function()
     Payment.cancel()
 end)
 
-AddEventHandler("onResourceStop", function(resource)
+AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then
         return Payment.forgetResource(resource)
     end
-    if Payment.isOpen() then SetNuiFocus(false, false) end
+
+    if Payment.isOpen() then
+        SetNuiFocus(false, false)
+    end
 end)
 
 if Config.TestCommand then
-    require "client.module.test.main"
+    require('client.module.test.main')
 end

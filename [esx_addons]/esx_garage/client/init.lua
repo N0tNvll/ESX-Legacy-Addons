@@ -27,15 +27,12 @@ local currentLocation = nil
 
 ---@type table<number, GarageLocation>
 local activeLocations = {}
-
 local PED_DECOR <const> = 'esx_garage_ped'
 local HUD_RESOURCE_NAME <const> = 'esx_hud'
 local MILES_TO_KILOMETERS <const> = 1.61
-
 local DEFAULT_MARKER_COLOR <const> = { 65, 130, 255, 120 }
 local PED_SPAWN_DISTANCE <const> = 80.0
 local PED_DESPAWN_DISTANCE <const> = 120.0
-
 local WITHDRAW_INTERACTION <const> = {
     locale = 'access_parking',
     color = DEFAULT_MARKER_COLOR,
@@ -177,9 +174,7 @@ end
 ---@param ped number
 ---@return boolean
 local function isInteractionVisible(action, ped)
-    return action ~= 'store'
-        or not Config.Settings.storeMarkerOnlyInVehicle
-        or IsPedInAnyVehicle(xLib.cache.ped, false)
+    return action ~= 'store' or not Config.Settings.storeMarkerOnlyInVehicle or IsPedInAnyVehicle(xLib.cache.ped, false)
 end
 
 ---@return nil
@@ -239,7 +234,6 @@ end
 ---@param action GarageAction
 local function addInteractionPoint(location, raw, action)
     local coords = vector3(raw.x, raw.y, raw.z)
-
     local style = INTERACTION_STYLES[action]
 
     if Config.Settings.showMarker then
@@ -281,13 +275,7 @@ local function addLocation(location, isImpound)
     local coords = vector3(raw.x, raw.y, raw.z)
 
     if location.blip then
-        blips[#blips + 1] = Utils.CreateBlip(
-            coords,
-            location.blip.sprite,
-            location.blip.scale,
-            location.blip.color,
-            location.label
-        )
+        blips[#blips + 1] = Utils.CreateBlip(coords, location.blip.sprite, location.blip.scale, location.blip.color, location.label)
     end
 
     if location.ped then
@@ -327,16 +315,9 @@ local function refresh()
     refreshing = true
 
     local epoch = locationEpoch
-
     local ok, data = pcall(xLib.callback.await, 'esx_garage:getGarages', false)
 
-    if
-        epoch == locationEpoch
-        and ok
-        and type(data) == 'table'
-        and type(data.garages) == 'table'
-        and type(data.impounds) == 'table'
-    then
+    if epoch == locationEpoch and ok and type(data) == 'table' and type(data.garages) == 'table' and type(data.impounds) == 'table' then
         pcall(function()
             clearWorld()
             fleetGarages = {}
@@ -533,7 +514,6 @@ local function fetchVehiclePage(data)
 
     local resultPage = tonumber(result.page) or page
     local resultPageSize = tonumber(result.pageSize) or #vehicles
-
     return {
         vehicles = vehicles,
         mileageUnit = useKmh and 'km' or 'mi',
@@ -564,7 +544,6 @@ local function openMenu()
     end
 
     local garage = loc.garage
-
     local fleets = {}
 
     if loc.action == 'impound' then
@@ -839,10 +818,7 @@ xLib.nui.register('garage:giveKeys', function(data)
         return { success = false, error = 'no_location' }
     end
 
-    local result = serverCall(
-        'esx_garage:giveKeys',
-        { plate = data.vehicleId, garageId = currentLocation.id, fleetGarageId = menuFleetGarageId }
-    )
+    local result = serverCall('esx_garage:giveKeys', { plate = data.vehicleId, garageId = currentLocation.id, fleetGarageId = menuFleetGarageId })
     return result or { success = false }
 end)
 
@@ -947,29 +923,7 @@ CreateThread(function()
                         local color = marker.style.color
 
                         ---@diagnostic disable-next-line: missing-parameter
-                        DrawMarker(
-                            1,
-                            coords.x,
-                            coords.y,
-                            coords.z - 1.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            0.0,
-                            1.5,
-                            1.5,
-                            1.0,
-                            color[1],
-                            color[2],
-                            color[3],
-                            color[4],
-                            false,
-                            false,
-                            2,
-                            false
-                        )
+                        DrawMarker(1, coords.x, coords.y, coords.z - 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.5, 1.5, 1.0, color[1], color[2], color[3], color[4], false, false, 2, false)
                     end
                 end
             end

@@ -2,8 +2,8 @@
 -- Copyright (C) 2022-2026 ESX Framework
 
 Locales['cs'] = {
-  ['not_enough_money'] = 'nemas dostatek penez',
-  ['press_access'] = 'stiskni [E] pro pristup k Holici.',
-  ['barber_blip'] = 'Holic',
-  ['you_paid'] = 'zaplatil jsi $%s',
+    ['not_enough_money'] = 'nemas dostatek penez',
+    ['press_access'] = 'stiskni [E] pro pristup k Holici.',
+    ['barber_blip'] = 'Holic',
+    ['you_paid'] = 'zaplatil jsi $%s',
 }

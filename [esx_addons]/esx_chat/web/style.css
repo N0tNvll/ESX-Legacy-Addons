@@ -58,15 +58,20 @@ button {
 
 .chat-shell {
     position: absolute;
+    display: flex;
+    flex-direction: column;
     left: calc(var(--u) * 48);
     top: calc(var(--u) * 68);
     width: calc(var(--u) * 620);
+    max-height: calc(100vh - var(--u) * 92);
     pointer-events: none;
 }
 
 .message-list {
     display: flex;
     flex-direction: column;
+    min-height: 0;
+    height: calc(var(--u) * 470);
     max-height: calc(var(--u) * 470);
     overflow: hidden;
     transition: opacity 300ms ease;
@@ -87,8 +92,6 @@ button {
     border: calc(var(--u) * 1) solid var(--stroke);
     border-radius: calc(var(--u) * 8);
     background: linear-gradient(90deg, rgba(var(--bg-rgb), 0.94) 0%, rgba(var(--secondary-rgb), 0.88) 100%);
-    box-shadow: 0 calc(var(--u) * 6) calc(var(--u) * 20) rgba(0, 0, 0, 0.28);
-    backdrop-filter: blur(calc(var(--u) * 4));
     opacity: 1;
     transform: translateY(0);
     transition: opacity 180ms ease, transform 180ms ease;
@@ -213,6 +216,7 @@ button {
 .composer {
     position: relative;
     display: none;
+    flex-shrink: 0;
     width: 100%;
     margin-top: calc(var(--u) * 20);
     pointer-events: auto;
@@ -240,7 +244,6 @@ button {
     border: calc(var(--u) * 1) solid rgba(255,255,255,.10);
     border-radius: calc(var(--u) * 7);
     background: rgba(var(--bg-rgb), 0.92);
-    box-shadow: 0 calc(var(--u) * 4) calc(var(--u) * 11) rgba(0, 0, 0, 0.20);
     color: rgba(255, 255, 255, 0.95);
     font-size: calc(var(--u) * 15);
     font-weight: 500;
@@ -283,7 +286,6 @@ button {
     border: calc(var(--u) * 1) solid rgba(var(--primary-rgb), 0.81);
     border-radius: calc(var(--u) * 8);
     background: rgba(var(--bg-rgb), 0.88);
-    box-shadow: inset 0 0 0 calc(var(--u) * 0.5) rgba(var(--primary-rgb), .28), 0 calc(var(--u) * 4) calc(var(--u) * 11) rgba(0, 0, 0, .20);
 }
 
 #chatInput {
@@ -330,7 +332,6 @@ button {
     place-items: center;
     border-radius: calc(var(--u) * 7);
     background: var(--primary);
-    box-shadow: 0 calc(var(--u) * 4) calc(var(--u) * 11) rgba(0,0,0,.22);
     color: #0c0c0c;
 }
 
@@ -352,12 +353,15 @@ button {
     border: calc(var(--u) * 1) solid var(--stroke);
     border-radius: calc(var(--u) * 8);
     background: rgba(var(--bg-rgb), 0.90);
-    box-shadow: 0 calc(var(--u) * 6) calc(var(--u) * 20) rgba(0, 0, 0, .26);
-    backdrop-filter: blur(calc(var(--u) * 4));
 }
 
 .command-panel.is-visible {
     display: block;
+}
+
+#commandRows {
+    max-height: min(calc(var(--u) * 352), 25vh);
+    overflow-y: auto;
 }
 
 .command-header {
@@ -428,8 +432,6 @@ button {
     border: calc(var(--u) * 1) solid var(--stroke);
     border-radius: calc(var(--u) * 7);
     background: rgba(var(--bg-rgb), 0.92);
-    box-shadow: 0 calc(var(--u) * 4) calc(var(--u) * 11) rgba(0, 0, 0, 0.20);
-    backdrop-filter: blur(calc(var(--u) * 4));
 }
 
 .rp-panel.is-visible {
@@ -486,8 +488,6 @@ button {
     border: calc(var(--u) * 1) solid var(--stroke);
     border-radius: calc(var(--u) * 8);
     background: rgba(var(--bg-rgb), 0.97);
-    box-shadow: 0 calc(var(--u) * 8) calc(var(--u) * 24) rgba(0,0,0,.42);
-    backdrop-filter: blur(calc(var(--u) * 6));
 }
 
 .emoji-picker.is-visible {
@@ -599,11 +599,13 @@ button {
     opacity: 1 !important;
 }
 
-.message-list::-webkit-scrollbar {
+.message-list::-webkit-scrollbar,
+#commandRows::-webkit-scrollbar {
     width: calc(var(--u) * 4);
 }
 
-.message-list::-webkit-scrollbar-thumb {
+.message-list::-webkit-scrollbar-thumb,
+#commandRows::-webkit-scrollbar-thumb {
     border-radius: calc(var(--u) * 4);
     background: rgba(var(--primary-rgb), 0.55);
 }

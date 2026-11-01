@@ -1,20 +1,20 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
-Locales ['es'] = {
-  ['helmet'] = 'Casco / Gorra',
-  ['glasses'] = 'Gafas',
-  ['mask'] = 'Máscara',
-  ['ears'] = 'Accesorio de oreja',
-  ['shop'] = 'Tienda %s',
-  ['set_unset'] = 'Ponerse / Quitarse',
-  ['not_enough_money'] = '~r~No tienes suficiente dinero',
-  ['press_access'] = 'Pulsa [E] para acceder al menú',
-  ['accessories_blip'] = 'Accesorios',
-  ['no_ears'] = 'No tienes ningún accesorio de oreja',
-  ['no_glasses'] = 'No tienes ningunas gafas',
-  ['no_helmet'] = 'No tienes ningún casco',
-  ['no_mask'] = 'No tienes ninguna máscara',
-  ['you_paid'] = 'Pagaste %s$',
-  ['keymap'] = 'Open Accessory Menu', --not translated
+Locales['es'] = {
+    ['helmet'] = 'Casco / Gorra',
+    ['glasses'] = 'Gafas',
+    ['mask'] = 'Máscara',
+    ['ears'] = 'Accesorio de oreja',
+    ['shop'] = 'Tienda %s',
+    ['set_unset'] = 'Ponerse / Quitarse',
+    ['not_enough_money'] = '~r~No tienes suficiente dinero',
+    ['press_access'] = 'Pulsa [E] para acceder al menú',
+    ['accessories_blip'] = 'Accesorios',
+    ['no_ears'] = 'No tienes ningún accesorio de oreja',
+    ['no_glasses'] = 'No tienes ningunas gafas',
+    ['no_helmet'] = 'No tienes ningún casco',
+    ['no_mask'] = 'No tienes ninguna máscara',
+    ['you_paid'] = 'Pagaste %s$',
+    ['keymap'] = 'Open Accessory Menu', --not translated
 }

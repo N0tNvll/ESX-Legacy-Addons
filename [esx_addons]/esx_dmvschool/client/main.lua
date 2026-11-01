@@ -1,33 +1,34 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
-local CurrentAction     = nil
-local CurrentActionMsg  = nil
+local CurrentAction = nil
+local CurrentActionMsg = nil
 local CurrentActionData = nil
 local textUIMessage
 
 local function hideActionTextUI()
-	if textUIMessage then
-		ESX.HideUI()
-		textUIMessage = nil
-	end
+    if textUIMessage then
+        ESX.HideUI()
+        textUIMessage = nil
+    end
 end
-local Licenses          = {}
-local CurrentTest       = nil
-local CurrentTestType   = nil
-local CurrentVehicle    = nil
+
+local Licenses = {}
+local CurrentTest = nil
+local CurrentTestType = nil
+local CurrentVehicle = nil
 local CurrentCheckPoint, DriveErrors = 0, 0
-local LastCheckPoint    = -1
-local CurrentBlip       = nil
-local CurrentZoneType   = nil
+local LastCheckPoint = -1
+local CurrentBlip = nil
+local CurrentZoneType = nil
 local LastVehicleHealth = nil
 local failedTest = false
 
 function DrawMissionText(msg, time)
-	ClearPrints()
-	BeginTextCommandPrint('STRING')
-	AddTextComponentSubstringPlayerName(msg)
-	EndTextCommandPrint(time, true)
+    ClearPrints()
+    BeginTextCommandPrint('STRING')
+    AddTextComponentSubstringPlayerName(msg)
+    EndTextCommandPrint(time, true)
 end
 
 function StartTheoryTest(exam)
@@ -47,7 +48,7 @@ function StopTheoryTest(success)
     CurrentTest = nil
 
     xLib.nui.send({
-        openQuestion = false
+        openQuestion = false,
     })
 
     xLib.nui.focus(false)
@@ -61,27 +62,29 @@ function StopTheoryTest(success)
 end
 
 function StartDriveTest(type)
-	xLib.game.spawnVehicle(Config.VehicleModels[type], vector3(Config.Zones.VehicleSpawnPoint.Pos.x, Config.Zones.VehicleSpawnPoint.Pos.y, Config.Zones.VehicleSpawnPoint.Pos.z), Config.Zones.VehicleSpawnPoint.Pos.h, function(vehicle)
-		CurrentTest       = 'drive'
-		CurrentTestType   = type
-		CurrentCheckPoint = 0
-		LastCheckPoint    = -1
-		CurrentZoneType   = 'residence'
-		DriveErrors       = 0
-		IsAboveSpeedLimit = false
-		CurrentVehicle    = vehicle
-		LastVehicleHealth = GetEntityHealth(vehicle)
-		failedTest = false
+    xLib.game.spawnVehicle(Config.VehicleModels[type], vector3(Config.Zones.VehicleSpawnPoint.Pos.x, Config.Zones.VehicleSpawnPoint.Pos.y, Config.Zones.VehicleSpawnPoint.Pos.z), Config.Zones.VehicleSpawnPoint.Pos.h, function(vehicle)
+        CurrentTest = 'drive'
+        CurrentTestType = type
+        CurrentCheckPoint = 0
+        LastCheckPoint = -1
+        CurrentZoneType = 'residence'
+        DriveErrors = 0
+        IsAboveSpeedLimit = false
+        CurrentVehicle = vehicle
+        LastVehicleHealth = GetEntityHealth(vehicle)
+        failedTest = false
 
-		local playerPed   = PlayerPedId()
-		TaskWarpPedIntoVehicle(playerPed, vehicle, -1)
-		SetVehicleFuelLevel(vehicle, 100.0)
-		DecorSetFloat(vehicle, "_FUEL_LEVEL", GetVehicleFuelLevel(vehicle))
-	end)
+        local playerPed = PlayerPedId()
+
+        TaskWarpPedIntoVehicle(playerPed, vehicle, -1)
+        SetVehicleFuelLevel(vehicle, 100.0)
+        DecorSetFloat(vehicle, '_FUEL_LEVEL', GetVehicleFuelLevel(vehicle))
+    end)
 end
 
 function StopDriveTest(success)
     local testType = CurrentTestType
+
     CurrentTest = nil
     CurrentTestType = nil
 
@@ -99,110 +102,116 @@ function StopDriveTest(success)
 end
 
 function SetCurrentZoneType(type)
-CurrentZoneType = type
+    CurrentZoneType = type
 end
 
 function OpenDMVSchoolMenu()
-	local ownedLicenses = {}
+    local ownedLicenses = {}
 
-	for i=1, #Licenses, 1 do
-		ownedLicenses[Licenses[i].type] = true
-	end
+    for i = 1, #Licenses, 1 do
+        ownedLicenses[Licenses[i].type] = true
+    end
 
-	local elements = {
-		{unselectable = true, icon = "fas fa-car", title = TranslateCap("driving_school")}
-	}
+    local elements = {
+        { unselectable = true, icon = 'fas fa-car', title = TranslateCap('driving_school') },
+    }
 
-	if not ownedLicenses['dmv'] then
-		elements[#elements+1] = {
-			icon = "fas fa-car",
-			title = (('%s: <span style="color:green;">%s</span>'):format(TranslateCap('theory_test'), TranslateCap('school_item', ESX.Math.GroupDigits(Config.Prices['dmv'])))),
-			value = "theory_test"
-		}
-	end
+    if not ownedLicenses['dmv'] then
+        elements[#elements + 1] = {
+            icon = 'fas fa-car',
+            title = (('%s: <span style="color:green;">%s</span>'):format(TranslateCap('theory_test'), TranslateCap('school_item', ESX.Math.GroupDigits(Config.Prices['dmv'])))),
+            value = 'theory_test',
+        }
+    end
 
-	if ownedLicenses['dmv'] then
-		if not ownedLicenses['drive'] then
-			elements[#elements+1] = {
-				icon = "fas fa-car",
-				title = (('%s: <span style="color:green;">%s</span>'):format(TranslateCap('road_test_car'), TranslateCap('school_item', ESX.Math.GroupDigits(Config.Prices['drive'])))),
-				value = "drive_test",
-				type = "drive"
-			}
-		end
+    if ownedLicenses['dmv'] then
+        if not ownedLicenses['drive'] then
+            elements[#elements + 1] = {
+                icon = 'fas fa-car',
+                title = (('%s: <span style="color:green;">%s</span>'):format(TranslateCap('road_test_car'), TranslateCap('school_item', ESX.Math.GroupDigits(Config.Prices['drive'])))),
+                value = 'drive_test',
+                type = 'drive',
+            }
+        end
 
-		if not ownedLicenses['drive_bike'] then
-			elements[#elements+1] = {
-				icon = "fas fa-car",
-				title = (('%s: <span style="color:green;">%s</span>'):format(TranslateCap('road_test_bike'), TranslateCap('school_item', ESX.Math.GroupDigits(Config.Prices['drive_bike'])))),
-				value = "drive_test",
-				type = "drive_bike"
-			}
-		end
+        if not ownedLicenses['drive_bike'] then
+            elements[#elements + 1] = {
+                icon = 'fas fa-car',
+                title = (('%s: <span style="color:green;">%s</span>'):format(TranslateCap('road_test_bike'), TranslateCap('school_item', ESX.Math.GroupDigits(Config.Prices['drive_bike'])))),
+                value = 'drive_test',
+                type = 'drive_bike',
+            }
+        end
 
-		if not ownedLicenses['drive_truck'] then
-			elements[#elements+1] = {
-				icon = "fas fa-car",
-				title = (('%s: <span style="color:green;">%s</span>'):format(TranslateCap('road_test_truck'), TranslateCap('school_item', ESX.Math.GroupDigits(Config.Prices['drive_truck'])))),
-				value = "drive_test",
-				type = "drive_truck"
-			}
-		end
-	end
+        if not ownedLicenses['drive_truck'] then
+            elements[#elements + 1] = {
+                icon = 'fas fa-car',
+                title = (('%s: <span style="color:green;">%s</span>'):format(TranslateCap('road_test_truck'), TranslateCap('school_item', ESX.Math.GroupDigits(Config.Prices['drive_truck'])))),
+                value = 'drive_test',
+                type = 'drive_truck',
+            }
+        end
+    end
 
-	ESX.OpenContext("right", elements, function(menu,element)
-		if element.value == "theory_test" then
-            PaymentGateway.Pay({
-                amount = Config.Prices.dmv,
-                title = TranslateCap('theory_test'),
-            }, 'esx_dmvschool:canYouPay', function(haveMoney, paymentFailure, exam)
-				if haveMoney then
-					ESX.CloseContext()
-                    StartTheoryTest(exam)
-				else
-                    PaymentGateway.NotifyFailure(
-                        paymentFailure,
-                        TranslateCap('not_enough_money'))
-				end
-			end, 'dmv')
-		elseif element.value == "drive_test" then
-            PaymentGateway.Pay({
-                amount = Config.Prices[element.type],
-                title = TranslateCap('driving_school'),
-            }, 'esx_dmvschool:canYouPay', function(haveMoney, paymentFailure)
-				if haveMoney then
-					ESX.CloseContext()
-					StartDriveTest(element.type)
-				else
-                    PaymentGateway.NotifyFailure(
-                        paymentFailure,
-                        TranslateCap('not_enough_money'))
-				end
-			end, element.type)
-		end
-	end, function(menu)
-		CurrentAction     = 'dmvschool_menu'
-		CurrentActionMsg  = TranslateCap('press_open_menu')
-		CurrentActionData = {}
-	end)
+    ESX.OpenContext('right', elements, function(menu, element)
+        if element.value == 'theory_test' then
+            PaymentGateway.Pay(
+                {
+                    amount = Config.Prices.dmv,
+                    title = TranslateCap('theory_test'),
+                },
+                'esx_dmvschool:canYouPay',
+                function(haveMoney, paymentFailure, exam)
+                    if haveMoney then
+                        ESX.CloseContext()
+                        StartTheoryTest(exam)
+                    else
+                        PaymentGateway.NotifyFailure(paymentFailure, TranslateCap('not_enough_money'))
+                    end
+                end,
+                'dmv'
+            )
+        elseif element.value == 'drive_test' then
+            PaymentGateway.Pay(
+                {
+                    amount = Config.Prices[element.type],
+                    title = TranslateCap('driving_school'),
+                },
+                'esx_dmvschool:canYouPay',
+                function(haveMoney, paymentFailure)
+                    if haveMoney then
+                        ESX.CloseContext()
+                        StartDriveTest(element.type)
+                    else
+                        PaymentGateway.NotifyFailure(paymentFailure, TranslateCap('not_enough_money'))
+                    end
+                end,
+                element.type
+            )
+        end
+    end, function(menu)
+        CurrentAction = 'dmvschool_menu'
+        CurrentActionMsg = TranslateCap('press_open_menu')
+        CurrentActionData = {}
+    end)
 end
 
 xLib.nui.register('question', function()
-	xLib.nui.send({
-		openSection = 'question'
-	})
+    xLib.nui.send({
+        openSection = 'question',
+    })
 
-	return {}
+    return {}
 end)
 
 xLib.nui.register('close', function()
-	StopTheoryTest(true)
-	return {}
+    StopTheoryTest(true)
+    return {}
 end)
 
 xLib.nui.register('kick', function()
-	StopTheoryTest(false)
-	return {}
+    StopTheoryTest(false)
+    return {}
 end)
 
 xLib.nui.register('submitTheory', function(data)
@@ -211,170 +220,167 @@ xLib.nui.register('submitTheory', function(data)
     end
 
     local passed = xLib.callback.await('esx_dmvschool:finishTheory', false, data.answers)
-
     return { passed = passed == true }
 end)
 
 AddEventHandler('esx_dmvschool:hasEnteredMarker', function(zone)
-	if zone == 'DMVSchool' then
-		CurrentAction     = 'dmvschool_menu'
-		CurrentActionMsg  = TranslateCap('press_open_menu')
-		CurrentActionData = {}
-	end
+    if zone == 'DMVSchool' then
+        CurrentAction = 'dmvschool_menu'
+        CurrentActionMsg = TranslateCap('press_open_menu')
+        CurrentActionData = {}
+    end
 end)
 
 AddEventHandler('esx_dmvschool:hasExitedMarker', function(zone)
-	CurrentAction = nil
-	ESX.CloseContext()
-	hideActionTextUI()
+    CurrentAction = nil
+    ESX.CloseContext()
+    hideActionTextUI()
 end)
 
 ESX.SecureNetEvent('esx:onPlayerLogout', function()
-	CurrentAction = nil
-	HasAlreadyEnteredMarker = false
-	hideActionTextUI()
+    CurrentAction = nil
+    HasAlreadyEnteredMarker = false
+    hideActionTextUI()
 end)
 
 AddEventHandler('onResourceStop', function(resource)
-	if resource == GetCurrentResourceName() then
-		hideActionTextUI()
-	end
+    if resource == GetCurrentResourceName() then
+        hideActionTextUI()
+    end
 end)
 
 RegisterNetEvent('esx_dmvschool:loadLicenses')
 AddEventHandler('esx_dmvschool:loadLicenses', function(licenses)
-	Licenses = licenses
+    Licenses = licenses
 end)
 
 -- Create Blips
 CreateThread(function()
-	xLib.blips.create({
-		coords = Config.Zones.DMVSchool.Pos,
-		sprite = 408,
-		color = 0,
-		display = 4,
-		scale = 1.2,
-		shortRange = true,
-		label = TranslateCap('driving_school_blip')
-	})
+    xLib.blips.create({
+        coords = Config.Zones.DMVSchool.Pos,
+        sprite = 408,
+        color = 0,
+        display = 4,
+        scale = 1.2,
+        shortRange = true,
+        label = TranslateCap('driving_school_blip'),
+    })
 end)
 
 -- Display markers
 CreateThread(function()
-	while true do
-		local sleep = 1500
-		local playerPed = PlayerPedId()
-		local coords = GetEntityCoords(playerPed)
+    while true do
+        local sleep = 1500
+        local playerPed = PlayerPedId()
+        local coords = GetEntityCoords(playerPed)
 
-		for k,v in pairs(Config.Zones) do
-			local Pos = vector3(v.Pos.x, v.Pos.y, v.Pos.z)
-			if(v.Type ~= -1 and #(coords - Pos) < Config.DrawDistance) then
-				sleep = 0
-				DrawMarker(v.Type, v.Pos.x, v.Pos.y, v.Pos.z, 0.0, 0.0, 0.0, 0, 0.0, 0.0, v.Size.x, v.Size.y, v.Size.z, v.Color.r, v.Color.g, v.Color.b, 100, false, true, 2, false, false, false, false)
-			end
-		end
+        for k, v in pairs(Config.Zones) do
+            local Pos = vector3(v.Pos.x, v.Pos.y, v.Pos.z)
 
-		if CurrentTest == 'theory' then
-			
-			sleep = 0
-			DisableControlAction(0, 1, true) -- LookLeftRight
-			DisableControlAction(0, 2, true) -- LookUpDown
-			DisablePlayerFiring(playerPed, true) -- Disable weapon firing
-			DisableControlAction(0, 142, true) -- MeleeAttackAlternate
-			DisableControlAction(0, 106, true) -- VehicleMouseControlOverride
-		end
+            if v.Type ~= -1 and #(coords - Pos) < Config.DrawDistance then
+                sleep = 0
+                DrawMarker(v.Type, v.Pos.x, v.Pos.y, v.Pos.z, 0.0, 0.0, 0.0, 0, 0.0, 0.0, v.Size.x, v.Size.y, v.Size.z, v.Color.r, v.Color.g, v.Color.b, 100, false, true, 2, false, false, false, false)
+            end
+        end
 
-		if CurrentTest == 'drive' then
-			sleep = 0
-			local nextCheckPoint = CurrentCheckPoint + 1
+        if CurrentTest == 'theory' then
+            sleep = 0
+            DisableControlAction(0, 1, true) -- LookLeftRight
+            DisableControlAction(0, 2, true) -- LookUpDown
+            DisablePlayerFiring(playerPed, true) -- Disable weapon firing
+            DisableControlAction(0, 142, true) -- MeleeAttackAlternate
+            DisableControlAction(0, 106, true) -- VehicleMouseControlOverride
+        end
 
-			if Config.CheckPoints[nextCheckPoint] == nil then
-				if DoesBlipExist(CurrentBlip) then
-					RemoveBlip(CurrentBlip)
-				end
+        if CurrentTest == 'drive' then
+            sleep = 0
 
-				CurrentTest = nil
-				StopDriveTest(DriveErrors < Config.MaxErrors)
-			else
-				if CurrentCheckPoint ~= LastCheckPoint then
-					if DoesBlipExist(CurrentBlip) then
-						RemoveBlip(CurrentBlip)
-					end
+            local nextCheckPoint = CurrentCheckPoint + 1
 
-					CurrentBlip = xLib.blips.create({
-						coords = Config.CheckPoints[nextCheckPoint].Pos,
-						route = true
-					})
+            if Config.CheckPoints[nextCheckPoint] == nil then
+                if DoesBlipExist(CurrentBlip) then
+                    RemoveBlip(CurrentBlip)
+                end
 
-					LastCheckPoint = CurrentCheckPoint
-				end
-            
-				local Pos = vector3(Config.CheckPoints[nextCheckPoint].Pos.x,Config.CheckPoints[nextCheckPoint].Pos.y,Config.CheckPoints[nextCheckPoint].Pos.z)
-				local distance = #(coords - Pos)
-            
-				if distance <= Config.DrawDistance then
-					DrawMarker(1, Config.CheckPoints[nextCheckPoint].Pos.x, Config.CheckPoints[nextCheckPoint].Pos.y, Config.CheckPoints[nextCheckPoint].Pos.z, 0.0, 0.0, 0.0, 0, 0.0, 0.0, 1.5, 1.5, 1.5, 102, 204, 102, 100, false, true, 2, false, false, false, false)
-				end
+                CurrentTest = nil
+                StopDriveTest(DriveErrors < Config.MaxErrors)
+            else
+                if CurrentCheckPoint ~= LastCheckPoint then
+                    if DoesBlipExist(CurrentBlip) then
+                        RemoveBlip(CurrentBlip)
+                    end
 
-				if distance <= 3.0 then
-                    local accepted = failedTest or xLib.callback.await(
-                        'esx_dmvschool:checkpoint', false, nextCheckPoint
-                    )
+                    CurrentBlip = xLib.blips.create({
+                        coords = Config.CheckPoints[nextCheckPoint].Pos,
+                        route = true,
+                    })
+
+                    LastCheckPoint = CurrentCheckPoint
+                end
+
+                local Pos = vector3(Config.CheckPoints[nextCheckPoint].Pos.x, Config.CheckPoints[nextCheckPoint].Pos.y, Config.CheckPoints[nextCheckPoint].Pos.z)
+                local distance = #(coords - Pos)
+
+                if distance <= Config.DrawDistance then
+                    DrawMarker(1, Config.CheckPoints[nextCheckPoint].Pos.x, Config.CheckPoints[nextCheckPoint].Pos.y, Config.CheckPoints[nextCheckPoint].Pos.z, 0.0, 0.0, 0.0, 0, 0.0, 0.0, 1.5, 1.5, 1.5, 102, 204, 102, 100, false, true, 2, false, false, false, false)
+                end
+
+                if distance <= 3.0 then
+                    local accepted = failedTest or xLib.callback.await('esx_dmvschool:checkpoint', false, nextCheckPoint)
 
                     if accepted then
-                        Config.CheckPoints[nextCheckPoint].Action(
-                            playerPed, CurrentVehicle, SetCurrentZoneType
-                        )
+                        Config.CheckPoints[nextCheckPoint].Action(playerPed, CurrentVehicle, SetCurrentZoneType)
                         CurrentCheckPoint = CurrentCheckPoint + 1
                     else
                         Wait(500)
                     end
-				end
-			end
-		end
+                end
+            end
+        end
 
-		if CurrentAction and ESX.PlayerLoaded and not ESX.PlayerData.dead then
-			sleep = 0
+        if CurrentAction and ESX.PlayerLoaded and not ESX.PlayerData.dead then
+            sleep = 0
 
-			if textUIMessage ~= CurrentActionMsg then
-				ESX.TextUI(CurrentActionMsg)
-				textUIMessage = CurrentActionMsg
-			end
+            if textUIMessage ~= CurrentActionMsg then
+                ESX.TextUI(CurrentActionMsg)
+                textUIMessage = CurrentActionMsg
+            end
 
-			if (IsControlJustReleased(0, 38)) and (CurrentAction == 'dmvschool_menu') then
-				OpenDMVSchoolMenu()
-				CurrentAction = nil
-			end
-		else
-			hideActionTextUI()
-		end
-		
-		local isInMarker  = false
-		local currentZone = nil
+            if (IsControlJustReleased(0, 38)) and (CurrentAction == 'dmvschool_menu') then
+                OpenDMVSchoolMenu()
+                CurrentAction = nil
+            end
+        else
+            hideActionTextUI()
+        end
 
-		for k,v in pairs(Config.Zones) do
-			local Pos = vector3(v.Pos.x, v.Pos.y, v.Pos.z)
-			if(#(coords - Pos) < v.Size.x) then
-				sleep = 0
-				isInMarker  = true
-				currentZone = k
-			end
-		end
+        local isInMarker = false
+        local currentZone = nil
 
-		if (isInMarker and not HasAlreadyEnteredMarker) or (isInMarker and LastZone ~= currentZone) then
-			HasAlreadyEnteredMarker = true
-			LastZone                = currentZone
-			TriggerEvent('esx_dmvschool:hasEnteredMarker', currentZone)
-		end
+        for k, v in pairs(Config.Zones) do
+            local Pos = vector3(v.Pos.x, v.Pos.y, v.Pos.z)
 
-		if not isInMarker and HasAlreadyEnteredMarker then
-			HasAlreadyEnteredMarker = false
-			TriggerEvent('esx_dmvschool:hasExitedMarker', LastZone)
-		end
-		Wait(sleep)
-	end
+            if #(coords - Pos) < v.Size.x then
+                sleep = 0
+                isInMarker = true
+                currentZone = k
+            end
+        end
+
+        if (isInMarker and not HasAlreadyEnteredMarker) or (isInMarker and LastZone ~= currentZone) then
+            HasAlreadyEnteredMarker = true
+            LastZone = currentZone
+            TriggerEvent('esx_dmvschool:hasEnteredMarker', currentZone)
+        end
+
+        if not isInMarker and HasAlreadyEnteredMarker then
+            HasAlreadyEnteredMarker = false
+            TriggerEvent('esx_dmvschool:hasExitedMarker', LastZone)
+        end
+
+        Wait(sleep)
+    end
 end)
-
 
 function TestFailedGoToLastCheckPoint()
     TriggerServerEvent('esx_dmvschool:cancelTest')
@@ -384,54 +390,58 @@ end
 
 -- Speed / Damage control
 CreateThread(function()
-	while true do
-		local sleep = 1500
-		if CurrentTest == 'drive' then
-			sleep = 0
-			local playerPed = PlayerPedId()
-			
-			if IsPedInAnyVehicle(playerPed, false) then
-				local vehicle = GetVehiclePedIsIn(playerPed, false)
-				local speed = GetEntitySpeed(vehicle) * Config.SpeedMultiplier
-				local health = GetEntityHealth(vehicle)
+    while true do
+        local sleep = 1500
 
-				-- Speed check
-				for k, v in pairs(Config.SpeedLimits) do
+        if CurrentTest == 'drive' then
+            sleep = 0
 
-					if CurrentZoneType == k and speed > v then
-						DriveErrors += 1
+            local playerPed = PlayerPedId()
 
-						if DriveErrors <= Config.MaxErrors then
-							ESX.ShowNotification(TranslateCap('driving_too_fast', v))
-							ESX.ShowNotification(TranslateCap('errors', DriveErrors, Config.MaxErrors))
-						end
+            if IsPedInAnyVehicle(playerPed, false) then
+                local vehicle = GetVehiclePedIsIn(playerPed, false)
+                local speed = GetEntitySpeed(vehicle) * Config.SpeedMultiplier
+                local health = GetEntityHealth(vehicle)
 
-						sleep = (Config.SpeedingErrorDelay < 5000) and 5000 or Config.SpeedingErrorDelay
-					end
-				end
+                -- Speed check
+                for k, v in pairs(Config.SpeedLimits) do
+                    if CurrentZoneType == k and speed > v then
+                        DriveErrors += 1
 
-				-- Vehicle damage check
-				if health < LastVehicleHealth then
-					DriveErrors += 1
-					if DriveErrors <= Config.MaxErrors then
-						ESX.ShowNotification(TranslateCap('you_damaged_veh'))
-						ESX.ShowNotification(TranslateCap('errors', DriveErrors, Config.MaxErrors))
-					end
-					
-					LastVehicleHealth = health
-					sleep = 1500
-				end
+                        if DriveErrors <= Config.MaxErrors then
+                            ESX.ShowNotification(TranslateCap('driving_too_fast', v))
+                            ESX.ShowNotification(TranslateCap('errors', DriveErrors, Config.MaxErrors))
+                        end
 
-				if DriveErrors > Config.MaxErrors then
-					ESX.ShowNotification(TranslateCap('test_failed_go_to_start_point'))
-					if not failedTest then
-						TestFailedGoToLastCheckPoint()
-					end
-					sleep = 5000
-				end
-			end
-		end
-		Wait(sleep)
-	end
+                        sleep = (Config.SpeedingErrorDelay < 5000) and 5000 or Config.SpeedingErrorDelay
+                    end
+                end
+
+                -- Vehicle damage check
+                if health < LastVehicleHealth then
+                    DriveErrors += 1
+
+                    if DriveErrors <= Config.MaxErrors then
+                        ESX.ShowNotification(TranslateCap('you_damaged_veh'))
+                        ESX.ShowNotification(TranslateCap('errors', DriveErrors, Config.MaxErrors))
+                    end
+
+                    LastVehicleHealth = health
+                    sleep = 1500
+                end
+
+                if DriveErrors > Config.MaxErrors then
+                    ESX.ShowNotification(TranslateCap('test_failed_go_to_start_point'))
+
+                    if not failedTest then
+                        TestFailedGoToLastCheckPoint()
+                    end
+
+                    sleep = 5000
+                end
+            end
+        end
+
+        Wait(sleep)
+    end
 end)
-

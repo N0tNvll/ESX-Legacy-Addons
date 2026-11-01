@@ -1,4 +1,3 @@
-
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
@@ -19,7 +18,6 @@ Locales['hu'] = {
     ['ui_type_scenario'] = 'Szituáció',
     ['ui_type_attitude'] = 'Viselkedés',
     ['ui_no_animations'] = 'Nincsenek elérhető animációk.',
-
     -- Értesítések
     ['notification_stopped'] = 'Az animáció leállítva.',
 }

@@ -7,231 +7,242 @@ local isPickingUp, isProcessing = false, false
 local processTextUIShown, pickupTextUIShown = false, false
 
 CreateThread(function()
-	while true do
-		Wait(700)
-		local coords = GetEntityCoords(PlayerPedId())
+    while true do
+        Wait(700)
 
-		if #(coords - Config.CircleZones.WeedField.coords) < 50 then
-			SpawnWeedPlants()
-		end
-	end
+        local coords = GetEntityCoords(PlayerPedId())
+
+        if #(coords - Config.CircleZones.WeedField.coords) < 50 then
+            SpawnWeedPlants()
+        end
+    end
 end)
 
 CreateThread(function()
-	while true do
-		local wait = 1000
-		local playerPed = PlayerPedId()
-		local coords = GetEntityCoords(playerPed)
+    while true do
+        local wait = 1000
+        local playerPed = PlayerPedId()
+        local coords = GetEntityCoords(playerPed)
 
-		if ESX.PlayerLoaded and not ESX.PlayerData.dead and #(coords - Config.CircleZones.WeedProcessing.coords) < 1 then
-			wait = 2
-			if not isProcessing then
-				if not processTextUIShown then
-					ESX.TextUI(TranslateCap('weed_processprompt'))
-					processTextUIShown = true
-				end
-			elseif processTextUIShown then
-				ESX.HideUI()
-				processTextUIShown = false
-			end
+        if ESX.PlayerLoaded and not ESX.PlayerData.dead and #(coords - Config.CircleZones.WeedProcessing.coords) < 1 then
+            wait = 2
 
-			if IsControlJustReleased(0, 38) and not isProcessing then
-				xLib.callback('esx_drugs:cannabis_count', false, function(xCannabis)
-					if Config.LicenseEnable then
-						xLib.callback('esx_license:checkLicense', false, function(hasProcessingLicense)
-							if hasProcessingLicense then
-								ProcessWeed(xCannabis)
-							else
-								OpenBuyLicenseMenu('weed_processing')
-							end
-						end, GetPlayerServerId(PlayerId()), 'weed_processing')
-					else
-						ProcessWeed(xCannabis)
-					end
-				end)
-			end
-		elseif processTextUIShown then
-			ESX.HideUI()
-			processTextUIShown = false
-		end
-		Wait(wait)
-	end
+            if not isProcessing then
+                if not processTextUIShown then
+                    ESX.TextUI(TranslateCap('weed_processprompt'))
+                    processTextUIShown = true
+                end
+            elseif processTextUIShown then
+                ESX.HideUI()
+                processTextUIShown = false
+            end
+
+            if IsControlJustReleased(0, 38) and not isProcessing then
+                xLib.callback('esx_drugs:cannabis_count', false, function(xCannabis)
+                    if Config.LicenseEnable then
+                        xLib.callback('esx_license:checkLicense', false, function(hasProcessingLicense)
+                            if hasProcessingLicense then
+                                ProcessWeed(xCannabis)
+                            else
+                                OpenBuyLicenseMenu('weed_processing')
+                            end
+                        end, GetPlayerServerId(PlayerId()), 'weed_processing')
+                    else
+                        ProcessWeed(xCannabis)
+                    end
+                end)
+            end
+        elseif processTextUIShown then
+            ESX.HideUI()
+            processTextUIShown = false
+        end
+
+        Wait(wait)
+    end
 end)
 
 function ProcessWeed(xCannabis)
-	isProcessing = true
-	ESX.ShowNotification(TranslateCap('weed_processingstarted'))
-  TriggerServerEvent('esx_drugs:processCannabis')
-	if(xCannabis <= 3) then
-		xCannabis = 0
-	end
-  local timeLeft = (Config.Delays.WeedProcessing * xCannabis) / 1000
-	local playerPed = PlayerPedId()
+    isProcessing = true
+    ESX.ShowNotification(TranslateCap('weed_processingstarted'))
+    TriggerServerEvent('esx_drugs:processCannabis')
 
-	while timeLeft > 0 do
-		Wait(1000)
-		timeLeft = timeLeft - 1
+    if xCannabis <= 3 then
+        xCannabis = 0
+    end
 
-		if #(GetEntityCoords(playerPed) - Config.CircleZones.WeedProcessing.coords) > 4 then
-			ESX.ShowNotification(TranslateCap('weed_processingtoofar'))
-			TriggerServerEvent('esx_drugs:cancelProcessing')
-			TriggerServerEvent('esx_drugs:outofbound')
-			break
-		end
-	end
+    local timeLeft = (Config.Delays.WeedProcessing * xCannabis) / 1000
+    local playerPed = PlayerPedId()
 
-	isProcessing = false
+    while timeLeft > 0 do
+        Wait(1000)
+        timeLeft = timeLeft - 1
+
+        if #(GetEntityCoords(playerPed) - Config.CircleZones.WeedProcessing.coords) > 4 then
+            ESX.ShowNotification(TranslateCap('weed_processingtoofar'))
+            TriggerServerEvent('esx_drugs:cancelProcessing')
+            TriggerServerEvent('esx_drugs:outofbound')
+            break
+        end
+    end
+
+    isProcessing = false
 end
 
 CreateThread(function()
-	while true do
-		local Sleep = 1500
+    while true do
+        local Sleep = 1500
+        local playerPed = PlayerPedId()
+        local coords = GetEntityCoords(playerPed)
+        local nearbyObject, nearbyID
 
-		local playerPed = PlayerPedId()
-		local coords = GetEntityCoords(playerPed)
-		local nearbyObject, nearbyID
+        for i = 1, #weedPlants, 1 do
+            if #(coords - GetEntityCoords(weedPlants[i])) < 1.5 then
+                nearbyObject, nearbyID = weedPlants[i], i
+            end
+        end
 
-		for i=1, #weedPlants, 1 do
-			if #(coords - GetEntityCoords(weedPlants[i])) < 1.5 then
-				nearbyObject, nearbyID = weedPlants[i], i
-			end
-		end
+        if nearbyObject and ESX.PlayerLoaded and not ESX.PlayerData.dead and IsPedOnFoot(playerPed) then
+            Sleep = 0
 
-		if nearbyObject and ESX.PlayerLoaded and not ESX.PlayerData.dead and IsPedOnFoot(playerPed) then
-			Sleep = 0
-			if not isPickingUp then
-				if not pickupTextUIShown then
-					ESX.TextUI(TranslateCap('weed_pickupprompt'))
-					pickupTextUIShown = true
-				end
-			elseif pickupTextUIShown then
-				ESX.HideUI()
-				pickupTextUIShown = false
-			end
+            if not isPickingUp then
+                if not pickupTextUIShown then
+                    ESX.TextUI(TranslateCap('weed_pickupprompt'))
+                    pickupTextUIShown = true
+                end
+            elseif pickupTextUIShown then
+                ESX.HideUI()
+                pickupTextUIShown = false
+            end
 
-			if IsControlJustReleased(0, 38) and not isPickingUp then
-				isPickingUp = true
+            if IsControlJustReleased(0, 38) and not isPickingUp then
+                isPickingUp = true
 
-				xLib.callback('esx_drugs:canPickUp', false, function(canPickUp)
-					if canPickUp then
-						TaskStartScenarioInPlace(playerPed, 'world_human_gardener_plant', 0, false)
+                xLib.callback('esx_drugs:canPickUp', false, function(canPickUp)
+                    if canPickUp then
+                        TaskStartScenarioInPlace(playerPed, 'world_human_gardener_plant', 0, false)
 
-						Wait(2000)
-						ClearPedTasks(playerPed)
-						Wait(1500)
-		
-						local plantCoords = GetEntityCoords(nearbyObject)
-						xLib.game.deleteObject(nearbyObject)
-		
-						table.remove(weedPlants, nearbyID)
-						spawnedWeeds = spawnedWeeds - 1
-		
-						TriggerServerEvent('esx_drugs:pickedUpCannabis', plantCoords)
-					else
-						ESX.ShowNotification(TranslateCap('weed_inventoryfull'))
-					end
+                        Wait(2000)
+                        ClearPedTasks(playerPed)
+                        Wait(1500)
 
-					isPickingUp = false
-				end, 'cannabis')
-			end
-		elseif pickupTextUIShown then
-			ESX.HideUI()
-			pickupTextUIShown = false
-		end
-	Wait(Sleep)
-	end
+                        local plantCoords = GetEntityCoords(nearbyObject)
+
+                        xLib.game.deleteObject(nearbyObject)
+
+                        table.remove(weedPlants, nearbyID)
+                        spawnedWeeds = spawnedWeeds - 1
+
+                        TriggerServerEvent('esx_drugs:pickedUpCannabis', plantCoords)
+                    else
+                        ESX.ShowNotification(TranslateCap('weed_inventoryfull'))
+                    end
+
+                    isPickingUp = false
+                end, 'cannabis')
+            end
+        elseif pickupTextUIShown then
+            ESX.HideUI()
+            pickupTextUIShown = false
+        end
+
+        Wait(Sleep)
+    end
 end)
 
 AddEventHandler('onResourceStop', function(resource)
-	if resource == GetCurrentResourceName() then
-		if processTextUIShown or pickupTextUIShown then
-			ESX.HideUI()
-			processTextUIShown, pickupTextUIShown = false, false
-		end
-		for k, v in pairs(weedPlants) do
-			xLib.game.deleteObject(v)
-		end
-	end
+    if resource == GetCurrentResourceName() then
+        if processTextUIShown or pickupTextUIShown then
+            ESX.HideUI()
+            processTextUIShown, pickupTextUIShown = false, false
+        end
+
+        for k, v in pairs(weedPlants) do
+            xLib.game.deleteObject(v)
+        end
+    end
 end)
 
 ESX.SecureNetEvent('esx:onPlayerLogout', function()
-	if processTextUIShown or pickupTextUIShown then
-		ESX.HideUI()
-		processTextUIShown, pickupTextUIShown = false, false
-	end
+    if processTextUIShown or pickupTextUIShown then
+        ESX.HideUI()
+        processTextUIShown, pickupTextUIShown = false, false
+    end
 end)
 
 function SpawnWeedPlants()
-	while spawnedWeeds < 25 do
-		Wait(0)
-		local weedCoords = GenerateWeedCoords()
+    while spawnedWeeds < 25 do
+        Wait(0)
 
-		xLib.game.spawnLocalObject('prop_weed_02', weedCoords, function(obj)
-			PlaceObjectOnGroundProperly(obj)
-			FreezeEntityPosition(obj, true)
+        local weedCoords = GenerateWeedCoords()
 
-			table.insert(weedPlants, obj)
-			spawnedWeeds = spawnedWeeds + 1
-		end)
-	end
+        xLib.game.spawnLocalObject('prop_weed_02', weedCoords, function(obj)
+            PlaceObjectOnGroundProperly(obj)
+            FreezeEntityPosition(obj, true)
+
+            table.insert(weedPlants, obj)
+            spawnedWeeds = spawnedWeeds + 1
+        end)
+    end
 end
 
 function ValidateWeedCoord(plantCoord)
-	if spawnedWeeds > 0 then
-		local validate = true
+    if spawnedWeeds > 0 then
+        local validate = true
 
-		for k, v in pairs(weedPlants) do
-			if #(plantCoord - GetEntityCoords(v)) < 5 then
-				validate = false
-			end
-		end
+        for k, v in pairs(weedPlants) do
+            if #(plantCoord - GetEntityCoords(v)) < 5 then
+                validate = false
+            end
+        end
 
-		if #(plantCoord - Config.CircleZones.WeedField.coords) > 50 then
-			validate = false
-		end
+        if #(plantCoord - Config.CircleZones.WeedField.coords) > 50 then
+            validate = false
+        end
 
-		return validate
-	else
-		return true
-	end
+        return validate
+    else
+        return true
+    end
 end
 
 function GenerateWeedCoords()
-	while true do
-		Wait(0)
+    while true do
+        Wait(0)
 
-		local weedCoordX, weedCoordY
+        local weedCoordX, weedCoordY
 
-		math.randomseed(GetGameTimer())
-		local modX = math.random(-90, 90)
+        math.randomseed(GetGameTimer())
 
-		Wait(100)
+        local modX = math.random(-90, 90)
 
-		math.randomseed(GetGameTimer())
-		local modY = math.random(-90, 90)
+        Wait(100)
 
-		weedCoordX = Config.CircleZones.WeedField.coords.x + modX
-		weedCoordY = Config.CircleZones.WeedField.coords.y + modY
+        math.randomseed(GetGameTimer())
 
-		local coordZ = GetCoordZ(weedCoordX, weedCoordY)
-		local coord = vector3(weedCoordX, weedCoordY, coordZ)
+        local modY = math.random(-90, 90)
 
-		if ValidateWeedCoord(coord) then
-			return coord
-		end
-	end
+        weedCoordX = Config.CircleZones.WeedField.coords.x + modX
+        weedCoordY = Config.CircleZones.WeedField.coords.y + modY
+
+        local coordZ = GetCoordZ(weedCoordX, weedCoordY)
+        local coord = vector3(weedCoordX, weedCoordY, coordZ)
+
+        if ValidateWeedCoord(coord) then
+            return coord
+        end
+    end
 end
 
 function GetCoordZ(x, y)
-	local groundCheckHeights = { 48.0, 49.0, 50.0, 51.0, 52.0, 53.0, 54.0, 55.0, 56.0, 57.0, 58.0 }
+    local groundCheckHeights = { 48.0, 49.0, 50.0, 51.0, 52.0, 53.0, 54.0, 55.0, 56.0, 57.0, 58.0 }
 
-	for i, height in ipairs(groundCheckHeights) do
-		local foundGround, z = GetGroundZFor_3dCoord(x, y, height)
+    for i, height in ipairs(groundCheckHeights) do
+        local foundGround, z = GetGroundZFor_3dCoord(x, y, height)
 
-		if foundGround then
-			return z
-		end
-	end
+        if foundGround then
+            return z
+        end
+    end
 
-	return 43.0
+    return 43.0
 end

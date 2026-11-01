@@ -10,16 +10,32 @@
 --- asked, on its own server. Focus is only taken once the page says it shows the payment, so a
 --- page that cannot show it never locks the player.
 
-local Request = require "client.module.payment.request"
-local Validate = require "shared.module.validate.main"
-
+local Request = require('client.module.payment.request')
+local Validate = require('shared.module.validate.main')
 local Payment = {}
 
 --- Dialog texts the page uses; each comes from the locale key "ui_" .. key.
 local LABEL_KEYS <const> = {
-    "heading", "choose", "total", "cash", "card", "remaining", "short", "pay_cash", "pay_card",
-    "hold_cash", "hold_card", "unaffordable", "unreachable", "processing", "cancel", "success",
-    "paid_with", "new_balance", "reference", "done",
+    'heading',
+    'choose',
+    'total',
+    'cash',
+    'card',
+    'remaining',
+    'short',
+    'pay_cash',
+    'pay_card',
+    'hold_cash',
+    'hold_card',
+    'unaffordable',
+    'unreachable',
+    'processing',
+    'cancel',
+    'success',
+    'paid_with',
+    'new_balance',
+    'reference',
+    'done',
 }
 
 --- Longest refusal text and receipt reference a handler may hand back, in bytes.
@@ -33,10 +49,10 @@ local SHOWN_TIMEOUT <const> = 10000
 --- Locale key of the text for each failure code of xPlayer.chargeAccount, except
 --- insufficient_funds, whose text depends on the method.
 local FAILURE_KEYS <const> = {
-    invalid_account = "method_unavailable",
-    invalid_amount = "payment_failed",
-    session_closing = "payment_failed",
-    failed = "payment_failed",
+    invalid_account = 'method_unavailable',
+    invalid_amount = 'payment_failed',
+    session_closing = 'payment_failed',
+    failed = 'payment_failed',
 }
 
 ---@class OpenPayment
@@ -57,15 +73,17 @@ local lastId = 0
 
 ---@param message string
 local function warn(message)
-    print(("[^3WARNING^7] esx_paymentgateway: %s"):format(message))
+    print(('[^3WARNING^7] esx_paymentgateway: %s'):format(message))
 end
 
 ---@return table<string, string>
 local function labels()
     local result = {}
+
     for i = 1, #LABEL_KEYS do
         local key = LABEL_KEYS[i]
-        result[key] = Translate("ui_" .. key)
+
+        result[key] = Translate('ui_' .. key)
     end
     return result
 end
@@ -75,7 +93,9 @@ end
 ---@return PaymentMethod|nil
 function Payment.methodOf(account)
     for method, name in pairs(Config.Accounts) do
-        if name == account then return method end
+        if name == account then
+            return method
+        end
     end
     return nil
 end
@@ -85,10 +105,11 @@ end
 ---@param code any
 ---@return string|nil text Nil when the value is no such code
 function Payment.failureText(account, code)
-    if code == "insufficient_funds" then
+    if code == 'insufficient_funds' then
         local method = Payment.methodOf(account)
-        return Translate(method and "insufficient_" .. method or "payment_failed")
+        return Translate(method and 'insufficient_' .. method or 'payment_failed')
     end
+
     local key = FAILURE_KEYS[code]
     return key and Translate(key) or nil
 end
@@ -99,12 +120,15 @@ end
 local function balances()
     local result = { cash = 0, card = 0 }
     local data = ESX.GetPlayerData()
-    local accounts = type(data) == "table" and data.accounts
-    if type(accounts) ~= "table" then return result end
+    local accounts = type(data) == 'table' and data.accounts
+
+    if type(accounts) ~= 'table' then
+        return result
+    end
 
     for _, account in pairs(accounts) do
         for method, name in pairs(Config.Accounts) do
-            if type(account) == "table" and account.name == name then
+            if type(account) == 'table' and account.name == name then
                 result[method] = Validate.balance(account.money)
             end
         end
@@ -117,7 +141,10 @@ end
 ---@param method PaymentMethod|nil Method the player paid with, nil when they did not
 ---@param reason? string Why not
 local function finish(payment, method, reason)
-    if current ~= payment then return end
+    if current ~= payment then
+        return
+    end
+
     current = nil
     payment.done:resolve({ account = method and Config.Accounts[method], reason = reason })
 end
@@ -130,8 +157,12 @@ end
 local function ask(payment, method)
     local answer = promise.new()
     local settled = false
+
     local function settle(value)
-        if settled then return end
+        if settled then
+            return
+        end
+
         settled = true
         answer:resolve(value)
     end
@@ -139,6 +170,7 @@ local function ask(payment, method)
     CreateThread(function()
         settle(table.pack(pcall(payment.onPay, Config.Accounts[method])))
     end)
+
     SetTimeout(Config.PayTimeout * 1000, function()
         settle({ timeout = true })
     end)
@@ -155,18 +187,22 @@ end
 ---@return string|nil detail The refusal text or the receipt reference
 local function verdictOf(payment, method, answer)
     if answer.timeout then
-        warn(("the payment handler of %s did not answer within %ss"):format(payment.owner, Config.PayTimeout))
-        return "unconfirmed"
+        warn(('the payment handler of %s did not answer within %ss'):format(payment.owner, Config.PayTimeout))
+        return 'unconfirmed'
     end
+
     if not answer[1] then
-        warn(("the payment handler of %s failed: %s"):format(payment.owner, answer[2]))
-        return "unconfirmed"
+        warn(('the payment handler of %s failed: %s'):format(payment.owner, answer[2]))
+        return 'unconfirmed'
     end
 
     local ok, detail = answer[2], answer[3]
-    if type(ok) == "table" then
+
+    if type(ok) == 'table' then
         local result = ok
+
         ok = result.ok
+
         if ok == true then
             detail = result.reference
         elseif Validate.isText(result.message, MAX_MESSAGE) then
@@ -174,20 +210,22 @@ local function verdictOf(payment, method, answer)
         else
             detail = Payment.failureText(Config.Accounts[method], result.reason)
         end
-    elseif ok == true and type(detail) == "table" then
+    elseif ok == true and type(detail) == 'table' then
         detail = detail.reference
     elseif ok == false then
         detail = Payment.failureText(Config.Accounts[method], detail) or detail
     end
 
     if ok == true then
-        return "paid", Validate.isText(detail, MAX_REFERENCE) and detail or nil
+        return 'paid', Validate.isText(detail, MAX_REFERENCE) and detail or nil
     end
+
     if ok == false then
-        return "refused", Validate.isText(detail, MAX_MESSAGE) and detail or nil
+        return 'refused', Validate.isText(detail, MAX_MESSAGE) and detail or nil
     end
-    warn(("the payment handler of %s returned neither true nor false"):format(payment.owner))
-    return "unconfirmed"
+
+    warn(('the payment handler of %s returned neither true nor false'):format(payment.owner))
+    return 'unconfirmed'
 end
 
 ---Lets the handler sell with the chosen method and shows how that went. Only a clear no lets
@@ -197,27 +235,36 @@ end
 ---@param method PaymentMethod
 local function sell(payment, method)
     payment.paying = true
+
     local verdict, detail = verdictOf(payment, method, ask(payment, method))
+
     payment.paying = false
 
-    if verdict == "unconfirmed" then
-        if not payment.closed then xLib.nui.close({ action = "close" }) end
-        ESX.ShowNotification(TranslateCap("payment_unconfirmed"), "error")
-        return finish(payment, nil, "unconfirmed")
-    end
-    if payment.closed then
-        return finish(payment, verdict == "paid" and method or nil, verdict == "paid" and nil or "cancelled")
+    if verdict == 'unconfirmed' then
+        if not payment.closed then
+            xLib.nui.close({ action = 'close' })
+        end
+
+        ESX.ShowNotification(TranslateCap('payment_unconfirmed'), 'error')
+        return finish(payment, nil, 'unconfirmed')
     end
 
-    if verdict == "paid" then payment.paid = method end
+    if payment.closed then
+        return finish(payment, verdict == 'paid' and method or nil, verdict == 'paid' and nil or 'cancelled')
+    end
+
+    if verdict == 'paid' then
+        payment.paid = method
+    end
+
     xLib.nui.send({
-        action = "result",
+        action = 'result',
         result = {
             id = payment.id,
-            ok = verdict == "paid",
-            method = verdict == "paid" and method or nil,
-            message = verdict == "refused" and (detail or Translate("ui_unreachable")) or nil,
-            reference = verdict == "paid" and detail or nil,
+            ok = verdict == 'paid',
+            method = verdict == 'paid' and method or nil,
+            message = verdict == 'refused' and (detail or Translate('ui_unreachable')) or nil,
+            reference = verdict == 'paid' and detail or nil,
             balances = balances(),
         },
     })
@@ -232,19 +279,32 @@ end
 ---@return string|false account ESX account of the method the player paid with
 ---@return string|nil reason Why there is none: "cancelled", "unconfirmed", "busy" or what is wrong with the request
 function Payment.request(input, onPay, owner)
-    if current then return false, "busy" end
-    if not ESX.IsPlayerLoaded() then return false, "The player is not loaded." end
-    if onPay ~= nil and not Request.isCallable(onPay) then return false, "onPay must be a function." end
+    if current then
+        return false, 'busy'
+    end
+
+    if not ESX.IsPlayerLoaded() then
+        return false, 'The player is not loaded.'
+    end
+
+    if onPay ~= nil and not Request.isCallable(onPay) then
+        return false, 'onPay must be a function.'
+    end
 
     local request, reason = Request.normalize(input)
-    if not request then return false, reason end
+
+    if not request then
+        return false, reason
+    end
 
     lastId = lastId + 1
+
     local payment = { id = lastId, allowed = request.allowed, onPay = onPay, owner = owner, done = promise.new() }
+
     current = payment
 
     xLib.nui.send({
-        action = "open",
+        action = 'open',
         payment = {
             id = payment.id,
             amount = request.amount,
@@ -264,7 +324,7 @@ function Payment.request(input, onPay, owner)
 
     SetTimeout(SHOWN_TIMEOUT, function()
         if current == payment and not payment.shown then
-            warn(("the page did not show payment %s in time, cancelling it"):format(payment.id))
+            warn(('the page did not show payment %s in time, cancelling it'):format(payment.id))
             Payment.cancel()
         end
     end)
@@ -277,19 +337,26 @@ end
 ---runs, the export still waits for its answer, since it may have sold already.
 function Payment.cancel()
     local payment = current
-    if not payment or payment.closed then return end
-    xLib.nui.close({ action = "close" })
+
+    if not payment or payment.closed then
+        return
+    end
+
+    xLib.nui.close({ action = 'close' })
+
     if payment.paying then
         payment.closed = true
     else
-        finish(payment, payment.paid, not payment.paid and "cancelled" or nil)
+        finish(payment, payment.paid, not payment.paid and 'cancelled' or nil)
     end
 end
 
 ---Closes the dialog when the resource that opened it stops; nobody is left to hear the answer.
 ---@param resource string
 function Payment.forgetResource(resource)
-    if current and current.owner == resource then Payment.cancel() end
+    if current and current.owner == resource then
+        Payment.cancel()
+    end
 end
 
 ---@return boolean
@@ -297,8 +364,9 @@ function Payment.isOpen()
     return current ~= nil
 end
 
-xLib.nui.register("shown", function(data)
+xLib.nui.register('shown', function(data)
     local payment = current
+
     if payment and data.id == payment.id and not payment.closed then
         payment.shown = true
         xLib.nui.focus(true, true)
@@ -306,32 +374,39 @@ xLib.nui.register("shown", function(data)
     return xLib.nui.ok()
 end)
 
-xLib.nui.register("pay", function(data)
+xLib.nui.register('pay', function(data)
     local payment = current
-    if not payment or data.id ~= payment.id or type(data.method) ~= "string" or not payment.allowed[data.method] then
+
+    if not payment or data.id ~= payment.id or type(data.method) ~= 'string' or not payment.allowed[data.method] then
         return xLib.nui.ok()
     end
+
     if not payment.onPay then
-        xLib.nui.close({ action = "close" })
+        xLib.nui.close({ action = 'close' })
         finish(payment, data.method)
     elseif not payment.paying and not payment.paid and not payment.closed then
-        CreateThread(function() sell(payment, data.method) end)
+        CreateThread(function()
+            sell(payment, data.method)
+        end)
     end
     return xLib.nui.ok()
 end)
 
-xLib.nui.register("close", function(data)
+xLib.nui.register('close', function(data)
     local payment = current
     -- A late close for an earlier dialog must not take the focus from the one on screen.
-    if payment and data.id ~= payment.id then return xLib.nui.ok() end
+    if payment and data.id ~= payment.id then
+        return xLib.nui.ok()
+    end
 
     if payment and not payment.closed then
         if payment.paying then
             payment.closed = true
         else
-            finish(payment, payment.paid, not payment.paid and "cancelled" or nil)
+            finish(payment, payment.paid, not payment.paid and 'cancelled' or nil)
         end
     end
+
     xLib.nui.focus(false, false)
     return xLib.nui.ok()
 end)

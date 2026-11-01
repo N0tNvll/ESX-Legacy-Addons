@@ -23,5 +23,5 @@ Pump = {
     hose = nil,
     filling = false,
     cancelFilling = false,
-    uiTarget = nil
+    uiTarget = nil,
 }

@@ -21,7 +21,10 @@ end
 
 local function getStatusPlayer(src)
     local xPlayer = statusPlayers[src]
-    if xPlayer and isCurrentPlayer(src, xPlayer) then return xPlayer end
+
+    if xPlayer and isCurrentPlayer(src, xPlayer) then
+        return xPlayer
+    end
 
     xPlayer = ESX.GetPlayerFromId(src)
     statusPlayers[src] = xPlayer
@@ -53,16 +56,7 @@ local function normalizeStatus(status, statusName)
         local name = entry.name
         local value = entry.val
 
-        if
-            type(name) ~= 'string'
-            or name == ''
-            or #name > MAX_STATUS_NAME_LENGTH
-            or names[name]
-            or type(value) ~= 'number'
-            or value ~= value
-            or value == math.huge
-            or value == -math.huge
-        then
+        if type(name) ~= 'string' or name == '' or #name > MAX_STATUS_NAME_LENGTH or names[name] or type(value) ~= 'number' or value ~= value or value == math.huge or value == -math.huge then
             return nil
         end
 
@@ -133,7 +127,9 @@ local function advanceStatuses(xPlayer, persist)
         entry.percent = entry.val / Config.StatusMax * 100
     end
 
-    if persist ~= false then xPlayer.set('status', status, false) end
+    if persist ~= false then
+        xPlayer.set('status', status, false)
+    end
     return status
 end
 
@@ -146,7 +142,9 @@ local function syncStatuses(xPlayer, statuses, changedName)
         end
     end
 
-    if #data > 0 then TriggerClientEvent('esx_status:sync', xPlayer.source, data) end
+    if #data > 0 then
+        TriggerClientEvent('esx_status:sync', xPlayer.source, data)
+    end
 end
 
 local function changeStatus(src, name, value, additive)
@@ -197,6 +195,7 @@ CreateThread(function()
 
                 if xPlayer and not loadingStatuses[xPlayer] then
                     local status = xPlayer.get('status')
+
                     if type(status) == 'table' then
                         syncStatuses(xPlayer, advanceStatuses(xPlayer))
                     end
@@ -209,25 +208,33 @@ end)
 ---@param src number
 ---@param xPlayer table
 local function loadPlayerStatuses(src, xPlayer)
-    if not isCurrentPlayer(src, xPlayer) then return end
-    
-    local current = statusPlayers[src]
-    if current and isCurrentPlayer(src, current) then xPlayer = current end
+    if not isCurrentPlayer(src, xPlayer) then
+        return
+    end
 
-    if loadingStatuses[xPlayer] then return end
+    local current = statusPlayers[src]
+
+    if current and isCurrentPlayer(src, current) then
+        xPlayer = current
+    end
+
+    if loadingStatuses[xPlayer] then
+        return
+    end
 
     statusPlayers[src] = xPlayer
     loadingStatuses[xPlayer] = true
-    
-    local ok, status = pcall(MySQL.scalar.await,
-        'SELECT `status` FROM `users` WHERE `identifier` = ? LIMIT 1', { xPlayer.getIdentifier() })
+
+    local ok, status = pcall(MySQL.scalar.await, 'SELECT `status` FROM `users` WHERE `identifier` = ? LIMIT 1', { xPlayer.getIdentifier() })
+
     loadingStatuses[xPlayer] = nil
 
     if not ok then
         local delay = loadRetryDelays[xPlayer] or Config.LoadRetryInitial or 5000
+
         loadRequests[xPlayer] = loadRequests[xPlayer] or (GetGameTimer() + delay)
         loadRetryDelays[xPlayer] = math.min(delay * 2, Config.LoadRetryMax or 60000)
-        
+
         print(('[esx_status] Unable to load statuses for player %s: %s'):format(src, tostring(status)))
         return
     end
@@ -258,13 +265,21 @@ AddEventHandler('esx:playerLoaded', loadPlayerStatuses)
 RegisterNetEvent('esx_status:requestLoad', function()
     local src = source
     local xPlayer = getStatusPlayer(src)
-    if not xPlayer or loadingStatuses[xPlayer] then return end
+
+    if not xPlayer or loadingStatuses[xPlayer] then
+        return
+    end
 
     local now = GetGameTimer()
-    if loadRequests[xPlayer] and now < loadRequests[xPlayer] then return end
+
+    if loadRequests[xPlayer] and now < loadRequests[xPlayer] then
+        return
+    end
+
     loadRequests[xPlayer] = now + (loadRetryDelays[xPlayer] or Config.LoadRetryInitial or 5000)
 
     local status = xPlayer.get('status')
+
     if type(status) ~= 'table' then
         loadPlayerStatuses(src, xPlayer)
     else
@@ -276,6 +291,7 @@ end)
 ---@param reason string
 AddEventHandler('esx:playerDropped', function(src, reason)
     updateRequests[src] = nil
+
     local xPlayer = getStatusPlayer(src)
 
     if not xPlayer then
@@ -283,8 +299,13 @@ AddEventHandler('esx:playerDropped', function(src, reason)
     end
 
     statusPlayers[src] = nil
+
     local storedStatus = xPlayer.get('status')
-    if loadingStatuses[xPlayer] or type(storedStatus) ~= 'table' then return end
+
+    if loadingStatuses[xPlayer] or type(storedStatus) ~= 'table' then
+        return
+    end
+
     local status = advanceStatuses(xPlayer)
 
     MySQL.update('UPDATE users SET status = ? WHERE identifier = ?', { json.encode(status), xPlayer.getIdentifier() })
@@ -324,8 +345,13 @@ RegisterNetEvent('esx_status:update', function(status)
     local src = source
     local now = GetGameTimer()
     local lastUpdate = updateRequests[src]
-    if lastUpdate and now - lastUpdate < (Config.MinUpdateInterval or 10000) then return end
+
+    if lastUpdate and now - lastUpdate < (Config.MinUpdateInterval or 10000) then
+        return
+    end
+
     updateRequests[src] = now
+
     local xPlayer = getStatusPlayer(src)
 
     if not xPlayer or loadingStatuses[xPlayer] then
@@ -334,7 +360,10 @@ RegisterNetEvent('esx_status:update', function(status)
 
     if next(Config.AuthoritativeStatuses or {}) then
         local storedStatus = xPlayer.get('status')
-        if type(storedStatus) ~= 'table' then return end
+
+        if type(storedStatus) ~= 'table' then
+            return
+        end
     end
 
     status = normalizeStatus(status)

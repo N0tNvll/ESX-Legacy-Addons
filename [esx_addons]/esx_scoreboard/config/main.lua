@@ -10,7 +10,7 @@ Config = {}
 Config.Debug = false
 
 --- Key to open the scoreboard (default: Z )
-Config.OpenKey = "Z"
+Config.OpenKey = 'Z'
 
 --- Interval (ms) to broadcast summary counters to clients with scoreboard open
 Config.SummaryInterval = 10000
@@ -64,31 +64,31 @@ Config.MaxActivityPlayers = 16
 Config.UpdateInterval = Config.SummaryInterval
 
 --- Server display name shown in the scoreboard header
-Config.ServerName = "ESX Server"
+Config.ServerName = 'ESX Server'
 
 --- Max players displayed in the header (set to nil to use sv_maxclients convar)
 Config.MaxPlayers = nil
 
 --- HTTPS logo URL shown in the scoreboard header (set to "" to show ESX placeholder)
-Config.LogoUrl = ""
+Config.LogoUrl = ''
 
 --- Jobs to display in the scoreboard with their display labels
 Config.Jobs = {
-  police = { label = "Police", color = "#3B82F6" },
-  ambulance = { label = "EMS", color = "#EF4444" },
-  mechanic = { label = "Mechanic", color = "#F59E0B" },
-  taxi = { label = "Taxi", color = "#FBBF24" },
-  realtor = { label = "Realtor", color = "#10B981" },
-  cardealer = { label = "Car Dealer", color = "#8B5CF6" },
-  banker = { label = "Banker", color = "#06B6D4" }
+    police = { label = 'Police', color = '#3B82F6' },
+    ambulance = { label = 'EMS', color = '#EF4444' },
+    mechanic = { label = 'Mechanic', color = '#F59E0B' },
+    taxi = { label = 'Taxi', color = '#FBBF24' },
+    realtor = { label = 'Realtor', color = '#10B981' },
+    cardealer = { label = 'Car Dealer', color = '#8B5CF6' },
+    banker = { label = 'Banker', color = '#06B6D4' },
 }
 
 --- Activity types that can be shown in the scoreboard
 Config.ActivityTypes = {
-  robbery = { label = "Robbery", icon = "💰" },
-  heist = { label = "Heist", icon = "🏦" },
-  drug = { label = "Drug Sale", icon = "💊" },
-  race = { label = "Street Race", icon = "🏎️" },
-  hostage = { label = "Hostage", icon = "🚫" },
-  shootout = { label = "Shootout", icon = "🔫" }
+    robbery = { label = 'Robbery', icon = '💰' },
+    heist = { label = 'Heist', icon = '🏦' },
+    drug = { label = 'Drug Sale', icon = '💊' },
+    race = { label = 'Street Race', icon = '🏎️' },
+    hostage = { label = 'Hostage', icon = '🚫' },
+    shootout = { label = 'Shootout', icon = '🔫' },
 }

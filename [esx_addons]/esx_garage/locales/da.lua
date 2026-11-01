@@ -2,12 +2,12 @@
 -- Copyright (C) 2022-2026 ESX Framework
 
 return {
-    ["parking_blip_name"] = 'Garage',
-    ["Impound_blip_name"] = 'Beslaglæggelse',
-    ["access_parking"] = 'tryk på [E] for at få adgang til parkeringspladsen.',
-    ["access_Impound"] = 'tryk på [E] for at få adgang til deponeringen.',
-    ["park_veh"] = 'tryk på [E] for at parkere køretøjet.',
-    ["not_owning_veh"] = 'Du ejer ikke dette køretøj!',
+    ['parking_blip_name'] = 'Garage',
+    ['Impound_blip_name'] = 'Beslaglæggelse',
+    ['access_parking'] = 'tryk på [E] for at få adgang til parkeringspladsen.',
+    ['access_Impound'] = 'tryk på [E] for at få adgang til deponeringen.',
+    ['park_veh'] = 'tryk på [E] for at parkere køretøjet.',
+    ['not_owning_veh'] = 'Du ejer ikke dette køretøj!',
     ['veh_released'] = 'Succesfuldt hentet køretøj.',
     ['veh_Impound_released'] = 'Succesfuldt hentet køretøj fra beslaglæggelse.',
     ['veh_stored'] = 'Succesfuldt gemt køretøj',
@@ -28,5 +28,5 @@ return {
     ['not_in_vehicle'] = 'du sidder ikke i et køretøj.',
     ['cannot_store'] = 'køretøjet kan ikke parkeres.',
     ['cannot_access_garage'] = 'du har ikke adgang til denne garage.',
-    ['received_vehicle'] = 'du har modtaget et køretøj (nummerplade: %s).'
+    ['received_vehicle'] = 'du har modtaget et køretøj (nummerplade: %s).',
 }

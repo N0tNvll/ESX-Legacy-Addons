@@ -27,13 +27,7 @@ end
 
 function D.money(value, allowZero)
     value = tonumber(value)
-    return value
-            and value == value
-            and value >= (allowZero and 0 or 1)
-            and value <= 2147483647
-            and value % 1 == 0
-            and value
-        or nil
+    return value and value == value and value >= (allowZero and 0 or 1) and value <= 2147483647 and value % 1 == 0 and value or nil
 end
 
 function D.identifier(player)
@@ -42,7 +36,6 @@ end
 
 function D.modelHash(value)
     local hash = tonumber(value) or (D.normalizeModel(value) and joaat(value))
-
     return hash and hash == hash and hash % 1 == 0 and hash % 4294967296 or nil
 end
 
@@ -53,12 +46,7 @@ function D.current(player)
 
     local current = ESX.GetPlayerFromId(player.source)
 
-    if
-        not current
-        or not current.isCurrent
-        or current.isCurrent() ~= true
-        or current.getIdentifier() ~= player.getIdentifier()
-    then
+    if not current or not current.isCurrent or current.isCurrent() ~= true or current.getIdentifier() ~= player.getIdentifier() then
         return false
     end
 
@@ -86,23 +74,15 @@ function D.point(value)
     end
 
     local heading = (type(value) == 'table' or type(value) == 'vector4') and value.w or nil
-
     return { x = value.x, y = value.y, z = value.z, w = heading }
 end
 
 function D.near(source, point, distance)
-    return point ~= nil
-        and xLib.player.isNearCoords(
-                source,
-                vector3(point.x, point.y, point.z),
-                distance or 8.0
-            )
-            == true
+    return point ~= nil and xLib.player.isNearCoords(source, vector3(point.x, point.y, point.z), distance or 8.0) == true
 end
 
 function D.normalizeModel(model)
-    return type(model) == 'string' and #model <= 60 and model:match('^[%w_%-]+$') and model:lower()
-        or nil
+    return type(model) == 'string' and #model <= 60 and model:match('^[%w_%-]+$') and model:lower() or nil
 end
 
 function D.safeProps(props, model, plate)
@@ -110,6 +90,24 @@ function D.safeProps(props, model, plate)
 
     result.model, result.plate = joaat(model), plate
     D.assert(#json.encode(result) <= 16384, 'invalid_properties')
+    return result
+end
+
+function D.paintProps(props, color)
+    local result = type(props) == 'table' and D.copy(props) or {}
+
+    if color ~= nil then
+        D.assert(type(color) == 'string' and color:match('^#%x%x%x%x%x%x$'), 'invalid_color')
+
+        local rgb = {
+            tonumber(color:sub(2, 3), 16),
+            tonumber(color:sub(4, 5), 16),
+            tonumber(color:sub(6, 7), 16),
+        }
+
+        result.color1, result.color2 = rgb, D.copy(rgb)
+    end
+
     return result
 end
 
@@ -192,13 +190,7 @@ function D.plate()
 end
 
 function D.addShop(id, definition, resource)
-    D.assert(
-        type(id) == 'string'
-            and #id <= 64
-            and id:match('^[%w_%-:]+$')
-            and type(definition) == 'table',
-        'invalid_shop'
-    )
+    D.assert(type(id) == 'string' and #id <= 64 and id:match('^[%w_%-:]+$') and type(definition) == 'table', 'invalid_shop')
     D.assert(not D.shops[id] or D.shops[id].resource == resource, 'shop_id_conflict')
     definition.id, definition.resource = id, resource
     definition.mode = definition.mode or definition.type or 'public'
@@ -208,10 +200,7 @@ function D.addShop(id, definition, resource)
     end
 
     D.assert(definition.mode == 'public' or definition.mode == 'managed', 'invalid_shop_mode')
-    D.assert(
-        type(definition.vehicleTypes) == 'table' and #definition.vehicleTypes > 0,
-        'invalid_vehicle_types'
-    )
+    D.assert(type(definition.vehicleTypes) == 'table' and #definition.vehicleTypes > 0, 'invalid_vehicle_types')
 
     for _, kind in ipairs(definition.vehicleTypes) do
         D.assert(VehicleShopTypes[kind], 'invalid_vehicle_type')
@@ -224,31 +213,16 @@ function D.addShop(id, definition, resource)
     end
 
     definition.delivery = definition.delivery or { mode = 'garage' }
-    definition.stockMode = definition.stockMode
-        or (definition.mode == 'managed' and 'limited' or 'unlimited')
-    D.assert(
-        definition.stockMode == 'limited' or definition.stockMode == 'unlimited',
-        'invalid_stock_mode'
-    )
+    definition.stockMode = definition.stockMode or (definition.mode == 'managed' and 'limited' or 'unlimited')
+    D.assert(definition.stockMode == 'limited' or definition.stockMode == 'unlimited', 'invalid_stock_mode')
 
     if definition.mode == 'managed' then
-        D.assert(
-            definition.management
-                and type(definition.management.job) == 'string'
-                and type(definition.societyAccount) == 'string',
-            'invalid_management'
-        )
+        D.assert(definition.management and type(definition.management.job) == 'string' and type(definition.societyAccount) == 'string', 'invalid_management')
         definition.societyInventory = definition.societyInventory or definition.societyAccount
     end
 
     if definition.rentals and definition.rentals.enabled then
-        D.assert(
-            definition.mode == 'managed'
-                and not definition.ownershipJob
-                and definition.returnPoint
-                and definition.stockMode == 'limited',
-            'invalid_rental_configuration'
-        )
+        D.assert(definition.mode == 'managed' and not definition.ownershipJob and definition.returnPoint and definition.stockMode == 'limited', 'invalid_rental_configuration')
     end
 
     D.shops[id] = definition

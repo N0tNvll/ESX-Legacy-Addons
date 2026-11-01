@@ -7,18 +7,18 @@ local lastChange = {}
 local openLimiter = xLib.rateLimiter({
     capacity = 3,
     refill = 1,
-    interval = 1000
+    interval = 1000,
 })
+
 local listLimiter = xLib.rateLimiter({
     capacity = 3,
     refill = 1,
-    interval = 1000
+    interval = 1000,
 })
 
 local function progressFor(player, job)
     local metadata = player.getMeta() or {}
     local data = metadata.joblisting or {}
-
     return type(data[job]) == 'table' and data[job] or {}
 end
 
@@ -41,7 +41,7 @@ function getJobs(player)
                 rating = details.rating,
                 requirement = details.requirement,
                 location = details.location,
-                tasks = progress.tasks or details.tasks or {}
+                tasks = progress.tasks or details.tasks or {},
             }
         end
     end
@@ -63,7 +63,6 @@ function IsJobAvailable(name)
     end
 
     local job = ESX.GetJobs()[name]
-
     return job ~= nil and job.whitelisted == false and ESX.DoesJobExist(name, 0)
 end
 
@@ -102,7 +101,6 @@ local function profileFor(player)
     local job = player.getJob()
     local progress = progressFor(player, job.name)
     local sex = player.get('sex')
-
     return {
         name = player.getName(),
         id = player.getSource(),
@@ -114,10 +112,10 @@ local function profileFor(player)
             label = job.label,
             gradeLabel = job.grade_label,
             salary = job.grade_salary,
-            unemployed = job.name == Config.UnemployedJob
+            unemployed = job.name == Config.UnemployedJob,
         },
         stats = progress.stats or {},
-        tasks = progress.tasks or {}
+        tasks = progress.tasks or {},
     }
 end
 
@@ -134,45 +132,45 @@ xLib.callback.register('esx_joblisting:open', function(source)
     local player = ESX.Player(source)
 
     if not player then
-        return {ok = false}
+        return { ok = false }
     end
 
     if not openLimiter:consume(source) then
-        return {ok = false}
+        return { ok = false }
     end
 
     if not IsNearCentre(source) then
-        return {ok = false}
+        return { ok = false }
     end
 
-    return {ok = true, jobs = getJobs(player), profile = profileFor(player)}
+    return { ok = true, jobs = getJobs(player), profile = profileFor(player) }
 end)
 
 local function changeJob(source, name)
     local player = ESX.Player(source)
 
     if not player or type(name) ~= 'string' or not IsNearCentre(source) then
-        return {ok = false, message = TranslateCap('visit_center')}
+        return { ok = false, message = TranslateCap('visit_center') }
     end
 
     if not IsJobAvailable(name) then
-        return {ok = false, message = TranslateCap('job_unavailable')}
+        return { ok = false, message = TranslateCap('job_unavailable') }
     end
 
     if player.getJob().name == name then
-        return {ok = false, message = TranslateCap('already_job')}
+        return { ok = false, message = TranslateCap('already_job') }
     end
 
     local now = GetGameTimer()
 
     if lastChange[source] and now - lastChange[source] < 1500 then
-        return {ok = false, message = TranslateCap('change_cooldown')}
+        return { ok = false, message = TranslateCap('change_cooldown') }
     end
 
     lastChange[source] = now
     player.setJob(name, 0)
 
-    return {ok = true, profile = profileFor(player)}
+    return { ok = true, profile = profileFor(player) }
 end
 
 xLib.callback.register('esx_joblisting:apply', function(source, name)
@@ -196,7 +194,7 @@ exports('UpdateJobProgress', function(playerId, name, data)
 
     local progress = {
         stats = {},
-        tasks = {}
+        tasks = {},
     }
 
     if type(data.stats) == 'table' then
@@ -230,13 +228,13 @@ exports('UpdateJobProgress', function(playerId, name, data)
                 local entry = data.stats.extra[i]
 
                 if type(entry) == 'table' then
-                    local label = xLib.validation.string(entry.label, {maxLength = 64})
-                    local value = xLib.validation.string(type(entry.value) == 'number' and tostring(entry.value) or entry.value, {maxLength = 64})
+                    local label = xLib.validation.string(entry.label, { maxLength = 64 })
+                    local value = xLib.validation.string(type(entry.value) == 'number' and tostring(entry.value) or entry.value, { maxLength = 64 })
 
                     if label and value then
                         extra[#extra + 1] = {
                             label = label,
-                            value = value
+                            value = value,
                         }
                     end
                 end
@@ -257,8 +255,8 @@ exports('UpdateJobProgress', function(playerId, name, data)
             local task = data.tasks[i]
 
             if type(task) == 'table' then
-                local title = xLib.validation.string(task.title, {maxLength = 64})
-                local description = xLib.validation.string(task.description, {maxLength = 128})
+                local title = xLib.validation.string(task.title, { maxLength = 64 })
+                local description = xLib.validation.string(task.description, { maxLength = 128 })
                 local current = xLib.validation.integer(task.current, 0, 100000, 'floor')
                 local target = xLib.validation.integer(task.target, 0, 100000, 'floor')
 
@@ -267,7 +265,7 @@ exports('UpdateJobProgress', function(playerId, name, data)
                         title = title,
                         description = description,
                         current = current,
-                        target = target
+                        target = target,
                     }
                 end
             end
@@ -275,6 +273,7 @@ exports('UpdateJobProgress', function(playerId, name, data)
     end
 
     local all = (player.getMeta() or {}).joblisting or {}
+
     all[name] = progress
     player.setMeta('joblisting', all)
 

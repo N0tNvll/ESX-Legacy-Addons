@@ -36,13 +36,11 @@ Locales['pl'] = {
     ['error_society_no_money'] = 'Właściciel stacji nie może zapłacić za dostawę.',
     ['error_not_owner'] = 'Nie zarządzasz tą stacją.',
     ['error_price_range'] = 'Cena musi wynosić od 50 do 200 %%.',
-
     ['fuel_regular'] = 'Zwykłe',
     ['fuel_plus'] = 'Plus',
     ['fuel_premium'] = 'Premium',
     ['fuel_diesel'] = 'Diesel',
     ['fuel_electric'] = 'Elektryczne',
-
     ['ui_price_per_liter'] = 'CENA ZA JEDNOSTKĘ',
     ['ui_quantity'] = 'ILOŚĆ',
     ['ui_vehicle_fuel'] = 'BAK',

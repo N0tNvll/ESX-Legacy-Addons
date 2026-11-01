@@ -15,13 +15,13 @@ shared_scripts {
     '@es_extended/imports.lua',
     '@es_extended/locale.lua',
     'config.lua',
-    'locales/*.lua'
+    'locales/*.lua',
 }
 
 client_scripts {
     'client/catalog.lua',
     'client/wardrobe.lua',
-    'client/main.lua'
+    'client/main.lua',
 }
 
 ui_page 'html/index.html'
@@ -30,7 +30,7 @@ files {
     'html/index.html',
     'html/css/*.css',
     'html/js/*.js',
-    'html/assets/icons/*.png'
+    'html/assets/icons/*.png',
 }
 
 dependencies { 'esx_lib', 'es_extended', 'skinchanger' }

@@ -126,7 +126,6 @@ local function isGradeUpdateLimited(source, job, action)
     end
 
     local allowed = limiter:consume(('%s:%s'):format(source, job))
-
     return not allowed
 end
 
@@ -135,11 +134,7 @@ local function refreshJobOrFallback(job)
         return true
     end
 
-    print(
-        ('[^3WARNING^7] Failed to refresh job ^5%s^7, falling back to RefreshJobs!'):format(
-            tostring(job)
-        )
-    )
+    print(('[^3WARNING^7] Failed to refresh job ^5%s^7, falling back to RefreshJobs!'):format(tostring(job)))
 
     if ESX.IsFunctionReference(ESX.RefreshJobs) then
         ESX.RefreshJobs()
@@ -150,19 +145,12 @@ end
 
 local function isBoss(xPlayer)
     local job = xPlayer and xPlayer.getJob()
-
     return job and Config.BossGrades[job.grade_name] and true or false
 end
 
 local function hasSocietyBossAccess(xPlayer, society)
     local job = xPlayer and xPlayer.getJob()
-
-    return job
-            and society
-            and job.name == society.name
-            and Config.BossGrades[job.grade_name]
-            and true
-        or false
+    return job and society and job.name == society.name and Config.BossGrades[job.grade_name] and true or false
 end
 
 local function getValidJobGrade(job, grade)
@@ -199,11 +187,7 @@ AddEventHandler('esx_society:checkSocietyBalance', function(society)
     end
 
     TriggerEvent('esx_addonaccount:getSharedAccount', society.account, function(account)
-        TriggerClientEvent(
-            'esx:showNotification',
-            xPlayer.src,
-            TranslateCap('check_balance', ESX.Math.GroupDigits(account.money))
-        )
+        TriggerClientEvent('esx:showNotification', xPlayer.src, TranslateCap('check_balance', ESX.Math.GroupDigits(account.money)))
     end)
 end)
 
@@ -214,15 +198,7 @@ AddEventHandler('esx_society:withdrawMoney', function(societyName, amount)
     local society = GetSociety(societyName)
 
     if not society then
-        print(
-            (
-                (
-                    '[^3WARNING^7] Player ^5%s^7 attempted to withdraw from '
-                    .. 'non-existing society - '
-                    .. '^5%s^7!'
-                )
-            ):format(source, societyName)
-        )
+        print((('[^3WARNING^7] Player ^5%s^7 attempted to withdraw from ' .. 'non-existing society - ' .. '^5%s^7!')):format(source, societyName))
         return
     end
 
@@ -239,19 +215,12 @@ AddEventHandler('esx_society:withdrawMoney', function(societyName, amount)
     end
 
     if not hasSocietyBossAccess(xPlayer, society) then
-        return print(
-            ('[^3WARNING^7] Player ^5%s^7 attempted to withdraw from society - ^5%s^7!'):format(
-                source,
-                society.name
-            )
-        )
+        return print(('[^3WARNING^7] Player ^5%s^7 attempted to withdraw from society - ^5%s^7!'):format(source, society.name))
     end
 
     TriggerEvent('esx_addonaccount:getSharedAccount', society.account, function(account)
         if not account then
-            return print(
-                ('[^3WARNING^7] Society ^5%s^7 has no shared account!'):format(society.name)
-            )
+            return print(('[^3WARNING^7] Society ^5%s^7 has no shared account!'):format(society.name))
         end
 
         if account.money >= amount then
@@ -277,15 +246,7 @@ AddEventHandler('esx_society:depositMoney', function(societyName, amount)
     local society = GetSociety(societyName)
 
     if not society then
-        print(
-            (
-                (
-                    '[^3WARNING^7] Player ^5%s^7 attempted to deposit to '
-                    .. 'non-existing society - '
-                    .. '^5%s^7!'
-                )
-            ):format(source, societyName)
-        )
+        print((('[^3WARNING^7] Player ^5%s^7 attempted to deposit to ' .. 'non-existing society - ' .. '^5%s^7!')):format(source, societyName))
         return
     end
 
@@ -296,20 +257,13 @@ AddEventHandler('esx_society:depositMoney', function(societyName, amount)
     end
 
     if xPlayer.getJob().name ~= society.name then
-        return print(
-            ('[^3WARNING^7] Player ^5%s^7 attempted to deposit to society - ^5%s^7!'):format(
-                source,
-                society.name
-            )
-        )
+        return print(('[^3WARNING^7] Player ^5%s^7 attempted to deposit to society - ^5%s^7!'):format(source, society.name))
     end
 
     if xPlayer.getMoney() >= amount then
         TriggerEvent('esx_addonaccount:getSharedAccount', society.account, function(account)
             if not account then
-                return print(
-                    ('[^3WARNING^7] Society ^5%s^7 has no shared account!'):format(society.name)
-                )
+                return print(('[^3WARNING^7] Society ^5%s^7 has no shared account!'):format(society.name))
             end
 
             xPlayer.removeMoney(amount, TranslateCap('money_remove_reason'))
@@ -342,12 +296,7 @@ AddEventHandler('esx_society:washMoney', function(society, amount)
     end
 
     if not registeredSociety or not hasSocietyBossAccess(xPlayer, registeredSociety) then
-        return print(
-            ('[^3WARNING^7] Player ^5%s^7 attempted to wash money in society - ^5%s^7!'):format(
-                source,
-                society
-            )
-        )
+        return print(('[^3WARNING^7] Player ^5%s^7 attempted to wash money in society - ^5%s^7!'):format(source, society))
     end
 
     if account and account.money >= amount and SocietyEconomy.queue(xPlayer, society, amount) then
@@ -362,15 +311,7 @@ xLib.callback.registerCompat('esx_society:getSocietyMoney', function(source, cb,
     local xPlayer = ESX.Player(source)
 
     if not society then
-        print(
-            (
-                (
-                    '[^3WARNING^7] Player ^5%s^7 attempted to get money from '
-                    .. 'non-existing society - '
-                    .. '^5%s^7!'
-                )
-            ):format(source, societyName)
-        )
+        print((('[^3WARNING^7] Player ^5%s^7 attempted to get money from ' .. 'non-existing society - ' .. '^5%s^7!')):format(source, societyName))
         return cb(0)
     end
 
@@ -394,15 +335,7 @@ xLib.callback.registerCompat('esx_society:getEmployees', function(source, cb, so
     local xPlayer = ESX.Player(source)
 
     if not hasSocietyBossAccess(xPlayer, registeredSociety) then
-        print(
-            (
-                (
-                    '[^3WARNING^7] Player ^5%s^7 attempted to read employees for '
-                    .. 'society - '
-                    .. '^5%s^7!'
-                )
-            ):format(source, tostring(society))
-        )
+        print((('[^3WARNING^7] Player ^5%s^7 attempted to read employees for ' .. 'society - ' .. '^5%s^7!')):format(source, tostring(society)))
         return cb({})
     end
 
@@ -445,140 +378,81 @@ xLib.callback.registerCompat('esx_society:getJob', function(source, cb, society)
     cb(job)
 end)
 
-xLib.callback.registerCompat(
-    'esx_society:setJob',
-    function(source, cb, identifier, job, grade, actionType)
-        local xPlayer = ESX.Player(source)
-        local xPlayerJob = xPlayer and xPlayer.getJob()
-        local xTarget = ESX.Player(identifier)
+xLib.callback.registerCompat('esx_society:setJob', function(source, cb, identifier, job, grade, actionType)
+    local xPlayer = ESX.Player(source)
+    local xPlayerJob = xPlayer and xPlayer.getJob()
+    local xTarget = ESX.Player(identifier)
 
-        if not xPlayerJob or not isBoss(xPlayer) then
-            print(
-                ('[^3WARNING^7] Player ^5%s^7 attempted to setJob without boss access!'):format(
-                    source
-                )
-            )
-            return cb(false)
-        end
-
-        actionType = tostring(actionType or '')
-
-        if actionType ~= 'hire' and actionType ~= 'promote' and actionType ~= 'fire' then
-            print(
-                ('[^3WARNING^7] Player ^5%s^7 attempted invalid society action ^5%s^7!'):format(
-                    source,
-                    actionType
-                )
-            )
-            return cb(false)
-        end
-
-        if actionType == 'fire' then
-            if job ~= 'unemployed' or tonumber(grade) ~= 0 then
-                print(
-                    (
-                        (
-                            '[^3WARNING^7] Player ^5%s^7 attempted invalid fire '
-                            .. 'job assignment - '
-                            .. '^5%s:%s^7!'
-                        )
-                    ):format(source, tostring(job), tostring(grade))
-                )
-                return cb(false)
-            end
-
-            grade = 0
-        else
-            grade = getValidJobGrade(job, grade)
-
-            if job ~= xPlayerJob.name or not grade or grade > xPlayerJob.grade then
-                print(
-                    (
-                        (
-                            '[^3WARNING^7] Player ^5%s^7 attempted to set invalid '
-                            .. 'society job - '
-                            .. '^5%s:%s^7!'
-                        )
-                    ):format(source, tostring(job), tostring(grade))
-                )
-                return cb(false)
-            end
-        end
-
-        if not xTarget then
-            if actionType == 'hire' then
-                print(
-                    ('[^3WARNING^7] Player ^5%s^7 attempted to hire offline player ^5%s^7!'):format(
-                        source,
-                        tostring(identifier)
-                    )
-                )
-                return cb(false)
-            end
-
-            MySQL.single(
-                'SELECT job FROM users WHERE identifier = ?',
-                { identifier },
-                function(result)
-                    if not result or result.job ~= xPlayerJob.name then
-                        print(
-                            (
-                                (
-                                    '[^3WARNING^7] Player ^5%s^7 attempted to '
-                                    .. 'manage non-society offline player '
-                                    .. '^5%s^7!'
-                                )
-                            ):format(source, tostring(identifier))
-                        )
-                        return cb(false)
-                    end
-
-                    MySQL.update(
-                        'UPDATE users SET job = ?, job_grade = ? WHERE identifier = ?',
-                        { job, grade, identifier },
-                        function()
-                            cb(true)
-                        end
-                    )
-                end
-            )
-
-            return
-        end
-
-        if actionType ~= 'hire' and xTarget.getJob().name ~= xPlayerJob.name then
-            print(
-                (
-                    (
-                        '[^3WARNING^7] Player ^5%s^7 attempted to manage '
-                        .. 'non-society player '
-                        .. '^5%s^7!'
-                    )
-                ):format(source, xTarget.src)
-            )
-            return cb(false)
-        end
-
-        xTarget.setJob(job, grade)
-
-        local xTargetName, xTargetJob = xTarget.getName(), xTarget.getJob()
-
-        if actionType == 'hire' then
-            xTarget.showNotification(TranslateCap('you_have_been_hired', job))
-            xPlayer.showNotification(TranslateCap('you_have_hired', xTargetName))
-        elseif actionType == 'promote' then
-            xTarget.showNotification(TranslateCap('you_have_been_promoted'))
-            xPlayer.showNotification(
-                TranslateCap('you_have_promoted', xTargetName, xTargetJob.grade_label)
-            )
-        elseif actionType == 'fire' then
-            xTarget.showNotification(TranslateCap('you_have_been_fired', xTargetJob.label))
-            xPlayer.showNotification(TranslateCap('you_have_fired', xTargetName))
-        end
-
-        cb(true)
+    if not xPlayerJob or not isBoss(xPlayer) then
+        print(('[^3WARNING^7] Player ^5%s^7 attempted to setJob without boss access!'):format(source))
+        return cb(false)
     end
-)
+
+    actionType = tostring(actionType or '')
+
+    if actionType ~= 'hire' and actionType ~= 'promote' and actionType ~= 'fire' then
+        print(('[^3WARNING^7] Player ^5%s^7 attempted invalid society action ^5%s^7!'):format(source, actionType))
+        return cb(false)
+    end
+
+    if actionType == 'fire' then
+        if job ~= 'unemployed' or tonumber(grade) ~= 0 then
+            print((('[^3WARNING^7] Player ^5%s^7 attempted invalid fire ' .. 'job assignment - ' .. '^5%s:%s^7!')):format(source, tostring(job), tostring(grade)))
+            return cb(false)
+        end
+
+        grade = 0
+    else
+        grade = getValidJobGrade(job, grade)
+
+        if job ~= xPlayerJob.name or not grade or grade > xPlayerJob.grade then
+            print((('[^3WARNING^7] Player ^5%s^7 attempted to set invalid ' .. 'society job - ' .. '^5%s:%s^7!')):format(source, tostring(job), tostring(grade)))
+            return cb(false)
+        end
+    end
+
+    if not xTarget then
+        if actionType == 'hire' then
+            print(('[^3WARNING^7] Player ^5%s^7 attempted to hire offline player ^5%s^7!'):format(source, tostring(identifier)))
+            return cb(false)
+        end
+
+        MySQL.single('SELECT job FROM users WHERE identifier = ?', { identifier }, function(result)
+            if not result or result.job ~= xPlayerJob.name then
+                print((('[^3WARNING^7] Player ^5%s^7 attempted to ' .. 'manage non-society offline player ' .. '^5%s^7!')):format(source, tostring(identifier)))
+                return cb(false)
+            end
+
+            MySQL.update('UPDATE users SET job = ?, job_grade = ? WHERE identifier = ?', { job, grade, identifier }, function()
+                cb(true)
+            end)
+        end)
+
+        return
+    end
+
+    if actionType ~= 'hire' and xTarget.getJob().name ~= xPlayerJob.name then
+        print((('[^3WARNING^7] Player ^5%s^7 attempted to manage ' .. 'non-society player ' .. '^5%s^7!')):format(source, xTarget.src))
+        return cb(false)
+    end
+
+    xTarget.setJob(job, grade)
+
+    local xTargetName, xTargetJob = xTarget.getName(), xTarget.getJob()
+
+    if actionType == 'hire' then
+        xTarget.showNotification(TranslateCap('you_have_been_hired', job))
+        xPlayer.showNotification(TranslateCap('you_have_hired', xTargetName))
+    elseif actionType == 'promote' then
+        xTarget.showNotification(TranslateCap('you_have_been_promoted'))
+        xPlayer.showNotification(TranslateCap('you_have_promoted', xTargetName, xTargetJob.grade_label))
+    elseif actionType == 'fire' then
+        xTarget.showNotification(TranslateCap('you_have_been_fired', xTargetJob.label))
+        xPlayer.showNotification(TranslateCap('you_have_fired', xTargetName))
+    end
+
+    cb(true)
+end)
 
 xLib.callback.registerCompat('esx_society:setJobSalary', function(source, cb, job, grade, salary)
     local xPlayer = ESX.Player(source)
@@ -587,31 +461,13 @@ xLib.callback.registerCompat('esx_society:setJobSalary', function(source, cb, jo
     grade = getValidJobGrade(job, grade)
     salary = getValidSalary(salary)
 
-    if
-        not xPlayerJob
-        or xPlayerJob.name ~= job
-        or not Config.BossGrades[xPlayerJob.grade_name]
-        or not grade
-    then
-        print(
-            ('[^3WARNING^7] Player ^5%s^7 attempted to setJobSalary for ^5%s^7!'):format(
-                source,
-                job
-            )
-        )
+    if not xPlayerJob or xPlayerJob.name ~= job or not Config.BossGrades[xPlayerJob.grade_name] or not grade then
+        print(('[^3WARNING^7] Player ^5%s^7 attempted to setJobSalary for ^5%s^7!'):format(source, job))
         return cb(false)
     end
 
     if not salary then
-        print(
-            (
-                (
-                    '[^3WARNING^7] Player ^5%s^7 attempted to setJobSalary over '
-                    .. 'the config limit for '
-                    .. '^5%s^7!'
-                )
-            ):format(source, job)
-        )
+        print((('[^3WARNING^7] Player ^5%s^7 attempted to setJobSalary over ' .. 'the config limit for ' .. '^5%s^7!')):format(source, job))
         return cb(false)
     end
 
@@ -623,17 +479,13 @@ xLib.callback.registerCompat('esx_society:setJobSalary', function(source, cb, jo
         return cb(false)
     end
 
-    MySQL.update(
-        'UPDATE job_grades SET salary = ? WHERE job_name = ? AND grade = ?',
-        { salary, job, grade },
-        function(rowsChanged)
-            if rowsChanged ~= 1 then
-                return cb(false)
-            end
-
-            cb(refreshJobOrFallback(job))
+    MySQL.update('UPDATE job_grades SET salary = ? WHERE job_name = ? AND grade = ?', { salary, job, grade }, function(rowsChanged)
+        if rowsChanged ~= 1 then
+            return cb(false)
         end
-    )
+
+        cb(refreshJobOrFallback(job))
+    end)
 end)
 
 xLib.callback.registerCompat('esx_society:setJobLabel', function(source, cb, job, grade, label)
@@ -643,16 +495,8 @@ xLib.callback.registerCompat('esx_society:setJobLabel', function(source, cb, job
     grade = getValidJobGrade(job, grade)
     label = getValidJobGradeLabel(label)
 
-    if
-        not xPlayerJob
-        or xPlayerJob.name ~= job
-        or not Config.BossGrades[xPlayerJob.grade_name]
-        or not grade
-        or not label
-    then
-        print(
-            ('[^3WARNING^7] Player ^5%s^7 attempted to setJobLabel for ^5%s^7!'):format(source, job)
-        )
+    if not xPlayerJob or xPlayerJob.name ~= job or not Config.BossGrades[xPlayerJob.grade_name] or not grade or not label then
+        print(('[^3WARNING^7] Player ^5%s^7 attempted to setJobLabel for ^5%s^7!'):format(source, job))
         return cb(false)
     end
 
@@ -664,17 +508,13 @@ xLib.callback.registerCompat('esx_society:setJobLabel', function(source, cb, job
         return cb(false)
     end
 
-    MySQL.update(
-        'UPDATE job_grades SET label = ? WHERE job_name = ? AND grade = ?',
-        { label, job, grade },
-        function(rowsChanged)
-            if rowsChanged ~= 1 then
-                return cb(false)
-            end
-
-            cb(refreshJobOrFallback(job))
+    MySQL.update('UPDATE job_grades SET label = ? WHERE job_name = ? AND grade = ?', { label, job, grade }, function(rowsChanged)
+        if rowsChanged ~= 1 then
+            return cb(false)
         end
-    )
+
+        cb(refreshJobOrFallback(job))
+    end)
 end)
 
 local ALL_GRADES <const> = -1
@@ -780,24 +620,14 @@ xLib.callback.registerCompat('esx_society:setJobUniform', function(source, cb, j
     local xPlayerJob = xPlayer and xPlayer.getJob()
 
     if not xPlayerJob or xPlayerJob.name ~= job or not Config.BossGrades[xPlayerJob.grade_name] then
-        print(
-            ('[^3WARNING^7] Player ^5%s^7 attempted to setJobUniform for ^5%s^7!'):format(
-                source,
-                tostring(job)
-            )
-        )
+        print(('[^3WARNING^7] Player ^5%s^7 attempted to setJobUniform for ^5%s^7!'):format(source, tostring(job)))
         return cb(false)
     end
 
     local cooldownLeft = uniformSaveLimiter:retryAfter(job)
 
     if uniformSaveInFlight[job] or cooldownLeft > 0 then
-        xPlayer.showNotification(
-            TranslateCap(
-                'uniform_cooldown',
-                math.max(1, math.ceil(math.max(cooldownLeft, 0) / 1000))
-            )
-        )
+        xPlayer.showNotification(TranslateCap('uniform_cooldown', math.max(1, math.ceil(math.max(cooldownLeft, 0) / 1000))))
         return cb(false)
     end
 
@@ -898,15 +728,7 @@ xLib.callback.registerCompat('esx_society:getOnlinePlayers', function(source, cb
     local xPlayer = ESX.Player(source)
 
     if not hasSocietyBossAccess(xPlayer, society) then
-        print(
-            (
-                (
-                    '[^3WARNING^7] Player ^5%s^7 attempted to read online players '
-                    .. 'for society - '
-                    .. '^5%s^7!'
-                )
-            ):format(source, tostring(societyName))
-        )
+        print((('[^3WARNING^7] Player ^5%s^7 attempted to read online players ' .. 'for society - ' .. '^5%s^7!')):format(source, tostring(societyName)))
         return cb({})
     end
 
@@ -958,9 +780,7 @@ function isPlayerBoss(playerId, job)
     if xPlayerJob.name == job and Config.BossGrades[xPlayerJob.grade_name] then
         return true
     else
-        print(
-            ('esx_society: %s attempted open a society boss menu!'):format(xPlayer.getIdentifier())
-        )
+        print(('esx_society: %s attempted open a society boss menu!'):format(xPlayer.getIdentifier()))
         return false
     end
 end

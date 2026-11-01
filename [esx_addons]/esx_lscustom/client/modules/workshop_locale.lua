@@ -43,6 +43,6 @@ function WorkshopLocale.GetNuiPayload()
         list = TranslateCap('ui_list'),
         grid = TranslateCap('ui_grid'),
         requestFailed = TranslateCap('ui_request_failed'),
-        freeCameraHelp = TranslateCap('free_camera_help')
+        freeCameraHelp = TranslateCap('free_camera_help'),
     }
 end

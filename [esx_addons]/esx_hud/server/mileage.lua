@@ -13,6 +13,7 @@ if not Config.Disable.Vehicle then
 
     local function numericMileage(value)
         value = tonumber(value)
+
         if not value or value ~= value or value == -math.huge then
             return nil
         end
@@ -30,6 +31,7 @@ if not Config.Disable.Vehicle then
 
     local function storedMileageValue(value)
         local mileage = numericMileage(value)
+
         if not mileage then
             return 0
         end
@@ -43,11 +45,13 @@ if not Config.Disable.Vehicle then
 
     local function clientMileageValue(value, kmh)
         local mileage = numericMileage(value)
+
         if not mileage then
             return nil
         end
 
         local maxMileage = kmh and (MAX_STORED_MILEAGE * MILES_TO_KILOMETERS) or MAX_STORED_MILEAGE
+
         if mileage == math.huge or mileage > maxMileage then
             mileage = maxMileage
         end
@@ -61,6 +65,7 @@ if not Config.Disable.Vehicle then
         end
 
         local key = plate:gsub('^%s+', ''):gsub('%s+$', ''):upper()
+
         if key == '' then
             return nil
         end
@@ -98,6 +103,7 @@ if not Config.Disable.Vehicle then
         end
 
         local placeholders = {}
+
         for i = 1, #values do
             placeholders[i] = '?'
         end
@@ -107,6 +113,7 @@ if not Config.Disable.Vehicle then
 
     local function mileageData(plate)
         local data = Mileage.Data[plate]
+
         if data then
             return data
         end
@@ -117,8 +124,10 @@ if not Config.Disable.Vehicle then
 
     local function cachedMileage(plate)
         local data = mileageData(plate)
+
         if data and data.owned then
             local mileage = tonumber(data.mileage)
+
             if mileage and data.kmh then
                 mileage = mileage / MILES_TO_KILOMETERS
             end
@@ -133,14 +142,17 @@ if not Config.Disable.Vehicle then
 
     exports('GetMileages', function(plates)
         local mileages = {}
+
         if type(plates) ~= 'table' then
             return mileages
         end
 
         for i = 1, #plates do
             local plate = plates[i]
+
             if type(plate) == 'string' then
                 local mileage = cachedMileage(plate)
+
                 if mileage then
                     mileages[plate] = mileage
                 end
@@ -152,15 +164,14 @@ if not Config.Disable.Vehicle then
 
     MySQL.ready(function()
         local ok, err = pcall(xLib.schema.ensureMileage)
+
         mileageReady = ok
+
         if not ok then
-            print(
-                ('[esx_hud] 1.16.0 mileage migration failed; mileage is disabled: %s'):format(
-                    tostring(err)
-                )
-            )
+            print(('[esx_hud] 1.16.0 mileage migration failed; mileage is disabled: %s'):format(tostring(err)))
             return
         end
+
         print('[esx_hud] 1.16.0 mileage schema ready')
     end)
 
@@ -168,40 +179,42 @@ if not Config.Disable.Vehicle then
         if not mileageReady then
             return
         end
+
         local values, key = plateValues(plate)
+
         if not key or #values == 0 then
             return self:UpdateClient(0, playerId)
         end
 
-        MySQL.single(
-            ('SELECT plate, mileage FROM owned_vehicles WHERE %s LIMIT 1'):format(
-                plateCondition(values)
-            ),
-            values,
-            function(data)
-                local mileage, owned
-                if data then
-                    mileage, owned = tonumber(data.mileage) or 0, true
-                    if kmh then
-                        mileage = mileage * MILES_TO_KILOMETERS
-                    end
-                else
-                    mileage, owned = math.random(100, 10000), false
+        MySQL.single(('SELECT plate, mileage FROM owned_vehicles WHERE %s LIMIT 1'):format(plateCondition(values)), values, function(data)
+            local mileage, owned
+
+            if data then
+                mileage, owned = tonumber(data.mileage) or 0, true
+
+                if kmh then
+                    mileage = mileage * MILES_TO_KILOMETERS
                 end
-                self:Create(data and data.plate or plate, mileage, owned, playerId, kmh, key)
+            else
+                mileage, owned = math.random(100, 10000), false
             end
-        )
+
+            self:Create(data and data.plate or plate, mileage, owned, playerId, kmh, key)
+        end)
     end
 
     function Mileage:Save()
         if not mileageReady then
             return
         end
+
         if next(Mileage.Data) then
             local parameters = {}
+
             for _, data in pairs(Mileage.Data) do
                 if data.owned and type(data.plate) == 'string' then
                     local mileage = tonumber(data.mileage) or 0
+
                     if data.kmh then
                         mileage = mileage / MILES_TO_KILOMETERS
                     end
@@ -212,16 +225,14 @@ if not Config.Disable.Vehicle then
             end
 
             if next(parameters) then
-                MySQL.prepare(
-                    'UPDATE `owned_vehicles` SET `mileage` = ? WHERE `plate` = ?',
-                    parameters
-                )
+                MySQL.prepare('UPDATE `owned_vehicles` SET `mileage` = ? WHERE `plate` = ?', parameters)
             end
         end
     end
 
     function Mileage:Create(plate, mileage, owned, playerId, kmh, key)
         local cacheKey = key or plateKey(plate)
+
         if not cacheKey then
             return
         end
@@ -232,19 +243,21 @@ if not Config.Disable.Vehicle then
 
     function Mileage:Update(plate, mileage, playerId, kmh)
         local data = mileageData(plate)
+
         if not data then
             return
         end
 
         local clientMileage = clientMileageValue(mileage, kmh)
+
         if not clientMileage then
             return
         end
 
         local storedMileage = kmh and clientMileage / MILES_TO_KILOMETERS or clientMileage
+
         storedMileage = storedMileageValue(storedMileage)
-        clientMileage = kmh and clientMileageValue(storedMileage * MILES_TO_KILOMETERS, true)
-            or storedMileage
+        clientMileage = kmh and clientMileageValue(storedMileage * MILES_TO_KILOMETERS, true) or storedMileage
 
         data.mileage = storedMileage
         data.kmh = false
@@ -257,12 +270,15 @@ if not Config.Disable.Vehicle then
     function Mileage:Exist(plate, playerId, kmh)
         if mileageData(plate) then
             local milage = cachedMileage(plate) or 0
+
             if kmh then
                 milage = milage * MILES_TO_KILOMETERS
             end
+
             self:UpdateClient(milage, playerId)
             return
         end
+
         self:Load(plate, playerId, kmh)
     end
 
@@ -273,6 +289,7 @@ if not Config.Disable.Vehicle then
 
     RegisterNetEvent('esx_hud:EnteredVehicle', function(plate, kmh)
         local playerId = source
+
         Mileage:Exist(plate, playerId, kmh)
     end)
 
@@ -297,6 +314,7 @@ if not Config.Disable.Vehicle then
         if GetCurrentResourceName() ~= resourceName then
             return
         end
+
         Mileage:Save()
     end)
 

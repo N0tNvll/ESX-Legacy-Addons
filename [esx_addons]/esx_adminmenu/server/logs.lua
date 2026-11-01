@@ -16,9 +16,7 @@ local queue = {}
 local head, tail = 1, 0
 local dropped = 0
 local flushing = false
-
-local INSERT_COLUMNS =
-"INSERT INTO admin_logs (created_at, actor_identifier, actor_name, namespace, action, target_identifier, target_name, success, error, payload) VALUES "
+local INSERT_COLUMNS = 'INSERT INTO admin_logs (created_at, actor_identifier, actor_name, namespace, action, target_identifier, target_name, success, error, payload) VALUES '
 local COLUMN_COUNT = 10
 
 --- Column values in INSERT order. Holes are expected: target_name, error and
@@ -50,17 +48,17 @@ local function appendRow(row, placeholders, params)
         local value = values[i]
 
         if value == nil then
-            parts[i] = "NULL"
+            parts[i] = 'NULL'
         elseif i == 1 then
-            parts[i] = "FROM_UNIXTIME(?)"
+            parts[i] = 'FROM_UNIXTIME(?)'
             params[#params + 1] = value
         else
-            parts[i] = "?"
+            parts[i] = '?'
             params[#params + 1] = value
         end
     end
 
-    placeholders[#placeholders + 1] = "(" .. table.concat(parts, ",") .. ")"
+    placeholders[#placeholders + 1] = '(' .. table.concat(parts, ',') .. ')'
 end
 
 -- Never persisted: these either leak network identity or duplicate a column.
@@ -89,7 +87,7 @@ end
 --- Nested tables are collapsed rather than serialised: a vehicle props blob is
 --- several kilobytes and has no forensic value in a log line.
 local function encodePayload(payload)
-    if type(payload) ~= "table" then
+    if type(payload) ~= 'table' then
         return nil
     end
 
@@ -100,11 +98,11 @@ local function encodePayload(payload)
         if not REDACTED_KEYS[key] then
             local valueType = type(value)
 
-            if valueType == "string" or valueType == "number" or valueType == "boolean" then
+            if valueType == 'string' or valueType == 'number' or valueType == 'boolean' then
                 clean[key] = value
                 empty = false
-            elseif valueType == "table" then
-                clean[key] = "<table>"
+            elseif valueType == 'table' then
+                clean[key] = '<table>'
                 empty = false
             end
         end
@@ -115,11 +113,13 @@ local function encodePayload(payload)
     end
 
     local ok, encoded = pcall(json.encode, clean)
-    if not ok or type(encoded) ~= "string" then
+
+    if not ok or type(encoded) ~= 'string' then
         return nil
     end
 
     local maxBytes = tonumber(config().MaxPayloadBytes) or 2048
+
     if #encoded > maxBytes then
         -- Cutting the string mid-token would store invalid JSON, so replace it
         -- with a marker that still parses.
@@ -158,18 +158,19 @@ end
 
 local function withinRate(actor)
     local limit = tonumber(config().MaxPerMinutePerActor) or 120
+
     if limit <= 0 then
         return true
     end
 
-    local key = tostring(actor or "unknown")
+    local key = tostring(actor or 'unknown')
     local allowed = getRateLimiter(limit):consume(key)
 
     if not allowed then
         -- Announce the mute once per refill period rather than on every drop.
         if not rateMuted[key] then
             rateMuted[key] = true
-            print(("[esx-adminmenu] Log rate limit hit for %s, muted for this minute"):format(key))
+            print(('[esx-adminmenu] Log rate limit hit for %s, muted for this minute'):format(key))
 
             SetTimeout(60000, function()
                 rateMuted[key] = nil
@@ -184,30 +185,31 @@ end
 
 --- Resolves a player source (or a raw identifier string) into identifier + name.
 local function resolveActor(value)
-    if type(value) == "string" then
+    if type(value) == 'string' then
         return value, nil
     end
 
     local src = tonumber(value)
+
     if not src or src <= 0 then
         return nil, nil
     end
 
     local identifier = Helpers.getPlayerLicenseIdentifier and Helpers.getPlayerLicenseIdentifier(src) or nil
     local name = GetPlayerName(src)
-
     return identifier, name
 end
 
 --- Queues one admin action. Cheap, allocation-light, and never raises.
 --- @param entry table namespace, action, actor, target, targetName, success, err, payload
 function Logs.record(entry)
-    if not isEnabled() or type(entry) ~= "table" then
+    if not isEnabled() or type(entry) ~= 'table' then
         return
     end
 
     local action = entry.action
-    if type(action) ~= "string" or action == "" or not shouldRecord(action) then
+
+    if type(action) ~= 'string' or action == '' or not shouldRecord(action) then
         return
     end
 
@@ -226,12 +228,11 @@ function Logs.record(entry)
     local ok, row = pcall(function()
         local actorIdentifier, actorName = resolveActor(entry.actor)
         local targetIdentifier, targetName = resolveActor(entry.target)
-
         return {
             at = os.time(),
-            actor_identifier = clip(actorIdentifier or "unknown", 64),
+            actor_identifier = clip(actorIdentifier or 'unknown', 64),
             actor_name = clip(actorName or entry.actorName, 64),
-            namespace = clip(entry.namespace or "unknown", 32),
+            namespace = clip(entry.namespace or 'unknown', 32),
             action = clip(action, 64),
             target_identifier = clip(targetIdentifier, 64),
             target_name = clip(targetName or entry.targetName, 64),
@@ -248,6 +249,7 @@ function Logs.record(entry)
     -- Bounded: if the database is unreachable we shed the oldest entries rather
     -- than grow until the server runs out of memory.
     local maxQueue = tonumber(config().MaxQueue) or 500
+
     while queueCount() >= maxQueue do
         queue[head] = nil
         head = head + 1
@@ -260,6 +262,7 @@ end
 
 local function buildWebhookEmbeds(rows)
     local allowed = config().Webhook and config().Webhook.Actions
+
     if not allowed then
         return nil
     end
@@ -273,26 +276,27 @@ local function buildWebhookEmbeds(rows)
         end
 
         local row = rows[i]
+
         if allowed[row.action] then
             local lines = {
-                ("**Admin:** %s (`%s`)"):format(row.actor_name or "?", row.actor_identifier or "?"),
+                ('**Admin:** %s (`%s`)'):format(row.actor_name or '?', row.actor_identifier or '?'),
             }
 
             if row.target_identifier then
-                lines[#lines + 1] = ("**Target:** %s (`%s`)"):format(row.target_name or "?", row.target_identifier)
+                lines[#lines + 1] = ('**Target:** %s (`%s`)'):format(row.target_name or '?', row.target_identifier)
             end
 
             if not row.success then
-                lines[#lines + 1] = ("**Failed:** %s"):format(row.error or "unknown")
+                lines[#lines + 1] = ('**Failed:** %s'):format(row.error or 'unknown')
             end
 
             if row.payload then
-                lines[#lines + 1] = ("```json\n%s\n```"):format(row.payload:sub(1, 900))
+                lines[#lines + 1] = ('```json\n%s\n```'):format(row.payload:sub(1, 900))
             end
 
             embeds[#embeds + 1] = {
-                title = ("%s / %s"):format(row.namespace, row.action),
-                description = table.concat(lines, "\n"),
+                title = ('%s / %s'):format(row.namespace, row.action),
+                description = table.concat(lines, '\n'),
                 color = row.success == 1 and 3066993 or 15158332,
             }
         end
@@ -307,18 +311,17 @@ local function postWebhook(rows)
 
     -- Only https, so a misconfigured value cannot be used to probe the local
     -- network from the server process.
-    if type(url) ~= "string" or not url:match("^https://") then
+    if type(url) ~= 'string' or not url:match('^https://') then
         return
     end
 
     local embeds = buildWebhookEmbeds(rows)
+
     if not embeds then
         return
     end
 
-    pcall(PerformHttpRequest, url, function() end, "POST",
-        json.encode({ username = "ESX Admin Menu", embeds = embeds }),
-        { ["Content-Type"] = "application/json" })
+    pcall(PerformHttpRequest, url, function() end, 'POST', json.encode({ username = 'ESX Admin Menu', embeds = embeds }), { ['Content-Type'] = 'application/json' })
 end
 
 --- Writes every queued entry. Safe to call at any time; concurrent calls are
@@ -333,14 +336,16 @@ function Logs.flush()
     -- Detach the queue first: entries recorded during the write land in the
     -- next batch instead of being lost.
     local batch = {}
+
     for i = head, tail do
         batch[#batch + 1] = queue[i]
         queue[i] = nil
     end
+
     head, tail = 1, 0
 
     if dropped > 0 then
-        print(("[esx-adminmenu] Log queue overflow, dropped %d entries"):format(dropped))
+        print(('[esx-adminmenu] Log queue overflow, dropped %d entries'):format(dropped))
         dropped = 0
     end
 
@@ -353,11 +358,12 @@ function Logs.flush()
 
         for i = start, math.min(start + batchSize - 1, #batch) do
             local row = batch[i]
+
             chunk[#chunk + 1] = row
             appendRow(row, placeholders, params)
         end
 
-        Helpers.safeQuery(INSERT_COLUMNS .. table.concat(placeholders, ","), params)
+        Helpers.safeQuery(INSERT_COLUMNS .. table.concat(placeholders, ','), params)
         postWebhook(chunk)
     end
 
@@ -366,7 +372,7 @@ end
 
 --- Escapes LIKE metacharacters so a search of "%" cannot match every row.
 local function escapeLike(value)
-    return (value:gsub("([%%_\\])", "\\%1"))
+    return (value:gsub('([%%_\\])', '\\%1'))
 end
 
 --- Paginated read. Filters are optional and combine with AND.
@@ -379,13 +385,10 @@ function Logs.query(filters)
     -- Free-text search across the columns an admin would actually type into.
     -- Infix LIKE cannot use an index, so it is bounded by the LIMIT below and
     -- by the retention window: admin_logs never grows past RetentionDays.
-    local search =
-        type(filters.search) == "string"
-        and filters.search:match("^%s*(.-)%s*$")
-        or ""
+    local search = type(filters.search) == 'string' and filters.search:match('^%s*(.-)%s*$') or ''
 
     if #search >= 2 and #search <= 100 then
-        local prefix = escapeLike(search) .. "%"
+        local prefix = escapeLike(search) .. '%'
 
         where[#where + 1] = [[(
             actor_name LIKE ?
@@ -402,38 +405,38 @@ function Logs.query(filters)
         params[#params + 1] = prefix
     end
 
-    if type(filters.actor) == "string" and filters.actor ~= "" then
-        where[#where + 1] = "actor_identifier = ?"
+    if type(filters.actor) == 'string' and filters.actor ~= '' then
+        where[#where + 1] = 'actor_identifier = ?'
         params[#params + 1] = filters.actor
     end
 
-    if type(filters.target) == "string" and filters.target ~= "" then
-        where[#where + 1] = "target_identifier = ?"
+    if type(filters.target) == 'string' and filters.target ~= '' then
+        where[#where + 1] = 'target_identifier = ?'
         params[#params + 1] = filters.target
     end
 
-    if type(filters.action) == "string" and filters.action ~= "" then
-        where[#where + 1] = "action = ?"
+    if type(filters.action) == 'string' and filters.action ~= '' then
+        where[#where + 1] = 'action = ?'
         params[#params + 1] = filters.action
     end
 
-    if type(filters.namespace) == "string" and filters.namespace ~= "" then
-        where[#where + 1] = "namespace = ?"
+    if type(filters.namespace) == 'string' and filters.namespace ~= '' then
+        where[#where + 1] = 'namespace = ?'
         params[#params + 1] = filters.namespace
     end
 
     local days = tonumber(filters.days)
+
     if days and days > 0 then
-        where[#where + 1] = "created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)"
+        where[#where + 1] = 'created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)'
         params[#params + 1] = math.floor(days)
     end
 
     local limit = math.max(1, math.min(tonumber(filters.limit) or 50, 200))
-
     local beforeId = tonumber(filters.beforeId)
 
     if beforeId and beforeId > 0 then
-        where[#where + 1] = "id < ?"
+        where[#where + 1] = 'id < ?'
         params[#params + 1] = math.floor(beforeId)
     end
 
@@ -442,12 +445,12 @@ function Logs.query(filters)
         FROM admin_logs]]
 
     if #where > 0 then
-        sql = sql .. " WHERE " .. table.concat(where, " AND ")
+        sql = sql .. ' WHERE ' .. table.concat(where, ' AND ')
     end
 
     -- id desc rather than created_at desc: id is the primary key, so the sort
     -- is served by the index and stays cheap as the table grows.
-    sql = sql .. " ORDER BY id DESC LIMIT ?"
+    sql = sql .. ' ORDER BY id DESC LIMIT ?'
     params[#params + 1] = limit + 1
 
     local rows = Helpers.safeQuery(sql, params) or {}
@@ -474,6 +477,7 @@ end
 --- Deletes expired rows in bounded chunks so the table is never locked long.
 function Logs.purge()
     local days = tonumber(config().RetentionDays) or 30
+
     if days <= 0 then
         return 0, false
     end
@@ -528,22 +532,23 @@ CreateThread(function()
         Wait(delay)
 
         local ok, _, backlog = pcall(Logs.purge)
+
         delay = ok and backlog and math.max(1000, math.min(tonumber(config().PurgeBacklogDelay) or 60000, 3600000)) or 3600000
     end
 end)
 
 -- Last chance to persist: a restart would otherwise discard the current window.
-AddEventHandler("onResourceStop", function(resource)
+AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() then
         pcall(Logs.flush)
     end
 end)
 
-exports("logAdminAction", function(entry)
+exports('logAdminAction', function(entry)
     Logs.record(entry)
 end)
 
-exports("getAdminLogs", function(filters)
+exports('getAdminLogs', function(filters)
     return Logs.query(filters)
 end)
 

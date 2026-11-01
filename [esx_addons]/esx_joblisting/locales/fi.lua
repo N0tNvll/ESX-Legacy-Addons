@@ -69,5 +69,5 @@ Locales['fi'] = {
     ['ui_no_response'] = 'Palvelin ei vastannut. Yritä uudelleen.',
     ['ui_location_marked'] = 'Työpaikan sijainti merkitty karttaan.',
     ['ui_location_unavailable'] = 'Sijainti ei ole saatavilla.',
-    ['ui_location_failed'] = 'Sijainnin merkitseminen epäonnistui.'
+    ['ui_location_failed'] = 'Sijainnin merkitseminen epäonnistui.',
 }

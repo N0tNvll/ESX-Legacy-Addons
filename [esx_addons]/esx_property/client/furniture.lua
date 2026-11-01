@@ -18,6 +18,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
+
 if Config.Furniture.Enabled then
     SpawnedFurniture = {}
 
@@ -170,7 +171,6 @@ if Config.Furniture.Enabled then
 
         function GetCameraDirection()
             local rotation = GetGameplayCamRot() * (math.pi / 180)
-
             return vector3(-math.sin(rotation.z), math.cos(rotation.z), math.sin(rotation.x))
         end
 
@@ -277,22 +277,28 @@ if Config.Furniture.Enabled then
                             { title = TranslateCap('no'), icon = 'fas fa-minus' },
                         }, function(menu, element)
                             if element.value and element.value == 'buy' then
-                                PaymentGateway.Pay({
-                                    amount = Config.FurnitureCatagories[PropCatagory][PropIndex].price,
-                                    title = Config.FurnitureCatagories[PropCatagory][PropIndex].title,
-                                }, 'esx_property:buyFurniture', function(response, paymentFailure)
-                                    if response then
-                                        DeleteEntity(CurrentlyEditing)
-                                        ESX.ShowNotification(TranslateCap('bought_furni', Config.FurnitureCatagories[PropCatagory][PropIndex].title), 'success')
-                                        ESX.CloseContext()
-                                    else
-                                        ESX.ShowNotification(TranslateCap('cannot_buy'), 'error')
-                                    end
-                                end, CurrentId, PropName, PropIndex, PropCatagory, vector3(
-                                    CurrentPos.x,
-                                    CurrentPos.y,
-                                    CurrentPos.z
-                                ), CurrentHeading)
+                                PaymentGateway.Pay(
+                                    {
+                                        amount = Config.FurnitureCatagories[PropCatagory][PropIndex].price,
+                                        title = Config.FurnitureCatagories[PropCatagory][PropIndex].title,
+                                    },
+                                    'esx_property:buyFurniture',
+                                    function(response, paymentFailure)
+                                        if response then
+                                            DeleteEntity(CurrentlyEditing)
+                                            ESX.ShowNotification(TranslateCap('bought_furni', Config.FurnitureCatagories[PropCatagory][PropIndex].title), 'success')
+                                            ESX.CloseContext()
+                                        else
+                                            ESX.ShowNotification(TranslateCap('cannot_buy'), 'error')
+                                        end
+                                    end,
+                                    CurrentId,
+                                    PropName,
+                                    PropIndex,
+                                    PropCatagory,
+                                    vector3(CurrentPos.x, CurrentPos.y, CurrentPos.z),
+                                    CurrentHeading
+                                )
                             end
                         end)
                     else
@@ -441,8 +447,7 @@ if Config.Furniture.Enabled then
         }
 
         if #SpawnedFurniture > 0 then
-            Options[#Options + 1] =
-                { title = TranslateCap('menu_reset'), description = TranslateCap('menu_reset_desc'), icon = 'fas fa-trash', value = 'reset' }
+            Options[#Options + 1] = { title = TranslateCap('menu_reset'), description = TranslateCap('menu_reset_desc'), icon = 'fas fa-trash', value = 'reset' }
             Options[#Options + 1] = { title = TranslateCap('menu_edit'), description = TranslateCap('menu_edit_desc'), icon = 'fas fa-archive', value = 'edit' }
         end
 

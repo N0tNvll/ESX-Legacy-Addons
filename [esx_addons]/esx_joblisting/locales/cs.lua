@@ -69,5 +69,5 @@ Locales['cs'] = {
     ['ui_no_response'] = 'Server neodpověděl. Zkus to znovu.',
     ['ui_location_marked'] = 'Místo práce bylo označeno na mapě.',
     ['ui_location_unavailable'] = 'Místo není dostupné.',
-    ['ui_location_failed'] = 'Místo se nepodařilo označit.'
+    ['ui_location_failed'] = 'Místo se nepodařilo označit.',
 }

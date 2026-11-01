@@ -67,7 +67,7 @@ local function track(vehicle)
         speed = 1.0,
         torque = 1.0,
         limp = false,
-        failed = false
+        failed = false,
     }
 end
 
@@ -87,7 +87,6 @@ local function applyCollisionDamage(state, multiplier)
     local engine = GetVehicleEngineHealth(vehicle)
     local body = GetVehicleBodyHealth(vehicle)
     local tank = GetVehiclePetrolTankHealth(vehicle)
-
     local engineLoss = math.max(0.0, state.engine - engine)
     local bodyLoss = math.max(0.0, state.body - body)
     local tankLoss = math.max(0.0, state.tank - tank)
@@ -130,7 +129,7 @@ local function applyEngineState(state, seconds)
     if engine <= Config.Engine.FailureHealth then
         if not state.failed then
             state.failed = true
-            notify("engine_failed")
+            notify('engine_failed')
         end
 
         SetVehicleEngineOn(vehicle, false, true, true)
@@ -143,7 +142,7 @@ local function applyEngineState(state, seconds)
     local limp = not state.failed and engine < Config.Engine.LimpHealth
 
     if limp and not state.limp then
-        notify("limp_mode")
+        notify('limp_mode')
     end
 
     state.limp = limp
@@ -200,6 +199,7 @@ CreateThread(function()
 
             if now - lastTick >= TICK_MS then
                 local seconds = (now - lastTick) / 1000.0
+
                 lastTick = now
 
                 if multiplier then
@@ -239,7 +239,7 @@ CreateThread(function()
     end
 end)
 
-exports("AddEngineWear", function(vehicle, amount)
+exports('AddEngineWear', function(vehicle, amount)
     amount = tonumber(amount)
 
     if not amount or amount <= 0.0 or not vehicle or not DoesEntityExist(vehicle) then
@@ -248,6 +248,7 @@ exports("AddEngineWear", function(vehicle, amount)
 
     local health = GetVehicleEngineHealth(vehicle)
     local engine = math.max(math.min(health, Config.Engine.FailureHealth), health - amount)
+
     SetVehicleEngineHealth(vehicle, engine)
 
     if current and current.vehicle == vehicle then
@@ -255,10 +256,10 @@ exports("AddEngineWear", function(vehicle, amount)
     end
 end)
 
-exports("SetModifier", function(vehicle, key, speed, torque)
+exports('SetModifier', function(vehicle, key, speed, torque)
     speed, torque = tonumber(speed), tonumber(torque)
 
-    if not vehicle or type(key) ~= "string" then
+    if not vehicle or type(key) ~= 'string' then
         return
     end
 
@@ -289,7 +290,7 @@ exports("SetModifier", function(vehicle, key, speed, torque)
     modifier.torque = math.max(0.0, torque or 1.0)
 end)
 
-AddEventHandler("onResourceStop", function(resource)
+AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() and current then
         release(current)
     end
