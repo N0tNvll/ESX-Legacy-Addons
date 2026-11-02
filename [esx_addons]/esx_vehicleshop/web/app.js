@@ -341,6 +341,10 @@ function setPreviewMode(value) {
 }
 
 function readSnapshot(value) {
+    if (!value || typeof value !== 'object' || !value.shop) {
+        return null;
+    }
+
     const result = { ...value };
 
     for (const key of ['vehicles', 'stock', 'rentals', 'sales', 'orders']) {
@@ -405,7 +409,10 @@ function colorPicker(vehicle) {
         swatches.querySelectorAll('button').forEach((button) => {
             button.setAttribute('aria-pressed', String(button.dataset.color === (color || '')));
         });
-        preview(vehicle);
+
+        if (previewMode) {
+            preview(vehicle);
+        }
     }
 
     const original = button('', () => choose(undefined), 'original-color');
@@ -473,10 +480,34 @@ async function testDrive(vehicle, control) {
     }
 }
 
+function canBuy() {
+    return snapshot.shop.mode !== 'managed' || snapshot.shop.employee;
+}
+
+function buyButton(vehicle, cls = 'primary') {
+    const control = button(
+        t(snapshot.shop.mode === 'managed' ? 'sell' : 'buy'),
+        () =>
+            requestQuote({
+                kind: 'purchase',
+                model: vehicle.model,
+                targetId: Number(target),
+            }),
+        cls,
+    );
+
+    control.disabled = vehicle.stock === 0;
+    return control;
+}
+
 function showVehicle(vehicle) {
     const root = $('details');
 
     root.replaceChildren();
+
+    if (!snapshot) {
+        return;
+    }
 
     if (!vehicle) {
         root.append(node('p', t(snapshot.vehicles.length ? 'noMatches' : 'noVehicles'), 'empty'));
@@ -515,31 +546,39 @@ function showVehicle(vehicle) {
         specs.append(row);
     }
 
+    const actions = node('div', undefined, 'detail-actions');
+
     overview.append(specs);
-    controls.append(
-        colorPicker(vehicle),
+
+    if (canBuy()) {
+        actions.append(buyButton(vehicle, 'primary detail-buy'));
+    }
+
+    actions.append(
         button(
             t(previewMode ? 'backCatalog' : 'explore'),
             async () => {
-                if (previewMode) {
-                    const g = generation;
-
-                    setPreviewMode(false);
-                    await rpc('clearPreview');
-
-                    if (g === generation) {
-                        showVehicle(vehicle);
-                    }
-                } else {
+                if (!previewMode) {
                     preview(vehicle, true);
+                    return;
+                }
+
+                const g = generation;
+
+                setPreviewMode(false);
+                await rpc('clearPreview');
+
+                if (g === generation) {
+                    showVehicle(vehicle);
                 }
             },
-            'detail-preview',
+            'detail-secondary',
         ),
     );
+    controls.append(colorPicker(vehicle), actions);
 
     if (snapshot.shop.testDrive !== false) {
-        const test = button(t('testDrive'), () => testDrive(vehicle, test), 'primary test-drive');
+        const test = button(t('testDrive'), () => testDrive(vehicle, test), 'test-drive');
 
         controls.append(
             test,
@@ -604,7 +643,14 @@ async function refresh() {
     }
 
     if (r.success) {
-        snapshot = readSnapshot(r.data);
+        const next = readSnapshot(r.data);
+
+        if (!next) {
+            notice(t('operation_failed'));
+            return;
+        }
+
+        snapshot = next;
         render();
     } else {
         notice(t(r.error));
@@ -864,6 +910,10 @@ async function checkStatus(id) {
 }
 
 function catalog(root) {
+    if (!snapshot) {
+        return;
+    }
+
     const tools = node('div', undefined, 'toolbar'),
         input = node('input');
 
@@ -921,6 +971,10 @@ function catalog(root) {
     function drawCards() {
         cards.replaceChildren();
 
+        if (!snapshot) {
+            return;
+        }
+
         const filtered = snapshot.vehicles.filter(
             (v) =>
                 (!category || v.category === category) &&
@@ -929,55 +983,46 @@ function catalog(root) {
 
         for (const v of filtered) {
             const card = node('article', undefined, 'card');
+            const media = node('div', undefined, 'card-media');
+            const body = node('div', undefined, 'card-body');
             const heading = button(v.name, () => showVehicle(v), 'vehicle-title');
             const title = node('h3');
-            const image = vehicleImage(v);
+            const tags = node('div', undefined, 'card-tags');
+            const footer = node('div', undefined, 'card-footer');
 
             card.dataset.model = v.model;
             title.append(heading);
-            image.onclick = () => showVehicle(v);
             heading.title = t('details');
+            card.onclick = (event) => {
+                if (event.target.closest('button')) {
+                    return;
+                }
 
-            card.append(
-                node('span', v.categoryLabel || v.category, 'vehicle-category'),
-                title,
-                image,
+                showVehicle(v);
+            };
+
+            media.append(vehicleImage(v));
+            footer.append(
                 node('div', money(v.price), 'price'),
                 node('span', v.stock < 0 ? t('unlimited') : `${v.stock} ${t('units')}`, 'badge'),
             );
+            body.append(node('span', v.categoryLabel || v.category, 'vehicle-category'), title);
 
             if (v.license) {
-                card.append(node('div', `${t('license')}: ${v.license}`, 'muted'));
+                tags.append(node('span', `${t('license')}: ${v.license}`, 'tag'));
             }
 
             if (v.minGrade) {
-                card.append(node('div', `${t('grade')}: ${v.minGrade}`, 'muted'));
+                tags.append(node('span', `${t('grade')}: ${v.minGrade}`, 'tag'));
             }
+
+            if (tags.children.length) {
+                body.append(tags);
+            }
+
+            body.append(footer);
 
             const actions = node('div', undefined, 'actions');
-
-            actions.append(
-                button(t('preview'), () => {
-                    showVehicle(v);
-                    preview(v);
-                }),
-            );
-
-            if (snapshot.shop.mode !== 'managed' || snapshot.shop.employee) {
-                const b = button(
-                    t(snapshot.shop.mode === 'managed' ? 'sell' : 'buy'),
-                    () =>
-                        requestQuote({
-                            kind: 'purchase',
-                            model: v.model,
-                            targetId: Number(target),
-                        }),
-                    'primary',
-                );
-
-                b.disabled = v.stock === 0;
-                actions.append(b);
-            }
 
             if (snapshot.shop.employee) {
                 actions.append(
@@ -998,7 +1043,11 @@ function catalog(root) {
                 }
             }
 
-            card.append(actions);
+            if (actions.children.length) {
+                body.append(actions);
+            }
+
+            card.append(media, body);
             cards.append(card);
         }
 
@@ -1336,6 +1385,12 @@ window.addEventListener('message', (event) => {
         lang = detectLanguage(data.locale);
         document.documentElement.lang = lang;
         snapshot = readSnapshot(data.snapshot);
+
+        if (!snapshot) {
+            $('shop').hidden = true;
+            return;
+        }
+
         pending = data.pending;
         quote = null;
         tab = 'catalog';

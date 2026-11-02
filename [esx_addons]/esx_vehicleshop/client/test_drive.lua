@@ -1,6 +1,21 @@
 local S = VehicleShopClient
 local starting = false
 
+local function roadSpawn(point)
+    if not point then
+        return nil
+    end
+
+    local found, coords, heading =
+        GetClosestVehicleNodeWithHeading(point.x, point.y, point.z, 1, 3.0, 0)
+
+    if not found or not coords then
+        return nil
+    end
+
+    return { x = coords.x, y = coords.y, z = coords.z, w = heading or 0.0 }
+end
+
 local function stop(restore, reopen)
     local drive = S.testDrive
 
@@ -52,10 +67,12 @@ function S.startTestDrive(data)
     starting = true
 
     local generation = S.generation
+    local origin = S.shop.testDrivePoint or S.shop.delivery or S.shop.preview
     local drive, failure = S.request('startTestDrive', {
         shopId = S.shop.id,
         model = data.model,
         color = data.color,
+        spawn = roadSpawn(origin),
     })
 
     starting = false

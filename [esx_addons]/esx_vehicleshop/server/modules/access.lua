@@ -146,5 +146,6 @@ function D.shopPayload(shop, player)
         stockMode = shop.stockMode,
         testDrive = Config.TestDrive.enabled and shop.testDrive ~= false,
         testDriveDuration = Config.TestDrive.duration,
+        testDrivePoint = D.point(D.testDrivePoint(shop)),
     }
 end

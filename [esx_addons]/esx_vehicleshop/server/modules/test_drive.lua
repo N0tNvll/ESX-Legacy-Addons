@@ -2,6 +2,28 @@ local D = VehicleShop
 local drives, cooldowns = {}, {}
 local stopping = false
 
+local function roadSpawn(requested, point, ground)
+    if not ground or type(requested) ~= 'table' then
+        return point
+    end
+
+    local x, y, z = tonumber(requested.x), tonumber(requested.y), tonumber(requested.z)
+    local w = tonumber(requested.w) or 0.0
+
+    if not x or not y or not z or x ~= x or y ~= y or z ~= z or w ~= w then
+        return point
+    end
+
+    local origin = vector3(point.x, point.y, point.z)
+    local target = vector3(x, y, z)
+
+    if #(target - origin) > (Config.TestDrive.maxSpawnDistance or 100.0) then
+        return point
+    end
+
+    return vector4(x, y, z, w)
+end
+
 local function finish(source, notify)
     local drive = drives[source]
 
@@ -43,7 +65,7 @@ D.register('startTestDrive', function(source, request)
 
     local player, shop = D.playerShop(source, request.shopId)
     local offer = D.assert(D.offer(shop, request.model, player), 'invalid_vehicle')
-    local point = type(shop.testDrive) == 'table' and shop.testDrive.coords or (shop.delivery and shop.delivery.coords) or shop.preview
+    local point = D.testDrivePoint(shop)
     local ped = GetPlayerPed(source)
 
     D.assert(Config.TestDrive.enabled and shop.testDrive ~= false and point, 'test_unavailable')
@@ -74,6 +96,8 @@ D.register('startTestDrive', function(source, request)
         D.validBuyer(player, shop, D.assert(D.offer(shop, offer.model, player), 'invalid_vehicle'))
         D.assert(GetPlayerRoutingBucket(source) == drive.bucket, 'purchase_invalidated')
 
+        local spawn = roadSpawn(request.spawn, point, vehicleType == 'ground')
+
         drive.plate = D.assert(D.plate(), 'plate_unavailable')
 
         for _, other in pairs(drives) do
@@ -87,7 +111,7 @@ D.register('startTestDrive', function(source, request)
             model = offer.model,
         }, {
             bucket = drive.bucket,
-            spawns = { point },
+            spawns = { spawn },
         }, vehicleType, { radius = 3.0, timeout = 5000 })
 
         D.assert(entity, failure or 'spawn_failed')

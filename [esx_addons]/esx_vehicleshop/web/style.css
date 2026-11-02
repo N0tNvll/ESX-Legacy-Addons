@@ -262,39 +262,70 @@ input::placeholder {
     margin-top: 1.2rem;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
-    align-items: start;
+    align-items: stretch;
 }
 .card {
-    padding: 1rem;
+    display: flex;
+    flex-direction: column;
     min-width: 0;
     background: #1c1c1c;
     border: 1px solid #ffffff14;
     border-radius: 10px;
-    transition: border-color 160ms ease;
+    overflow: hidden;
     position: relative;
+    cursor: pointer;
+    transition:
+        border-color 160ms ease,
+        transform 160ms ease,
+        box-shadow 160ms ease;
 }
 .card:hover {
-    border-color: #ffffff4d;
+    border-color: #fb9b0459;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 26px #00000059;
 }
 .card.selected {
-    border-color: #fb9b0480;
-    background: linear-gradient(145deg, #fb9b0409, transparent 65%), #1c1c1c;
+    border-color: #fb9b04b3;
+    background: linear-gradient(145deg, #fb9b040d, transparent 55%), #1c1c1c;
+    box-shadow: 0 0 0 1px #fb9b0433 inset;
+}
+.card-media {
+    position: relative;
+    overflow: hidden;
+}
+.card-media .vehicle-media {
+    height: 11.5rem;
+}
+.card-media .vehicle-media img {
+    padding: 1.15rem 0.6rem;
+    transition: transform 220ms ease;
+}
+.card:hover .card-media img {
+    transform: scale(1.04);
+}
+.card-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.4rem;
+    min-width: 0;
+    padding: 0.85rem 1rem 1rem;
 }
 .vehicle-category {
     color: var(--muted);
-    font-size: 0.62rem;
+    font-size: 0.6rem;
     text-transform: uppercase;
-    letter-spacing: 0.09em;
+    letter-spacing: 0.1em;
 }
 .card h3 {
-    margin: 0.35rem 0 0;
-    line-height: 1.2;
-    font-size: 1rem;
+    margin: 0;
+    line-height: 1.25;
+    font-size: 1.05rem;
 }
 .vehicle-title {
     padding: 0;
     border: 0;
-    border-radius: 0;
+    border-radius: 2px;
     background: none;
     text-align: left;
     font-weight: 700;
@@ -302,6 +333,26 @@ input::placeholder {
 .vehicle-title:hover {
     color: var(--brand);
     background: none;
+}
+.vehicle-title:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 3px;
+}
+.card:hover .vehicle-title {
+    color: var(--brand);
+}
+.card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+.tag {
+    padding: 0.15rem 0.5rem;
+    border: 1px solid #ffffff14;
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 0.62rem;
+    line-height: 1.4;
 }
 .vehicle-media {
     height: 8.5rem;
@@ -321,30 +372,40 @@ input::placeholder {
     padding: 0.3rem;
     filter: drop-shadow(0 12px 8px #0005);
 }
+.card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: auto;
+    padding-top: 0.7rem;
+    border-top: 1px solid #ffffff0d;
+}
 .price {
-    font-size: 1.4rem;
+    color: var(--brand);
+    font-size: 1.3rem;
     font-weight: 700;
-    margin: 0.5rem 0;
-    color: var(--text);
+    line-height: 1;
 }
 .badge {
     display: inline-block;
-    font-size: 0.65rem;
-    color: #d0d0d0;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
     background: var(--dark);
-    padding: 0.3rem 0.6rem;
-    border-radius: 5px;
+    color: #d0d0d0;
+    font-size: 0.62rem;
+    white-space: nowrap;
 }
 .actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-top: 1rem;
+    margin-top: 0.85rem;
 }
 .actions button {
     flex: 1;
-    padding: 0.65rem 0.6rem;
-    font-size: 0.75rem;
+    padding: 0.6rem 0.5rem;
+    font-size: 0.72rem;
     white-space: nowrap;
 }
 #details {
@@ -401,12 +462,28 @@ input::placeholder {
     text-align: right;
     overflow-wrap: anywhere;
 }
-.detail-preview {
+.detail-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+.detail-actions button {
     width: 100%;
+    font-size: 0.85rem;
+}
+.detail-actions .detail-buy {
+    padding: 0.9rem 1rem;
+    font-size: 0.9rem;
+}
+.detail-secondary {
     color: var(--brand);
     border-color: #fb9b0440;
     background: #fb9b0410;
-    font-size: 0.8rem;
+}
+.detail-secondary:hover {
+    border-color: var(--brand);
+    background: #fb9b041a;
 }
 .muted {
     color: var(--muted);
@@ -677,7 +754,7 @@ th {
 }
 #shop.preview-mode {
     left: auto;
-    width: min(25rem, 90vw);
+    width: min(26rem, 92vw);
 }
 .preview-mode .brand-mark,
 .preview-mode #tabs,

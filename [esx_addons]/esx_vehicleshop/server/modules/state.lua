@@ -77,6 +77,18 @@ function D.point(value)
     return { x = value.x, y = value.y, z = value.z, w = heading }
 end
 
+function D.testDrivePoint(shop)
+    if type(shop.testDrive) == 'table' and shop.testDrive.coords then
+        return shop.testDrive.coords
+    end
+
+    if shop.delivery and shop.delivery.coords then
+        return shop.delivery.coords
+    end
+
+    return shop.preview
+end
+
 function D.near(source, point, distance)
     return point ~= nil and xLib.player.isNearCoords(source, vector3(point.x, point.y, point.z), distance or 8.0) == true
 end
@@ -175,15 +187,11 @@ function D.plate()
         useSpace = Config.PlateUseSpace,
     }, function(plate)
         return MySQL.scalar.await(
-            (
-                'SELECT plate FROM owned_vehicles WHERE plate = ? UNION SELECT '
-                .. 'plate FROM rented_vehicles WHERE plate = ?\n            UNION '
-                .. 'SELECT plate FROM vehicle_sold WHERE plate = ? UNION SELECT '
-                .. 'reserved_plate AS plate FROM esx_vehicle_orders WHERE '
-                .. 'reserved_plate = ? UNION SELECT plate FROM esx_vehicle_rentals '
-                .. 'WHERE plate = ? LIMIT '
-                .. '1'
-            ),
+            'SELECT 1 FROM owned_vehicles WHERE plate = ? '
+                .. 'UNION SELECT 1 FROM rented_vehicles WHERE plate = ? '
+                .. 'UNION SELECT 1 FROM vehicle_sold WHERE plate = ? '
+                .. 'UNION SELECT 1 FROM esx_vehicle_orders WHERE reserved_plate = ? '
+                .. 'UNION SELECT 1 FROM esx_vehicle_rentals WHERE plate = ? LIMIT 1',
             { plate, plate, plate, plate, plate }
         ) ~= nil
     end)

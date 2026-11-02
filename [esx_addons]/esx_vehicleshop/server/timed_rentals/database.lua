@@ -84,11 +84,24 @@ function Rental.DB.delete(lease)
 end
 
 function Rental.DB.plateExists(plate)
-    if MySQL.scalar.await('SELECT plate FROM esx_vehicle_rentals WHERE plate = ? LIMIT 1', { plate }) then
+    local existing = MySQL.scalar.await(
+        'SELECT plate FROM esx_vehicle_rentals WHERE plate = ? LIMIT 1',
+        { plate }
+    )
+
+    if existing then
         return true
     end
 
-    if MySQL.scalar.await('SELECT plate FROM owned_vehicles WHERE plate = ? ' .. 'UNION SELECT plate FROM rented_vehicles WHERE plate = ? ' .. 'UNION SELECT plate FROM vehicle_sold WHERE plate = ? ' .. 'UNION SELECT reserved_plate FROM esx_vehicle_orders ' .. 'WHERE reserved_plate = ? LIMIT 1', { plate, plate, plate, plate }) then
+    local taken = MySQL.scalar.await(
+        'SELECT 1 FROM owned_vehicles WHERE plate = ? '
+            .. 'UNION SELECT 1 FROM rented_vehicles WHERE plate = ? '
+            .. 'UNION SELECT 1 FROM vehicle_sold WHERE plate = ? '
+            .. 'UNION SELECT 1 FROM esx_vehicle_orders WHERE reserved_plate = ? LIMIT 1',
+        { plate, plate, plate, plate }
+    )
+
+    if taken then
         return true
     end
 

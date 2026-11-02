@@ -13,6 +13,7 @@ Config.TestDrive = {
     enabled = true,
     duration = 60,
     maxDistance = 1500.0,
+    maxSpawnDistance = 100.0,
 }
 
 Config.Locale = GetConvar('esx:locale', ESX.GetConfig().Locale or GetConvar('txAdmin-locale', 'en'))
