@@ -174,7 +174,9 @@ end
 ---@param ped number
 ---@return boolean
 local function isInteractionVisible(action, ped)
-    return action ~= 'store' or not Config.Settings.storeMarkerOnlyInVehicle or IsPedInAnyVehicle(xLib.cache.ped, false)
+    return action ~= 'store'
+        or not Config.Settings.storeMarkerOnlyInVehicle
+        or IsPedInAnyVehicle(xLib.cache.ped, false)
 end
 
 ---@return nil
@@ -275,7 +277,13 @@ local function addLocation(location, isImpound)
     local coords = vector3(raw.x, raw.y, raw.z)
 
     if location.blip then
-        blips[#blips + 1] = Utils.CreateBlip(coords, location.blip.sprite, location.blip.scale, location.blip.color, location.label)
+        blips[#blips + 1] = Utils.CreateBlip(
+            coords,
+            location.blip.sprite,
+            location.blip.scale,
+            location.blip.color,
+            location.label
+        )
     end
 
     if location.ped then
@@ -317,7 +325,13 @@ local function refresh()
     local epoch = locationEpoch
     local ok, data = pcall(xLib.callback.await, 'esx_garage:getGarages', false)
 
-    if epoch == locationEpoch and ok and type(data) == 'table' and type(data.garages) == 'table' and type(data.impounds) == 'table' then
+    if
+        epoch == locationEpoch
+        and ok
+        and type(data) == 'table'
+        and type(data.garages) == 'table'
+        and type(data.impounds) == 'table'
+    then
         pcall(function()
             clearWorld()
             fleetGarages = {}
@@ -700,6 +714,32 @@ local function closeMenu()
     xLib.nui.close({ type = 'closeGarage', payload = {} })
 end
 
+---@param netId any
+---@param epoch number
+---@return number?
+local function waitForRetrievedVehicle(netId, epoch)
+    if type(netId) ~= 'number' or netId <= 0 or netId >= 65535 or netId % 1 ~= 0 then
+        return nil
+    end
+
+    local startedAt = GetGameTimer()
+
+    while locationEpoch == epoch and GetGameTimer() - startedAt < 5000 do
+        -- A server entity may not have replicated to this client yet.
+        if NetworkDoesEntityExistWithNetworkId(netId) then
+            local vehicle = NetworkGetEntityFromNetworkId(netId)
+
+            if vehicle ~= 0 and DoesEntityExist(vehicle) and IsEntityAVehicle(vehicle) then
+                return vehicle
+            end
+        end
+
+        Wait(50)
+    end
+
+    return nil
+end
+
 xLib.nui.register('garage:getVehicles', function(data)
     local page, err = fetchVehiclePage(data)
 
@@ -743,6 +783,7 @@ xLib.nui.register('garage:retrieveVehicle', function(data)
         end
     end
 
+    local epoch = locationEpoch
     local result = serverCall('esx_garage:retrieveVehicle', {
         paymentAccount = account,
         plate = data.vehicleId,
@@ -751,21 +792,27 @@ xLib.nui.register('garage:retrieveVehicle', function(data)
         fleetGarageId = menuFleetGarageId,
     })
 
-    if result and result.success and result.data and result.data.netId then
-        local vehicle = NetworkGetEntityFromNetworkId(result.data.netId)
-        local tries = 0
+    if result and result.success then
+        local netId = type(result.data) == 'table' and result.data.netId or nil
+        local vehicle = waitForRetrievedVehicle(netId, epoch)
 
-        while not DoesEntityExist(vehicle) and tries < 50 do
-            Wait(10)
-            vehicle = NetworkGetEntityFromNetworkId(result.data.netId)
-            tries = tries + 1
-        end
-
-        if DoesEntityExist(vehicle) then
-            TaskWarpPedIntoVehicle(PlayerPedId(), vehicle, -1)
+        if locationEpoch ~= epoch then
+            return { success = false, error = 'cancelled' }
         end
 
         closeMenu()
+
+        if not vehicle then
+            -- The server may still own this vehicle; do not retry the spawn here.
+            print(
+                ('[esx_garage] Vehicle not replicated to client. Network ID: %s'):format(
+                    tostring(netId)
+                )
+            )
+            return { success = false, error = 'spawn_failed', data = result.data }
+        end
+
+        TaskWarpPedIntoVehicle(PlayerPedId(), vehicle, -1)
     end
 
     return result or { success = false }
@@ -818,7 +865,10 @@ xLib.nui.register('garage:giveKeys', function(data)
         return { success = false, error = 'no_location' }
     end
 
-    local result = serverCall('esx_garage:giveKeys', { plate = data.vehicleId, garageId = currentLocation.id, fleetGarageId = menuFleetGarageId })
+    local result = serverCall(
+        'esx_garage:giveKeys',
+        { plate = data.vehicleId, garageId = currentLocation.id, fleetGarageId = menuFleetGarageId }
+    )
     return result or { success = false }
 end)
 
@@ -923,7 +973,29 @@ CreateThread(function()
                         local color = marker.style.color
 
                         ---@diagnostic disable-next-line: missing-parameter
-                        DrawMarker(1, coords.x, coords.y, coords.z - 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.5, 1.5, 1.0, color[1], color[2], color[3], color[4], false, false, 2, false)
+                        DrawMarker(
+                            1,
+                            coords.x,
+                            coords.y,
+                            coords.z - 1.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0,
+                            1.5,
+                            1.5,
+                            1.0,
+                            color[1],
+                            color[2],
+                            color[3],
+                            color[4],
+                            false,
+                            false,
+                            2,
+                            false
+                        )
                     end
                 end
             end

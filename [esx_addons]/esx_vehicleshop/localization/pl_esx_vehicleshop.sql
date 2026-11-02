@@ -1,6 +1,8 @@
 -- SPDX-License-Identifier: GPL-3.0-only
 -- Copyright (C) 2022-2026 ESX Framework
 
+SET NAMES utf8mb4;
+
 INSERT INTO `addon_account` (name, label, shared) VALUES
 	('society_cardealer','Sprzedawca aut',1)
 ;

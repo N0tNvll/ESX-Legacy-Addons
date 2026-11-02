@@ -2,6 +2,83 @@
 -- Copyright (C) 2022-2026 ESX Framework
 local D = VehicleShop
 local seededOffers = {}
+local MOJIBAKE_MARKERS = { 'Ã', 'Â' }
+local HAS_UTF8 = type(utf8) == 'table' and type(utf8.len) == 'function'
+
+local function isUtf8(value)
+    return utf8.len(value) ~= nil
+end
+
+local function latin1ToUtf8(value)
+    local characters = {}
+
+    for index = 1, #value do
+        characters[index] = utf8.char(value:byte(index))
+    end
+
+    return table.concat(characters)
+end
+
+local function utf8ToLatin1(value)
+    local characters = {}
+
+    for _, codepoint in utf8.codes(value) do
+        if codepoint > 255 then
+            return nil
+        end
+
+        characters[#characters + 1] = string.char(codepoint)
+    end
+
+    return table.concat(characters)
+end
+
+local function repairEncoding(value)
+    if not HAS_UTF8 or type(value) ~= 'string' or value == '' then
+        return value
+    end
+
+    if not isUtf8(value) then
+        local converted = latin1ToUtf8(value)
+
+        return isUtf8(converted) and converted or value
+    end
+
+    local marked = false
+
+    for _, marker in ipairs(MOJIBAKE_MARKERS) do
+        if value:find(marker, 1, true) then
+            marked = true
+            break
+        end
+    end
+
+    if not marked then
+        return value
+    end
+
+    local converted = utf8ToLatin1(value)
+
+    if converted and converted ~= value and isUtf8(converted) then
+        return converted
+    end
+
+    return value
+end
+
+function D.repairCategoryLabels(categories)
+    for _, category in ipairs(categories) do
+        local label = repairEncoding(category.label)
+
+        if label ~= category.label then
+            MySQL.update.await(
+                'UPDATE vehicle_categories SET label = ? WHERE name = ?',
+                { label, category.name }
+            )
+            category.label = label
+        end
+    end
+end
 
 function D.seedShop(shop)
     if shop.enabled == false then
@@ -50,6 +127,7 @@ function D.seedShop(shop)
 
             condition = condition .. (#categories > 0 and (' AND category IN (' .. table.concat(categories, ',') .. ')') or ' AND 0 = 1')
         end
+
         -- Job offers share the SQL model catalog, but must never be automatically
         -- enrolled into an unrestricted civilian dealership during a later reload.
         if not shop.ownershipJob then
@@ -62,19 +140,31 @@ function D.seedShop(shop)
 
                         if model and not seen[model] then
                             seen[model] = true
-                            reserved[#reserved + 1] = '?'
-                            params[#params + 1] = model
+                            reserved[#reserved + 1] = model
                         end
                     end
                 end
             end
 
             if #reserved > 0 then
-                condition = condition .. ' AND LOWER(model) NOT IN (' .. table.concat(reserved, ',') .. ')'
+                local reservedPlaceholders = {}
+
+                for index = 1, #reserved do
+                    reservedPlaceholders[index] = '?'
+                    params[#params + 1] = reserved[index]
+                end
+
+                condition = condition
+                    .. ' AND LOWER(model) NOT IN ('
+                    .. table.concat(reservedPlaceholders, ',')
+                    .. ')'
             end
         end
 
-        MySQL.insert.await(('INSERT IGNORE INTO dealership_vehicles (shop_id, model) ' .. 'SELECT ?, LOWER(model) FROM vehicles WHERE ') .. condition, params)
+        local insertSql = 'INSERT IGNORE INTO dealership_vehicles (shop_id, model) '
+            .. 'SELECT ?, LOWER(model) FROM vehicles WHERE ' .. condition
+
+        MySQL.insert.await(insertSql, params)
     end
 
     seededOffers[shop.id] = shop
@@ -93,10 +183,17 @@ function D.reloadCatalog()
         end
 
         local categories = MySQL.query.await('SELECT * FROM vehicle_categories')
+
+        assert(type(categories) == 'table', 'Unable to load vehicle categories')
+        D.repairCategoryLabels(categories)
+
         local rows = MySQL.query.await(('SELECT v.*, c.label AS categoryLabel FROM vehicles v LEFT ' .. 'JOIN vehicle_categories c ON v.category = ' .. 'c.name'))
         local members = MySQL.query.await('SELECT * FROM dealership_vehicles')
 
-        assert(type(categories) == 'table' and type(rows) == 'table' and type(members) == 'table', 'Unable to load complete dealership catalog')
+        assert(
+            type(rows) == 'table' and type(members) == 'table',
+            'Unable to load complete dealership catalog'
+        )
 
         local catalog, membership = {}, {}
 
@@ -107,6 +204,26 @@ function D.reloadCatalog()
         for _, member in ipairs(members) do
             membership[member.shop_id] = membership[member.shop_id] or {}
             membership[member.shop_id][member.model:lower()] = member
+        end
+
+        local reservedModels = {}
+
+        for shopId, shop in pairs(D.shops) do
+            if shop.ownershipJob then
+                for model in pairs(membership[shopId] or {}) do
+                    reservedModels[model] = true
+                end
+            end
+        end
+
+        for shopId, shop in pairs(D.shops) do
+            if not shop.ownershipJob then
+                for model in pairs(membership[shopId] or {}) do
+                    if reservedModels[model] then
+                        membership[shopId][model] = nil
+                    end
+                end
+            end
         end
 
         D.catalog, D.categories, D.members = catalog, categories, membership
