@@ -961,7 +961,7 @@ registerPropertyCallback('esx_property:attemptSellToPlayer', function(source, cb
 
     local Price = tonumber(Property.Price)
 
-    if not Price or Price <= 0 or (account ~= 'money' and account ~= 'bank') then
+    if not Price or Price <= 0 then
         return cb(false)
     end
 
@@ -1047,12 +1047,50 @@ registerPropertyCallback('esx_property:respondToSaleOffer', function(source, cb,
 
     local Price = tonumber(Property.Price)
 
-    if not Price or Price <= 0 or Price ~= offer.price or getBankMoney(xTarget) < Price then
+    if type(account) ~= 'string' then
+        account = 'bank'
+    end
+
+    account = string.lower(account)
+
+    if account ~= 'money' and account ~= 'bank' then
+        account = 'bank'
+    end
+
+    if not xTarget.getAccount or not xTarget.getAccount(account) then
         if PropertyLocks[PropertyId] == token then
             PropertyLocks[PropertyId] = nil
         end
 
         return cb(false)
+    end
+
+    if not Price or Price <= 0 or Price ~= offer.price then
+        if PropertyLocks[PropertyId] == token then
+            PropertyLocks[PropertyId] = nil
+        end
+
+        return cb(false)
+    end
+
+    if account == 'bank' then
+        if getBankMoney(xTarget) < Price then
+            if PropertyLocks[PropertyId] == token then
+                PropertyLocks[PropertyId] = nil
+            end
+
+            return cb(false)
+        end
+    else
+        local cashAccount = xTarget.getAccount('money')
+
+        if not cashAccount or (tonumber(cashAccount.money) or 0) < Price then
+            if PropertyLocks[PropertyId] == token then
+                PropertyLocks[PropertyId] = nil
+            end
+
+            return cb(false)
+        end
     end
 
     if not isNearCoords(offer.seller, Property.Entrance, PropertyActionDistance) or not isNearCoords(source, Property.Entrance, PropertyActionDistance) then
