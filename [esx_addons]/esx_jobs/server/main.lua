@@ -160,7 +160,16 @@ end
 
 local function isCautionVehicleLost(entry)
     local entity = getCautionEntity(entry)
-    return not entity or GetVehicleEngineHealth(entity) <= 0.0
+
+    if not entity then
+        return true
+    end
+
+    if GetVehicleEngineHealth(entity) <= 0.0 or GetVehicleBodyHealth(entity) <= 0.0 then
+        return true
+    end
+
+    return false
 end
 
 local function getVehicleCondition(entity)
