@@ -16,6 +16,22 @@ local function getVector3(coords)
     end
 end
 
+local function getAllowedPaymentAccount(xPlayer, account)
+    if type(account) ~= 'string' then
+        return nil
+    end
+
+    account = string.lower(account)
+
+    if account == 'money' or account == 'bank' then
+        if xPlayer.getAccount and xPlayer.getAccount(account) then
+            return account
+        end
+    end
+
+    return nil
+end
+
 local function getZoneDistance(zone)
     local size = zone and zone.Size
 
@@ -162,6 +178,12 @@ local function settleCaution(playerId, amount, ratio, paymentAccount)
 
     if not xPlayer then
         return
+    end
+
+    paymentAccount = getAllowedPaymentAccount(xPlayer, paymentAccount)
+
+    if not paymentAccount then
+        paymentAccount = 'bank'
     end
 
     TriggerEvent('esx_addonaccount:getAccount', 'caution', xPlayer.getIdentifier(), function(account)
@@ -388,7 +410,8 @@ RegisterNetEvent('esx_jobs:caution', function(cautionType, requestValue, payment
             return
         end
 
-        local entry = { amount = cautionAmount, spawner = spawner, pending = true, paymentAccount = paymentAccount }
+        local allowedAccount = getAllowedPaymentAccount(xPlayer, paymentAccount)
+        local entry = { amount = cautionAmount, spawner = spawner, pending = true, paymentAccount = allowedAccount }
 
         setCaution(playerId, spawner, entry)
 
@@ -397,8 +420,13 @@ RegisterNetEvent('esx_jobs:caution', function(cautionType, requestValue, payment
             return
         end
 
+        if not allowedAccount then
+            xPlayer.showNotification(TranslateCap('caution_afford', ESX.Math.GroupDigits(cautionAmount)))
+            return
+        end
+
         TriggerEvent('esx_addonaccount:getAccount', 'caution', xPlayer.getIdentifier(), function(account)
-            if account and PaymentGateway.Charge(xPlayer, paymentAccount, cautionAmount, 'Job Vehicle Deposit') then
+            if account and PaymentGateway.Charge(xPlayer, allowedAccount, cautionAmount, 'Job Vehicle Deposit') then
                 account.addMoney(cautionAmount)
                 xPlayer.showNotification(TranslateCap('bank_deposit_taken', ESX.Math.GroupDigits(cautionAmount)))
                 spawnCautionVehicle(playerId, entry, spawnPoint, vehicle)
