@@ -301,44 +301,97 @@ CreateThread(function()
 
                         for k, v in ipairs(data.jobItem) do
                             local itemQtty, requiredItemQtty = 0, 0
+                            local gaveReward = false
 
                             if v.name ~= TranslateCap('delivery') then
-                                itemQtty = xPlayer.getInventoryItem(v.db_name).count
+                                if v.db_name then
+                                    local invItem = xPlayer.getInventoryItem(v.db_name)
+                                    itemQtty = invItem and invItem.count or 0
+                                end
                             end
 
-                            if data.jobItem[1].requires ~= 'nothing' then
-                                requiredItemQtty = xPlayer.getInventoryItem(data.jobItem[1].requires).count
+                            local requiresItem = v.requires
+                            local requiresName = v.requires_name
+
+                            if requiresItem == nil or requiresItem == '' then
+                                requiresItem = data.jobItem[1].requires
+                                requiresName = data.jobItem[1].requires_name
                             end
 
-                            if v.name ~= TranslateCap('delivery') and itemQtty >= v.max then
+                            if requiresItem and requiresItem ~= 'nothing' then
+                                local reqInv = xPlayer.getInventoryItem(requiresItem)
+                                requiredItemQtty = reqInv and reqInv.count or 0
+                            end
+
+                            if v.name ~= TranslateCap('delivery') and itemQtty >= (tonumber(v.max) or 0) then
                                 xPlayer.showNotification(TranslateCap('max_limit', v.name))
                                 playersWorking[playerId] = nil
-                            elseif v.requires ~= 'nothing' and requiredItemQtty <= 0 then
-                                xPlayer.showNotification(TranslateCap('not_enough', data.jobItem[1].requires_name))
+                                break
+                            elseif requiresItem and requiresItem ~= 'nothing' and requiredItemQtty <= 0 then
+                                xPlayer.showNotification(TranslateCap('not_enough', requiresName or requiresItem))
                                 playersWorking[playerId] = nil
+                                break
                             else
                                 if v.name ~= TranslateCap('delivery') then
-                                    -- chances to drop the item
-                                    if v.drop == 100 then
-                                        xPlayer.addInventoryItem(v.db_name, v.add)
-                                    else
-                                        local chanceToDrop = math.random(100)
+                                    local addAmount = tonumber(v.add) or 0
 
-                                        if chanceToDrop <= v.drop then
-                                            xPlayer.addInventoryItem(v.db_name, v.add)
+                                    if addAmount > 0 and v.db_name then
+                                        if xPlayer.canCarryItem then
+                                            if xPlayer.canCarryItem(v.db_name, addAmount) then
+                                                if v.drop == 100 then
+                                                    xPlayer.addInventoryItem(v.db_name, addAmount)
+                                                    gaveReward = true
+                                                else
+                                                    local chanceToDrop = math.random(100)
+                                                    local dropChance = tonumber(v.drop) or 0
+
+                                                    if chanceToDrop <= dropChance then
+                                                        xPlayer.addInventoryItem(v.db_name, addAmount)
+                                                        gaveReward = true
+                                                    end
+                                                end
+                                            else
+                                                xPlayer.showNotification(TranslateCap('cannot_carry'))
+                                                playersWorking[playerId] = nil
+                                                break
+                                            end
+                                        else
+                                            if v.drop == 100 then
+                                                xPlayer.addInventoryItem(v.db_name, addAmount)
+                                                gaveReward = true
+                                            else
+                                                local chanceToDrop = math.random(100)
+                                                local dropChance = tonumber(v.drop) or 0
+
+                                                if chanceToDrop <= dropChance then
+                                                    xPlayer.addInventoryItem(v.db_name, addAmount)
+                                                    gaveReward = true
+                                                end
+                                            end
                                         end
                                     end
                                 else
-                                    xPlayer.addMoney(v.price, 'Job Payment')
+                                    local price = tonumber(v.price) or 0
+
+                                    if price > 0 then
+                                        xPlayer.addMoney(price, 'Job Payment')
+                                        gaveReward = true
+                                    end
                                 end
                             end
-                        end
 
-                        if data.jobItem[1].requires ~= 'nothing' then
-                            local itemToRemoveQtty = xPlayer.getInventoryItem(data.jobItem[1].requires).count
+                            if gaveReward and requiresItem and requiresItem ~= 'nothing' then
+                                local removeAmount = tonumber(v.remove) or tonumber(data.jobItem[1].remove) or 1
+                                local reqInv2 = xPlayer.getInventoryItem(requiresItem)
+                                local reqCount2 = reqInv2 and reqInv2.count or 0
 
-                            if itemToRemoveQtty > 0 then
-                                xPlayer.removeInventoryItem(data.jobItem[1].requires, data.jobItem[1].remove)
+                                if reqCount2 > 0 and removeAmount > 0 then
+                                    if removeAmount > reqCount2 then
+                                        removeAmount = reqCount2
+                                    end
+
+                                    xPlayer.removeInventoryItem(requiresItem, removeAmount)
+                                end
                             end
                         end
                     end
