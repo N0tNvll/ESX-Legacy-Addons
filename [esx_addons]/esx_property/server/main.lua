@@ -1514,30 +1514,42 @@ registerPropertyCallback('esx_property:deleteProperty', function(source, cb, Pro
     end
 
     if IsPlayerAdmin(source, 'DeleteProperty') then
-        Log('Property Deleted', 16711680, {
-            { name = '**Property Name**', value = Properties[PropertyId].Name, inline = true },
-            { name = '**Admin**', value = xPlayer.getName(), inline = true },
-            {
-                name = '**Owner**',
-                value = Properties[PropertyId].OwnerName ~= '' and Properties[PropertyId].OwnerName or 'N/A',
-                inline = true,
-            },
-            {
-                name = '**Furniture Count**',
-                value = #Properties[PropertyId].furniture,
-                inline = true,
-            },
-            {
-                name = '**Vehicle Count**',
-                value = Properties[PropertyId].garage.StoredVehicles and #Properties[PropertyId].garage.StoredVehicles or 'N/A',
-                inline = true,
-            },
-        }, 1)
-        table.remove(Properties, PropertyId)
+        local property = Properties[PropertyId]
+
+        if property then
+            Log('Property Deleted', 16711680, {
+                { name = '**Property Name**', value = property.Name, inline = true },
+                { name = '**Admin**', value = xPlayer.getName(), inline = true },
+                {
+                    name = '**Owner**',
+                    value = property.OwnerName ~= '' and property.OwnerName or 'N/A',
+                    inline = true,
+                },
+                {
+                    name = '**Furniture Count**',
+                    value = property.furniture and #property.furniture or 0,
+                    inline = true,
+                },
+                {
+                    name = '**Vehicle Count**',
+                    value = property.garage and property.garage.StoredVehicles and #property.garage.StoredVehicles or 'N/A',
+                    inline = true,
+                },
+            }, 1)
+        end
+
+        if Properties[PropertyId] then
+            Properties[PropertyId] = nil
+        end
+
+        if PropertyLocks[PropertyId] then
+            PropertyLocks[PropertyId] = nil
+        end
+
         clearPendingSaleForProperty(PropertyId)
         SyncPropertiesAndSave('Property deleted')
 
-        if Config.OxInventory then
+        if Config.OxInventory and PropertyId then
             exports.ox_inventory:ClearInventory('property-' .. PropertyId)
         end
     end
