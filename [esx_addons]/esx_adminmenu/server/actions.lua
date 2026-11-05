@@ -1307,13 +1307,14 @@ regPlayer('setRadio', {
 regPlayer('setJob', {
     handler = function(ctx)
         local job = limitString(ctx.payload.job, 48)
-        local grade = math.floor(clampNumber(ctx.payload.grade, 0, 100, 0))
+        local grade = tonumber(ctx.payload.grade)
 
         if job == '' or not job:match('^[%w_%-]+$') then
             return { success = false, err = 'Missing job name.', playerOnline = true }
         end
 
-        if ESX.DoesJobExist and not ESX.DoesJobExist(job, grade) then
+        if not grade or grade < 0 or grade ~= math.floor(grade)
+            or not ESX.DoesJobExist(job, grade) then
             return { success = false, err = 'Invalid job or grade.', playerOnline = true }
         end
 

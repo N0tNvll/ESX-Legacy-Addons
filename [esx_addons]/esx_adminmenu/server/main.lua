@@ -23,6 +23,47 @@ Helpers.registerCallback('esx-adminmenu:server:getInitData', function(source)
     }
 end)
 
+Helpers.registerCallback('esx-adminmenu:server:getJobs', function(source)
+    local feature = Helpers.getActionPermission('playerActions', 'setJob')
+
+    if not Helpers.hasPermission(source)
+        or not feature
+        or not Helpers.hasFeaturePermission(source, feature) then
+        return { success = false, err = 'Insufficient Permissions.' }
+    end
+
+    local jobs = {}
+
+    for name, job in pairs(ESX.GetJobs()) do
+        local grades = {}
+
+        for key, grade in pairs(job.grades or {}) do
+            local level = tonumber(key)
+
+            if level and level >= 0 and level == math.floor(level) then
+                grades[#grades + 1] = {
+                    grade = level,
+                    label = grade.label or grade.name or tostring(level),
+                }
+            end
+        end
+
+        table.sort(grades, function(a, b)
+            return a.grade < b.grade
+        end)
+
+        if #grades > 0 then
+            jobs[#jobs + 1] = { name = name, label = job.label or name, grades = grades }
+        end
+    end
+
+    table.sort(jobs, function(a, b)
+        return a.name < b.name
+    end)
+
+    return { success = true, jobs = jobs }
+end)
+
 Helpers.registerCallback('esx-adminmenu:server:canOpen', function(source)
     if not Helpers.hasPermission(source) then
         return { success = false, err = 'Insufficient Permissions.' }

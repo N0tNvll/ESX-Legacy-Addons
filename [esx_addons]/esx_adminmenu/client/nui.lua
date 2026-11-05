@@ -477,6 +477,12 @@ end
 
 local serverBridges = {
     {
+        name = 'player:jobs',
+        event = 'esx-adminmenu:server:getJobs',
+        label = '[esx-adminmenu:getJobs]',
+        forward = { 'jobs' },
+    },
+    {
         name = 'server:action',
         event = 'esx-adminmenu:server:serverAction',
         label = '[esx-adminmenu:serverAction]',
