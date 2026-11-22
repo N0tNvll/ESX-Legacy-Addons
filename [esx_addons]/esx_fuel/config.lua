@@ -127,7 +127,14 @@ Config.PumpModels = {
 
 -- The server only accepts purchases within StationRadius of one of these stations.
 Config.StationRadius = 35.0
-Config.ShowBlips = true
+
+/* Show blips for stations on the map. 
+--'hide' = no blips, 
+--'nearby' = only when within BlipNearbyDistance, 
+--'all' = always.
+*/
+Config.ShowBlips = 'all'
+Config.BlipNearbyDistance = 1000.0
 
 Config.Stations = {
     vector3(49.41, 2778.79, 58.04),
