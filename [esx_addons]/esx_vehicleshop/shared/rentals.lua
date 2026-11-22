@@ -91,13 +91,13 @@ Rentals.Branches = {
     },
     city = {
         label = 'Legion Square',
-        coords = vector3(215.86, -810.13, 30.73),
-        returnCoords = vector3(223.50, -804.78, 30.57),
+        coords = vector3(200.8898, -847.9006, 30.7288),
+        returnCoords = vector3(208.0822, -847.5677, 30.4230),
         bucket = 0,
         vehicles = { 'blista', 'dilettante', 'premier', 'sultan', 'faggio' },
         spawns = {
-            vector4(223.50, -804.78, 30.57, 249.0),
-            vector4(225.68, -801.90, 30.56, 249.0),
+            vector4(208.0822, -847.5677, 30.4230, 252.2569),
+            vector4(216.2973, -850.3101, 30.2172, 244.7942),
         },
         blip = { sprite = 225, color = 47, scale = 0.75 },
     },
