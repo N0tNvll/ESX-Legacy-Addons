@@ -150,12 +150,80 @@ nui('execute', function(data)
         return nil, 'not_near_shop'
     end
 
+    if S.pending then
+        return nil, 'order_pending'
+    end
+
+    local generation = S.generation
+    local shop = S.shop
+
     S.pending = data.id
 
-    local result, failure = S.request('executeOrder', data.id, data.account)
+    local quote, failure = S.request('getOffer', data.id)
 
-    if result and result.complete and S.pending == data.id then
-        S.pending = nil
+    local function clearPending()
+        if S.pending == data.id then
+            S.pending = nil
+        end
+    end
+
+    if not quote then
+        clearPending()
+        return nil, failure
+    end
+
+    if generation ~= S.generation or quote.shopId ~= shop.id or not ESX.IsPlayerLoaded() then
+        clearPending()
+        return nil, 'purchase_invalidated'
+    end
+
+    local account = data.account
+    local chargePlayer = quote.amount > 0
+        and (quote.kind == 'purchase' or quote.kind == 'license' or quote.kind == 'deposit')
+
+    if chargePlayer and account ~= 'society' then
+        local methods = {}
+
+        for _, method in ipairs(quote.paymentMethods) do
+            if method == 'money' or method == 'bank' then
+                methods[#methods + 1] = method
+            end
+        end
+
+        S.send('payment', { active = true })
+        SetNuiFocus(false, false)
+
+        local ok, selected, reason = pcall(PaymentGateway.Select, {
+            amount = quote.amount,
+            title = quote.name ~= '' and quote.name or shop.name,
+            description = shop.name,
+            methods = methods,
+        })
+
+        if generation == S.generation and S.open then
+            S.send('payment', { active = false })
+            SetNuiFocus(true, true)
+        end
+
+        if not ok or not selected then
+            clearPending()
+            return nil, ok and (reason or 'cancelled') or 'payment_unavailable'
+        end
+
+        account = selected
+    end
+
+    if generation ~= S.generation or not S.open or not ESX.IsPlayerLoaded() then
+        clearPending()
+        return nil, 'purchase_invalidated'
+    end
+
+    local result
+
+    result, failure = S.request('executeOrder', data.id, account)
+
+    if (result and result.complete) or failure ~= 'unconfirmed' then
+        clearPending()
     end
 
     return result, failure

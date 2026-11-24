@@ -33,11 +33,22 @@ const handleNUIMessage = (event) => {
             break;
 
         case 'updateWeatherZones':
-            if (!State.isVisible || !State.data) break;
+            if (!State.isVisible || !State.data) {
+                break;
+            }
 
             Object.entries(Data.WeatherByZone).forEach(([zoneName, weatherType]) => {
+                if (State.data.WeatherByZone[zoneName] === weatherType) {
+                    return;
+                }
+
                 State.data.WeatherByZone[zoneName] = weatherType;
                 UIController.updateZoneWeather(zoneName, weatherType);
+
+                if (State.data.currentZone === zoneName) {
+                    State.data.currentWeather = weatherType;
+                    UIController.updateCurrentZone(zoneName, weatherType);
+                }
             });
             break;
 

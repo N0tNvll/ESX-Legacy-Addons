@@ -160,6 +160,7 @@ D.register('getOffer', function(source, id)
     return {
         id = id,
         kind = order.kind,
+        shopId = order.shop_id,
         model = order.model,
         name = order.model,
         amount = order.amount,

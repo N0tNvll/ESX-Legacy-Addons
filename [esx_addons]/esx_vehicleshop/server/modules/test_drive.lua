@@ -96,7 +96,8 @@ D.register('startTestDrive', function(source, request)
         D.validBuyer(player, shop, D.assert(D.offer(shop, offer.model, player), 'invalid_vehicle'))
         D.assert(GetPlayerRoutingBucket(source) == drive.bucket, 'purchase_invalidated')
 
-        local spawn = roadSpawn(request.spawn, point, vehicleType == 'ground')
+        local ground = vehicleType == 'automobile' or vehicleType == 'bike'
+        local spawn = roadSpawn(request.spawn, point, ground)
 
         drive.plate = D.assert(D.plate(), 'plate_unavailable')
 

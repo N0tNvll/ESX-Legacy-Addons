@@ -122,6 +122,10 @@ local function receiveVehicle(response)
     local vehicle = 0
 
     while GetGameTimer() < deadline do
+        if epoch ~= generation or not ESX.PlayerLoaded then
+            return
+        end
+
         if NetworkDoesEntityExistWithNetworkId(response.netId) then
             vehicle = NetToVeh(response.netId)
 
@@ -138,11 +142,48 @@ local function receiveVehicle(response)
         return
     end
 
+    deadline = GetGameTimer() + 2000
+
+    while
+        epoch == generation
+        and ESX.PlayerLoaded
+        and DoesEntityExist(vehicle)
+        and not NetworkHasControlOfEntity(vehicle)
+        and GetGameTimer() < deadline
+    do
+        NetworkRequestControlOfEntity(vehicle)
+        Wait(50)
+    end
+
+    if epoch ~= generation or not ESX.PlayerLoaded then
+        return
+    end
+
+    if
+        not DoesEntityExist(vehicle)
+        or not NetworkHasControlOfEntity(vehicle)
+        or GetEntityModel(vehicle) ~= joaat(response.model)
+        or not activeLease
+        or activeLease.plate ~= response.plate
+        or IsEntityDead(PlayerPedId())
+    then
+        ESX.ShowNotification(translate('rental_delivery_failed'))
+        return
+    end
+
     SetVehicleNumberPlateText(vehicle, response.plate)
+    FreezeEntityPosition(vehicle, false)
+    SetVehicleUndriveable(vehicle, false)
     SetVehicleDoorsLocked(vehicle, 1)
     SetVehicleFuelLevel(vehicle, 100.0)
     SetVehicleOnGroundProperly(vehicle)
     SetPedIntoVehicle(PlayerPedId(), vehicle, -1)
+
+    if GetVehiclePedIsIn(PlayerPedId(), false) ~= vehicle then
+        ESX.ShowNotification(translate('rental_delivery_failed'))
+        return
+    end
+
     ESX.ShowNotification(translate('rental_success'))
 end
 

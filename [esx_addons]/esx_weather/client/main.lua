@@ -52,8 +52,12 @@ RegisterNetEvent('esx_weather:client:weather:setZone', function(zone, weatherTyp
 
     local oldWeatherType = Modules.Weather.ByZone[zone]
 
+    if oldWeatherType == weatherType then
+        return
+    end
+
     Modules.Weather.ByZone[zone] = weatherType
-    Modules.NUI.updateWeatherZones(Modules.Weather.ByZone)
+    Modules.NUI.updateWeatherZones({ [zone] = weatherType })
     Shared.Modules.Debug.print(('Updated zone %s. Changing weather: %s -> %s'):format(zone, oldWeatherType, weatherType))
 end)
 

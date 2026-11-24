@@ -113,7 +113,7 @@ const UIController = (() => {
         container.appendChild(icon);
         container.appendChild(details);
 
-        Helpers.initLucideIcons();
+        Helpers.initLucideIcons(container);
     };
 
     /**
@@ -256,7 +256,7 @@ const UIController = (() => {
         elements.zonesGrid.innerHTML = '';
         elements.zonesGrid.appendChild(fragment);
 
-        Helpers.initLucideIcons();
+        Helpers.initLucideIcons(elements.zonesGrid);
     };
 
     /**
@@ -267,7 +267,10 @@ const UIController = (() => {
      */
     const updateZoneWeather = (zoneName, weatherType) => {
         const card = elements.zonesGrid?.querySelector(`[data-zone="${zoneName}"]`);
-        if (!card) return;
+
+        if (!card || card.dataset.weather === weatherType) {
+            return;
+        }
 
         // Validate inputs
         if (!Sanitizer.isValidWeatherType(weatherType, State.weatherTypes)) {
@@ -285,9 +288,11 @@ const UIController = (() => {
         // Update weather icon
         const icon = card.querySelector('.weather-icon');
         if (icon) {
-            icon.setAttribute('data-lucide', iconConfig.icon);
-            icon.className = `weather-icon ${iconConfig.animation}`;
-            Helpers.initLucideIcons();
+            const replacement = document.createElement('i');
+
+            replacement.setAttribute('data-lucide', iconConfig.icon);
+            replacement.className = `weather-icon ${iconConfig.animation}`;
+            icon.replaceWith(replacement);
         }
 
         // Update custom select
@@ -297,19 +302,21 @@ const UIController = (() => {
 
             const trigger = customSelect.querySelector('.custom-select-trigger');
             if (trigger) {
-                const triggerIcon = trigger.querySelector('i');
+                const triggerIcon = trigger.querySelector('svg, i');
                 const triggerText = trigger.querySelector('span');
 
                 const weatherName = Helpers.getWeatherDisplayName(weatherType, State.weatherTypes);
 
                 if (triggerIcon) {
-                    triggerIcon.setAttribute('data-lucide', iconConfig.icon);
+                    const replacement = document.createElement('i');
+
+                    replacement.setAttribute('data-lucide', iconConfig.icon);
+                    triggerIcon.replaceWith(replacement);
                 }
+
                 if (triggerText) {
                     triggerText.textContent = weatherName;
                 }
-
-                Helpers.initLucideIcons();
             }
 
             customSelect.querySelectorAll('.custom-option').forEach(opt => {
@@ -320,6 +327,8 @@ const UIController = (() => {
                 }
             });
         }
+
+        Helpers.initLucideIcons(card);
     };
 
     return {

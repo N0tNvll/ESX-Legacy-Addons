@@ -124,6 +124,8 @@ function S.startTestDrive(data)
 
     local ok = pcall(function()
         xLib.game.setVehicleProperties(vehicle, drive.props)
+        FreezeEntityPosition(vehicle, false)
+        SetVehicleUndriveable(vehicle, false)
         SetVehicleFuelLevel(vehicle, 100.0)
         SetVehicleDoorsLocked(vehicle, 4)
         SetPedIntoVehicle(PlayerPedId(), vehicle, -1)

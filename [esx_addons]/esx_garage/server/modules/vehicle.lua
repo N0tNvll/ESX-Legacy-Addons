@@ -696,13 +696,20 @@ local function isNearLocation(source, location)
 end
 
 ---@param spawn table
+---@param bucket integer
 ---@return boolean
-local function isSpawnBlocked(spawn)
+local function isSpawnBlocked(spawn, bucket)
     local spawnCoords = vec3(spawn.x, spawn.y, spawn.z)
     local vehicles = GetAllVehicles()
 
     for i = 1, #vehicles do
-        if #(GetEntityCoords(vehicles[i]) - spawnCoords) < 2.0 then
+        local vehicle = vehicles[i]
+
+        if
+            DoesEntityExist(vehicle)
+            and GetEntityRoutingBucket(vehicle) == bucket
+            and #(GetEntityCoords(vehicle) - spawnCoords) < 2.0
+        then
             return true
         end
     end
@@ -1059,6 +1066,7 @@ local function retrieveVehicle(source, cb, data)
     end
 
     local reservation
+    local bucket = GetPlayerRoutingBucket(source)
     local ok, result = pcall(function()
         local row = ownedRow(scope, plate)
 
@@ -1150,7 +1158,11 @@ local function retrieveVehicle(source, cb, data)
             return { success = false, error = 'no_money' }
         end
 
-        if isSpawnBlocked(spawn) then
+        if GetPlayerRoutingBucket(source) ~= bucket then
+            return { success = false, error = 'not_allowed' }
+        end
+
+        if isSpawnBlocked(spawn, bucket) then
             return { success = false, error = 'blocked' }
         end
 
@@ -1198,11 +1210,13 @@ local function retrieveVehicle(source, cb, data)
             return { success = false, error = 'spawn_failed' }
         end
 
-        if not CanUseGarageScope(scope) then
+        if not CanUseGarageScope(scope) or GetPlayerRoutingBucket(source) ~= bucket then
             deleteRetrievedVehicle(xVehicle)
             restoreRetrieveState(scope, row)
             return { success = false, error = 'not_allowed' }
         end
+
+        SetEntityRoutingBucket(xVehicle:getEntity(), bucket)
 
         if not GarageCategories.acceptsEntity(location, xVehicle:getEntity()) or (scope.fleetGarageId and not GarageCategories.acceptsEntity(Garages[scope.fleetGarageId], xVehicle:getEntity())) then
             deleteRetrievedVehicle(xVehicle)
@@ -1224,7 +1238,11 @@ local function retrieveVehicle(source, cb, data)
 
         local committed, commitError = commitRetrieveState(scope, row)
 
-        if not committed or not CanUseGarageScope(scope) then
+        if
+            not committed
+            or not CanUseGarageScope(scope)
+            or GetPlayerRoutingBucket(source) ~= bucket
+        then
             deleteRetrievedVehicle(xVehicle)
             refundCharge(xPlayer, fee, chargeAccount)
             restoreRetrieveState(scope, row)

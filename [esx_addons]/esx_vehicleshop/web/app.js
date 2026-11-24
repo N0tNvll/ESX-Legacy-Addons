@@ -92,6 +92,8 @@ const dictionaries = {
         boss_required: 'Esta operación requiere un jefe autorizado.',
         session_closing: 'La sesión está cerrándose. Vuelve a entrar antes de continuar.',
         invalid_account: 'Selecciona un método de pago válido.',
+        personal: 'Efectivo o tarjeta',
+        payment_unavailable: 'El servicio de pago no está disponible.',
         rentConfirm: 'Aceptar alquiler',
         selection: 'Vehículo seleccionado',
         category: 'Categoría',
@@ -230,6 +232,8 @@ const dictionaries = {
         boss_required: 'This action requires an authorized boss.',
         session_closing: 'Your session is closing. Log in again to continue.',
         invalid_account: 'Select a valid payment method.',
+        personal: 'Cash or card',
+        payment_unavailable: 'The payment service is unavailable.',
         rentConfirm: 'Accept rental',
         selection: 'Selected vehicle',
         category: 'Category',
@@ -781,7 +785,18 @@ function showQuote(value) {
         .join(' · ');
     $('method').replaceChildren();
 
-    for (const method of value.paymentMethods || snapshot.shop.paymentMethods) {
+    const methods = value.paymentMethods || snapshot.shop.paymentMethods;
+    const usesGateway = value.amount > 0 && ['purchase', 'license', 'deposit'].includes(value.kind);
+    const choices = usesGateway
+        ? [
+              ...(methods.some((method) => method === 'money' || method === 'bank')
+                  ? ['personal']
+                  : []),
+              ...(methods.includes('society') ? ['society'] : []),
+          ]
+        : methods;
+
+    for (const method of choices) {
         const option = node('option', t(method));
 
         option.value = method;
@@ -789,6 +804,8 @@ function showQuote(value) {
     }
 
     $('methodLabel').textContent = t('method');
+    $('methodLabel').hidden = usesGateway && choices.length <= 1;
+    $('method').hidden = usesGateway && choices.length <= 1;
     $('cancel').textContent = t('cancel');
     $('confirm').textContent = t('confirm');
     $('checkStatus').textContent = t('status');
@@ -821,6 +838,14 @@ async function execute() {
     busy = false;
 
     $('cancel').disabled = false;
+
+    if (r.error === 'cancelled' || r.error === 'busy' || r.error === 'payment_unavailable') {
+        pending = null;
+        $('confirm').disabled = false;
+        $('checkStatus').hidden = true;
+        $('checkoutError').textContent = r.error === 'cancelled' ? '' : t(r.error);
+        return;
+    }
 
     if (r.success && r.data.complete) {
         pending = null;
@@ -1411,6 +1436,16 @@ window.addEventListener('message', (event) => {
         showQuote(data);
     }
 
+    if (type === 'payment' && snapshot) {
+        $('shop').hidden = data.active;
+
+        if (data.active && $('checkout').open) {
+            $('checkout').close();
+        } else if (!data.active && quote && !$('checkout').open) {
+            $('checkout').showModal();
+        }
+    }
+
     if (type === 'selectVehicle' && snapshot) {
         const vehicle = snapshot.vehicles.find((v) => v.model === data.model);
 
@@ -1440,7 +1475,7 @@ $('checkout').addEventListener('cancel', (e) => {
     }
 });
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !$('checkout').open) {
+    if (e.key === 'Escape' && !busy && !$('checkout').open) {
         close();
     }
 });
