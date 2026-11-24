@@ -82,6 +82,7 @@ local function refresh()
                     sprite = shop.blip.sprite,
                     scale = shop.blip.scale or 0.8,
                     color = shop.blip.color or 3,
+                    shortRange = true,
                     label = shop.name,
                 })
             end
@@ -200,7 +201,7 @@ CreateThread(function()
                 local color, size = marker.color or Config.MarkerColor or {}, marker.size or {}
 
                 sleep = 0
-                DrawMarker(marker.type or 1, point.coords.x, point.coords.y, point.coords.z - (marker.offsetZ or 0.9), 0, 0, 0, 0, 0, 0, size.x or 1.2, size.y or 1.2, size.z or 0.25, color.r or 255, color.g or 172, color.b or 0, color.a or 110, false, false, 2, false, nil, nil, false)
+                DrawMarker(marker.type or 1, point.coords.x, point.coords.y, point.coords.z - (marker.offsetZ or 0.0), 0, 0, 0, 0, 0, 0, size.x or 1.2, size.y or 1.2, size.z or 0.25, color.r or 255, color.g or 172, color.b or 0, color.a or 110, false, false, 2, false, nil, nil, false)
             end
         end
 

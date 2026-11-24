@@ -72,7 +72,7 @@ xLib.nui.register('clipboardResult', function(data)
     return { success = true }
 end)
 
-AddEventHandler('esx:onPlayerLogout', function()
+ESX.SecureNetEvent('esx:onPlayerLogout', function()
     finish(false, true, true)
 end)
 

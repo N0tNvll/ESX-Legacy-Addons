@@ -336,19 +336,56 @@ function Fuel.getUILocale()
     return strings
 end
 
-if Config.ShowBlips then
-    CreateThread(function()
-        for i = 1, #Config.Stations do
-            local station = Config.Stations[i]
-            local blip = AddBlipForCoord(station.x, station.y, station.z)
+local function createStationBlip(station)
+    local blip = AddBlipForCoord(station.x, station.y, station.z)
 
-            SetBlipSprite(blip, 361)
-            SetBlipScale(blip, 0.7)
-            SetBlipColour(blip, 1)
-            SetBlipAsShortRange(blip, true)
-            BeginTextCommandSetBlipName('STRING')
-            AddTextComponentSubstringPlayerName(_('blip_name'))
-            EndTextCommandSetBlipName(blip)
+    SetBlipSprite(blip, 361)
+    SetBlipDisplay(blip, 2)
+    SetBlipScale(blip, 0.7)
+    SetBlipColour(blip, 1)
+    SetBlipAsShortRange(blip, true)
+    BeginTextCommandSetBlipName('STRING')
+    AddTextComponentSubstringPlayerName(_('blip_name'))
+    EndTextCommandSetBlipName(blip)
+
+    return blip
+end
+
+if Config.ShowBlips == 'all' then
+    for i = 1, #Config.Stations do
+        createStationBlip(Config.Stations[i])
+    end
+elseif Config.ShowBlips == 'nearby' then
+    CreateThread(function()
+        local nearestBlip
+
+        while true do
+            local playerCoords = GetEntityCoords(PlayerPedId())
+            local nearestStation
+            local nearestDistance = Config.BlipNearbyDistance or 1000.0
+
+            for i = 1, #Config.Stations do
+                local station = Config.Stations[i]
+                local distance = #(playerCoords - station)
+
+                if distance <= nearestDistance then
+                    nearestStation = station
+                    nearestDistance = distance
+                end
+            end
+
+            if nearestStation then
+                if nearestBlip then
+                    SetBlipCoords(nearestBlip, nearestStation.x, nearestStation.y, nearestStation.z)
+                else
+                    nearestBlip = createStationBlip(nearestStation)
+                end
+            elseif nearestBlip then
+                RemoveBlip(nearestBlip)
+                nearestBlip = nil
+            end
+
+            Wait(5000)
         end
     end)
 end
