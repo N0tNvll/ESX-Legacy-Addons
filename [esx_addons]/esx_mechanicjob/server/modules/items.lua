@@ -15,18 +15,33 @@ ESX.RegisterUsableItem('blowpipe', function(source)
     TriggerClientEvent('esx:showNotification', source, TranslateCap('you_used_blowtorch'))
 end)
 
-ESX.RegisterUsableItem('fixkit', function(source)
-    local source = source
+local function useRepairKit(source, itemName)
     local xPlayer = ESX.Player(source)
 
     if not xPlayer then
         return
     end
 
-    xPlayer.removeInventoryItem('fixkit', 1)
+    local item = xPlayer.getInventoryItem(itemName)
+
+    if not item or (item.count or 0) < 1 then
+        return
+    end
+
+    if xPlayer.removeInventoryItem(itemName, 1) ~= true then
+        return
+    end
 
     TriggerClientEvent('esx_mechanicjob:onFixkit', source)
     TriggerClientEvent('esx:showNotification', source, TranslateCap('you_used_repair_kit'))
+end
+
+ESX.RegisterUsableItem('fixkit', function(source)
+    useRepairKit(source, 'fixkit')
+end)
+
+ESX.RegisterUsableItem('repairkit', function(source)
+    useRepairKit(source, 'repairkit')
 end)
 
 ESX.RegisterUsableItem('carokit', function(source)
