@@ -10,6 +10,7 @@ const dictionaries = {
         manage: 'Gestión',
         orders: 'Mis operaciones',
         refresh: 'Actualizar',
+        refreshed: 'Catálogo y disponibilidad del concesionario actualizados.',
         search: 'Buscar vehículo…',
         all: 'Todas las categorías',
         preview: 'Ver modelo',
@@ -137,7 +138,14 @@ const dictionaries = {
         backCatalog: 'Volver al catálogo',
         invalid_color: 'Selecciona un color válido.',
         test_active: 'Ya tienes una prueba en curso. Espera un momento antes de repetirla.',
+        test_starting: 'Se está preparando tu vehículo de prueba. Espera un momento.',
+        test_cooldown:
+            'La prueba anterior ha terminado. Espera cinco segundos antes de iniciar otra.',
         test_unavailable: 'La prueba no está disponible en este momento.',
+        test_disabled: 'Este concesionario tiene las pruebas de conducción desactivadas.',
+        test_spawn_unavailable: 'El concesionario no tiene un punto de salida para la prueba.',
+        test_player_unavailable: 'Tu personaje todavía no está listo para iniciar la prueba.',
+        test_vehicle_type: 'No se ha podido resolver el tipo de este vehículo de prueba.',
         leave_vehicle: 'Baja de tu vehículo para comenzar la prueba.',
         spawn_blocked: 'La zona de salida está ocupada. Espera a que quede libre.',
         spawn_failed: 'No se pudo preparar el vehículo de prueba.',
@@ -150,6 +158,7 @@ const dictionaries = {
         manage: 'Management',
         orders: 'My orders',
         refresh: 'Refresh',
+        refreshed: 'Dealership catalog and availability updated.',
         search: 'Search vehicles…',
         all: 'All categories',
         preview: 'Preview',
@@ -277,7 +286,13 @@ const dictionaries = {
         backCatalog: 'Back to catalog',
         invalid_color: 'Select a valid color.',
         test_active: 'You already have a test drive. Wait a moment before trying again.',
+        test_starting: 'Your test vehicle is being prepared. Please wait a moment.',
+        test_cooldown: 'Your previous test drive ended. Wait five seconds before starting another.',
         test_unavailable: 'A test drive is currently unavailable.',
+        test_disabled: 'Test drives are disabled at this dealership.',
+        test_spawn_unavailable: 'No test-drive spawn point is configured for this dealership.',
+        test_player_unavailable: 'Your character is not ready to start a test drive yet.',
+        test_vehicle_type: 'The spawn type for this test vehicle could not be resolved.',
         leave_vehicle: 'Leave your vehicle before starting a test drive.',
         spawn_blocked: 'The exit area is occupied. Wait until it is clear.',
         spawn_failed: 'The test vehicle could not be prepared.',
@@ -638,7 +653,7 @@ async function rpc(name, data = {}) {
     }
 }
 
-async function refresh() {
+async function refresh(showNotice = false) {
     const g = generation;
     const r = await rpc('refresh', { page });
 
@@ -656,6 +671,10 @@ async function refresh() {
 
         snapshot = next;
         render();
+
+        if (showNotice) {
+            notice(t('refreshed'));
+        }
     } else {
         notice(t(r.error));
     }
@@ -1466,7 +1485,7 @@ window.addEventListener('message', (event) => {
     }
 });
 $('close').onclick = close;
-$('refresh').onclick = refresh;
+$('refresh').onclick = () => refresh(true);
 $('confirm').onclick = execute;
 $('checkStatus').onclick = () => checkStatus(pending || quote?.id);
 $('checkout').addEventListener('cancel', (e) => {

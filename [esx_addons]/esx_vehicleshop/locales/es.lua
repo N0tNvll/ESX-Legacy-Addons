@@ -7,6 +7,7 @@ Locales['es'] = {
     dealership_interact = 'Abrir concesionario',
     dealership_vehicle_required = 'Acércate con el vehículo que quieres devolver o vender.',
     dealership_end_test = 'Finalizar prueba de vehículo',
+    dealership_test_failed = 'No se pudo preparar el vehículo de prueba. Inténtalo de nuevo.',
     -- global menus
     ['not_enough_in_society'] = 'No hay mas de ese item en la sociedad!',
     ['player_cannot_hold'] = '~r~no tienes suficiente espacio en tu inventario!',

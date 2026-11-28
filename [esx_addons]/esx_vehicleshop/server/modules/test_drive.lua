@@ -2,6 +2,15 @@ local D = VehicleShop
 local drives, cooldowns = {}, {}
 local stopping = false
 
+local function checkAvailability(source)
+    D.assert(not drives[source], 'test_active')
+
+    local previous = cooldowns[source]
+    local elapsed = previous and ((GetGameTimer() - previous) & 0xffffffff)
+
+    D.assert(not elapsed or elapsed >= 5000, 'test_cooldown')
+end
+
 local function roadSpawn(requested, point, ground)
     if not ground or type(requested) ~= 'table' then
         return point
@@ -47,12 +56,17 @@ local function finish(source, notify)
 
     if notify and not drive.notified and D.current(drive.player) then
         drive.notified = true
-        TriggerClientEvent('esx_vehicleshop:testDriveEnded', source, drive.id, GetPlayerRoutingBucket(source) == drive.bucket)
+        TriggerClientEvent(
+            'esx_vehicleshop:testDriveEnded',
+            source,
+            drive.id,
+            GetPlayerRoutingBucket(source) == drive.bucket
+        )
     end
 
     if ok and released then
         drives[source] = nil
-        cooldowns[source] = GetGameTimer() + 5000
+        cooldowns[source] = GetGameTimer()
         return true
     end
 
@@ -61,39 +75,50 @@ end
 
 D.register('startTestDrive', function(source, request)
     D.assert(not stopping and type(request) == 'table', 'test_unavailable')
-    D.assert(not drives[source] and (cooldowns[source] or 0) <= GetGameTimer(), 'test_active')
+    checkAvailability(source)
 
     local player, shop = D.playerShop(source, request.shopId)
     local offer = D.assert(D.offer(shop, request.model, player), 'invalid_vehicle')
     local point = D.testDrivePoint(shop)
     local ped = GetPlayerPed(source)
 
-    D.assert(Config.TestDrive.enabled and shop.testDrive ~= false and point, 'test_unavailable')
-    D.assert(ped ~= 0 and GetEntityHealth(ped) > 0, 'test_unavailable')
+    D.assert(Config.TestDrive.enabled and shop.testDrive ~= false, 'test_disabled')
+    D.assert(point, 'test_spawn_unavailable')
+    D.assert(ped ~= 0 and GetEntityHealth(ped) > 0, 'test_player_unavailable')
     D.assert(GetVehiclePedIsIn(ped, false) == 0, 'leave_vehicle')
     D.validBuyer(player, shop, offer)
 
     local props = D.paintProps(offer.props, request.color)
     local coords = GetEntityCoords(ped)
     local drive = {
-        id = D.uuid(),
         owner = player.getIdentifier(),
         player = player,
         shop = shop.id,
         model = offer.model,
-        returnCoords = { x = coords.x, y = coords.y, z = coords.z, w = GetEntityHeading(ped) },
+        returnCoords = {
+            x = coords.x,
+            y = coords.y,
+            z = coords.z,
+            w = GetEntityHeading(ped),
+        },
         bucket = GetPlayerRoutingBucket(source),
         duration = math.max(10, math.min(300, math.floor(Config.TestDrive.duration))),
         spawning = true,
     }
 
+    checkAvailability(source)
     drives[source] = drive
 
     local ok, result = pcall(function()
-        local vehicleType = ESX.GetVehicleType(offer.model, source)
+        drive.id = D.uuid()
 
-        D.assert(vehicleType and not drive.closing and not stopping, 'test_unavailable')
-        D.validBuyer(player, shop, D.assert(D.offer(shop, offer.model, player), 'invalid_vehicle'))
+        local vehicleType =
+            D.assert(ESX.ResolveVehicleType(offer.model, offer.type), 'test_vehicle_type')
+
+        D.assert(not drive.closing and not stopping, 'test_unavailable')
+        local currentOffer = D.assert(D.offer(shop, offer.model, player), 'invalid_vehicle')
+
+        D.validBuyer(player, shop, currentOffer)
         D.assert(GetPlayerRoutingBucket(source) == drive.bucket, 'purchase_invalidated')
 
         local ground = vehicleType == 'automobile' or vehicleType == 'bike'
@@ -119,10 +144,15 @@ D.register('startTestDrive', function(source, request)
         drive.spawned = true
         drive.netId = entity.netId
         D.assert(not drive.closing and not stopping, 'test_unavailable')
-        D.validBuyer(player, shop, D.assert(D.offer(shop, offer.model, player), 'invalid_vehicle'))
+        currentOffer = D.assert(D.offer(shop, offer.model, player), 'invalid_vehicle')
+
+        D.validBuyer(player, shop, currentOffer)
         D.assert(GetPlayerRoutingBucket(source) == drive.bucket, 'purchase_invalidated')
         drive.expires = os.time() + drive.duration
-        D.assert(exports['esx_garage']:publishRentalVehicle(drive.owner, drive.plate, drive.expires), 'spawn_failed')
+        local published =
+            exports['esx_garage']:publishRentalVehicle(drive.owner, drive.plate, drive.expires)
+
+        D.assert(published, 'spawn_failed')
 
         return {
             id = drive.id,
@@ -140,6 +170,17 @@ D.register('startTestDrive', function(source, request)
 
     if not ok then
         finish(source, false)
+
+        local reason = type(result) == 'table' and result.shopError or tostring(result)
+
+        print(
+            ('[esx_vehicleshop] Test drive failed (player=%s, shop=%s, model=%s): %s'):format(
+                source,
+                shop.id,
+                offer.model,
+                reason
+            )
+        )
         error(result)
     end
 
@@ -150,8 +191,11 @@ D.register('finishTestDrive', function(source, id)
     local drive = drives[source]
 
     D.assert(not drive or (drive.id == id and D.current(drive.player)), 'test_unavailable')
-    finish(source, true)
-    return true
+
+    local restore = drive ~= nil and GetPlayerRoutingBucket(source) == drive.bucket
+    local finished = finish(source, true)
+
+    return { finished = finished, restore = restore }
 end)
 
 AddEventHandler('esx:playerDropped', function(playerId)
@@ -182,9 +226,24 @@ CreateThread(function()
         for source, drive in pairs(drives) do
             if not drive.spawning then
                 local ped = GetPlayerPed(source)
-                local entity = GetResourceState('esx_garage') == 'started' and exports['esx_garage']:getRentalVehicle(drive.owner, drive.plate)
+                local entity = GetResourceState('esx_garage') == 'started'
+                    and exports['esx_garage']:getRentalVehicle(drive.owner, drive.plate)
 
-                if drive.closing or drive.expires <= os.time() or not D.current(drive.player) or ped == 0 or GetEntityHealth(ped) <= 0 or GetPlayerRoutingBucket(source) ~= drive.bucket or not entity or #(GetEntityCoords(ped) - vector3(drive.returnCoords.x, drive.returnCoords.y, drive.returnCoords.z)) > Config.TestDrive.maxDistance then
+                local origin = drive.returnCoords
+                local tooFar = ped ~= 0
+                    and #(GetEntityCoords(ped) - vector3(origin.x, origin.y, origin.z))
+                        > Config.TestDrive.maxDistance
+
+                if
+                    drive.closing
+                    or drive.expires <= os.time()
+                    or not D.current(drive.player)
+                    or ped == 0
+                    or GetEntityHealth(ped) <= 0
+                    or GetPlayerRoutingBucket(source) ~= drive.bucket
+                    or not entity
+                    or tooFar
+                then
                     finish(source, true)
                 end
             end

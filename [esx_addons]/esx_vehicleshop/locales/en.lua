@@ -7,6 +7,7 @@ Locales['en'] = {
     dealership_interact = 'Open dealership',
     dealership_vehicle_required = 'Bring the vehicle you want to return or sell.',
     dealership_end_test = 'End vehicle test drive',
+    dealership_test_failed = 'The test vehicle could not be prepared. Please try again.',
     -- global menus
     ['not_enough_in_society'] = "there's not enough of ~r~that item in the society!",
     ['player_cannot_hold'] = 'you do ~r~not have enough free space in your inventory!',

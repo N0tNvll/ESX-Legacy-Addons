@@ -6,10 +6,10 @@ local function roadSpawn(point)
         return nil
     end
 
-    local found, coords, heading =
-        GetClosestVehicleNodeWithHeading(point.x, point.y, point.z, 1, 3.0, 0)
+    local ok, found, coords, heading =
+        pcall(GetClosestVehicleNodeWithHeading, point.x, point.y, point.z, 1, 3.0, 0)
 
-    if not found or not coords then
+    if not ok or not found or not coords then
         return nil
     end
 
@@ -54,28 +54,74 @@ function S.finishTestDrive(reopen)
 
     if not result then
         drive.finishing = false
+        return nil, failure
+    end
+
+    if type(result) == 'table' and result.finished == false then
+        drive.finishing = false
+        return nil, 'busy'
+    end
+
+    if S.testDrive == drive then
+        local restore = type(result) == 'table' and result.restore == true
+
+        stop(restore, drive.reopen)
     end
 
     return result, failure
 end
 
+local function failStart(drive)
+    if S.testDrive ~= drive then
+        return nil, 'test_unavailable'
+    end
+
+    S.finishTestDrive(false)
+
+    if ESX.IsPlayerLoaded() and not IsEntityDead(PlayerPedId()) then
+        ESX.ShowNotification(S.translate('dealership_test_failed'), 'error')
+    end
+
+    return nil, 'spawn_failed'
+end
+
 function S.startTestDrive(data)
-    if starting or S.testDrive or S.pending or not S.open or not S.shop then
+    if starting then
+        return nil, 'test_starting'
+    end
+
+    if S.testDrive then
         return nil, 'test_active'
+    end
+
+    if S.pending then
+        return nil, 'order_pending'
+    end
+
+    if not S.open or not S.shop then
+        return nil, 'test_unavailable'
     end
 
     starting = true
 
     local generation = S.generation
-    local origin = S.shop.testDrivePoint or S.shop.delivery or S.shop.preview
-    local drive, failure = S.request('startTestDrive', {
-        shopId = S.shop.id,
-        model = data.model,
-        color = data.color,
-        spawn = roadSpawn(origin),
-    })
+    local ok, drive, failure = pcall(function()
+        local origin = S.shop.testDrivePoint or S.shop.delivery or S.shop.preview
+
+        return S.request('startTestDrive', {
+            shopId = S.shop.id,
+            model = data.model,
+            color = data.color,
+            spawn = roadSpawn(origin),
+        })
+    end)
 
     starting = false
+
+    if not ok then
+        print(('[esx_vehicleshop] Test drive start failed: %s'):format(tostring(drive)))
+        return nil, 'spawn_failed'
+    end
 
     if not drive then
         return nil, failure
@@ -105,21 +151,30 @@ function S.startTestDrive(data)
         Wait(50)
     end
 
-    if S.testDrive ~= drive or not ESX.IsPlayerLoaded() or vehicle == 0 or not DoesEntityExist(vehicle) or GetEntityModel(vehicle) ~= joaat(drive.model) or IsEntityDead(PlayerPedId()) then
-        S.finishTestDrive(false)
-        return nil, 'spawn_failed'
+    if
+        S.testDrive ~= drive
+        or not ESX.IsPlayerLoaded()
+        or vehicle == 0
+        or not DoesEntityExist(vehicle)
+        or GetEntityModel(vehicle) ~= joaat(drive.model)
+        or IsEntityDead(PlayerPedId())
+    then
+        return failStart(drive)
     end
 
     deadline = GetGameTimer() + 2000
 
-    while S.testDrive == drive and not NetworkHasControlOfEntity(vehicle) and GetGameTimer() < deadline do
+    while
+        S.testDrive == drive
+        and not NetworkHasControlOfEntity(vehicle)
+        and GetGameTimer() < deadline
+    do
         NetworkRequestControlOfEntity(vehicle)
         Wait(50)
     end
 
     if S.testDrive ~= drive or not NetworkHasControlOfEntity(vehicle) then
-        S.finishTestDrive(false)
-        return nil, 'spawn_failed'
+        return failStart(drive)
     end
 
     local ok = pcall(function()
@@ -132,19 +187,21 @@ function S.startTestDrive(data)
     end)
 
     if not ok then
-        S.finishTestDrive(false)
-        return nil, 'spawn_failed'
+        return failStart(drive)
     end
 
     deadline = GetGameTimer() + 2000
 
-    while S.testDrive == drive and GetVehiclePedIsIn(PlayerPedId(), false) ~= vehicle and GetGameTimer() < deadline do
+    while
+        S.testDrive == drive
+        and GetVehiclePedIsIn(PlayerPedId(), false) ~= vehicle
+        and GetGameTimer() < deadline
+    do
         Wait(50)
     end
 
     if S.testDrive ~= drive or GetVehiclePedIsIn(PlayerPedId(), false) ~= vehicle then
-        S.finishTestDrive(false)
-        return nil, 'spawn_failed'
+        return failStart(drive)
     end
 
     drive.vehicle = vehicle
@@ -192,7 +249,12 @@ CreateThread(function()
 
             S.send('testDrive', { active = true, remaining = remaining })
 
-            if remaining == 0 or IsEntityDead(PlayerPedId()) or not DoesEntityExist(drive.vehicle) or GetVehiclePedIsIn(PlayerPedId(), false) ~= drive.vehicle then
+            if
+                remaining == 0
+                or IsEntityDead(PlayerPedId())
+                or not DoesEntityExist(drive.vehicle)
+                or GetVehiclePedIsIn(PlayerPedId(), false) ~= drive.vehicle
+            then
                 S.finishTestDrive(not IsEntityDead(PlayerPedId()))
             end
         end

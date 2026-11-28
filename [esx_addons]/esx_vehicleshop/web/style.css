@@ -772,23 +772,25 @@ th {
     border: 0;
 }
 #testDriveHud {
-    position: absolute;
-    right: 3vw;
-    bottom: 5vh;
-    padding: 1rem 1.5rem;
-    min-width: 17rem;
-    background: var(--darkest);
-    border: 1px solid #ffffff26;
-    border-left: 3px solid var(--brand);
-    border-radius: 10px;
-    box-shadow: 0 10px 30px #0005;
+    position: fixed;
+    top: max(1.5rem, 3vh, env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(17rem, calc(100vw - 2rem));
+    pointer-events: none;
+    user-select: none;
 }
 #testDriveHud > div {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 2rem;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
     font-size: 0.85rem;
+    background: #161616e6;
+    border: 1px solid #ffffff26;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px #0003;
 }
 #testDriveTime {
     font-size: 1.5rem;
@@ -796,14 +798,19 @@ th {
     font-variant-numeric: tabular-nums;
 }
 #testDriveHud p {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
     font-size: 0.7rem;
-    color: var(--muted);
-    margin: 0.75rem 0 0;
+    color: var(--text);
+    margin: 0.5rem 0 0;
+    text-shadow: 0 1px 3px #000c;
 }
 #testDriveHud kbd {
     padding: 0.25rem 0.4rem;
-    margin-right: 0.3rem;
     color: var(--text);
+    background: #161616b3;
     border: 1px solid var(--mid);
     border-radius: 4px;
     font: inherit;

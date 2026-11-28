@@ -167,6 +167,9 @@ function D.register(name, handler)
 
             if code == 'operation_failed' then
                 print('[esx_vehicleshop] ' .. tostring(result))
+            elseif name == 'startTestDrive' then
+                print(('[esx_vehicleshop] Test drive rejected (player=%s): %s')
+                    :format(source, code))
             end
 
             return cb({ success = false, error = code })
